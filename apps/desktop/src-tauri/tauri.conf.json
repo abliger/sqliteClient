@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SQLite Client",
+  "version": "0.1.0",
+  "identifier": "com.sqliteclient.app",
+  "build": {
+    "beforeDevCommand": "cd /Users/lvming/Desktop/sqliteClient/sqlite-client/packages/ui && pnpm dev",
+    "beforeBuildCommand": "cd ../../../packages/ui && pnpm build",
+    "frontendDist": "../../../packages/ui/dist",
+    "devUrl": "http://localhost:5173"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "SQLite Client",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1000,
+        "minHeight": 700,
+        "center": true,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "visible": true,
+        "focus": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app"],
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.13",
+      "signingIdentity": null,
+      "entitlements": null
+    }
+  }
+}
