@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { QueryResult } from '@types/index'
-import { 
-  ClockIcon, 
+import {
+  ClockIcon,
   InformationCircleIcon
 } from '@heroicons/vue/24/outline'
 

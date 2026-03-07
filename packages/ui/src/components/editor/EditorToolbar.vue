@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { 
   PlayIcon, 
   PlayCircleIcon,
   SparklesIcon
 } from '@heroicons/vue/24/outline'
+
+const { t } = useI18n()
 
 interface Props {
   isExecuting?: boolean
@@ -25,44 +28,44 @@ const emit = defineEmits<{
 <template>
   <div class="flex items-center justify-between px-3 py-2 border-b border-surface-200 bg-surface-50">
     <div class="flex items-center space-x-2">
-      <!-- 执行按钮 -->
+      <!-- Execute Button -->
       <button
         class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
         :disabled="!canExecute || isExecuting"
-        title="Execute (Ctrl+Enter)"
+        :title="t('editor.execute')"
         @click="emit('execute')"
       >
         <PlayIcon class="w-4 h-4 mr-1.5" />
-        {{ isExecuting ? 'Running...' : 'Run' }}
+        {{ isExecuting ? t('editor.running') : t('editor.run') }}
       </button>
 
       <button
         class="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
         :disabled="!canExecute || isExecuting"
-        title="Run Selected"
+        :title="t('editor.runSelectedQuery')"
         @click="emit('executeSelected')"
       >
         <PlayCircleIcon class="w-4 h-4 mr-1.5" />
-        Run Selected
+        {{ t('editor.runSelected') }}
       </button>
 
       <div class="w-px h-6 bg-surface-300 mx-2" />
 
-      <!-- 格式化 -->
+      <!-- Format -->
       <button
         class="btn-ghost"
-        title="Format SQL"
+        :title="t('editor.formatSQL')"
         @click="emit('format')"
       >
         <SparklesIcon class="w-4 h-4 mr-1.5" />
-        Format
+        {{ t('editor.format') }}
       </button>
     </div>
 
     <div class="flex items-center space-x-2 text-xs text-surface-500">
-      <span>Ctrl+Enter to run</span>
+      <span>{{ t('editor.shortcutHint') }}</span>
       <span>•</span>
-      <span>Ctrl+/ to comment</span>
+      <span>{{ t('editor.commentShortcut') }}</span>
     </div>
   </div>
 </template>

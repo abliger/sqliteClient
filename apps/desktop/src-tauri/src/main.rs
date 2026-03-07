@@ -11,6 +11,7 @@ mod utils;
 use std::sync::Arc;
 use core::connection_manager::ConnectionManager;
 use core::history_store::HistoryStore;
+use commands::settings::SettingsStore;
 
 fn main() {
     tauri::Builder::default()
@@ -27,8 +28,12 @@ fn main() {
             // 初始化连接管理器
             let connection_manager = ConnectionManager::new(history_store.clone());
             
+            // 初始化设置存储
+            let settings_store = SettingsStore::new(&app_handle).expect("Failed to initialize settings store");
+            
             app.manage(connection_manager);
             app.manage(history_store.clone());
+            app.manage(settings_store);
             
             Ok(())
         })
@@ -70,6 +75,10 @@ fn main() {
             commands::history::search_history,
             commands::history::delete_history_item,
             commands::history::clear_history,
+            
+            // 设置
+            commands::settings::get_app_settings,
+            commands::settings::save_app_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

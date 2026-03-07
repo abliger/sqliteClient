@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useQueryStore } from '@stores/query'
 import { PlusIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
+const { t } = useI18n()
 const queryStore = useQueryStore()
 
 const handleAddTab = () => {
@@ -48,7 +50,7 @@ const handleCloseTab = (tabId: string, event: Event) => {
 
     <button
       class="p-2 hover:bg-surface-200 text-surface-600"
-      title="New Query Tab"
+      :title="t('editor.newQueryTab')"
       @click="handleAddTab"
     >
       <PlusIcon class="w-4 h-4" />

@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { PlusIcon, XMarkIcon, FolderOpenIcon, DocumentPlusIcon } from '@heroicons/vue/24/outline'
+import { useI18n } from 'vue-i18n'
+import { PlusIcon, XMarkIcon, FolderOpenIcon, DocumentPlusIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import { useConnectionStore } from '@stores/connection'
+import { useSettingsStore } from '@stores/settings'
 import { open } from '@tauri-apps/plugin-dialog'
 import Tooltip from '@components/ui/Tooltip.vue'
 
+const { t } = useI18n()
 const connectionStore = useConnectionStore()
+const settingsStore = useSettingsStore()
 const isCreating = ref(false)
 
 const handleOpenDatabase = async () => {
@@ -65,7 +69,7 @@ const formatFileSize = (bytes: number): string => {
   <div class="h-12 bg-surface-100 border-b border-surface-200 flex items-center px-2 space-x-1">
     <!-- 新建/打开按钮 -->
     <div class="flex items-center space-x-1 mr-2">
-      <Tooltip content="Open Database" position="bottom">
+      <Tooltip :content="t('connection.openDatabaseTip')" position="bottom">
         <button
           class="p-1.5 rounded hover:bg-surface-200 text-surface-600"
           @click="handleOpenDatabase"
@@ -73,7 +77,7 @@ const formatFileSize = (bytes: number): string => {
           <FolderOpenIcon class="w-5 h-5" />
         </button>
       </Tooltip>
-      <Tooltip content="New Database" position="bottom">
+      <Tooltip :content="t('connection.newDatabaseTip')" position="bottom">
         <button
           class="p-1.5 rounded hover:bg-surface-200 text-surface-600"
           @click="handleCreateDatabase"
@@ -115,8 +119,20 @@ const formatFileSize = (bytes: number): string => {
       </div>
 
       <div v-if="connectionStore.connections.length === 0" class="text-sm text-surface-400 px-2">
-        No connections. Click the folder icon to open a database.
+        {{ t('connection.noConnections') }}
       </div>
+    </div>
+
+    <!-- Settings Button -->
+    <div class="ml-auto">
+      <Tooltip :content="t('settings.title')" position="bottom">
+        <button
+          class="p-1.5 rounded hover:bg-surface-200 text-surface-600"
+          @click="settingsStore.openSettingsPanel"
+        >
+          <Cog6ToothIcon class="w-5 h-5" />
+        </button>
+      </Tooltip>
     </div>
   </div>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useConnectionStore } from '@stores/connection'
 import { useSchemaStore } from '@stores/schema'
 import { useQueryStore } from '@stores/query'
@@ -13,6 +14,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import type { TableInfo, ColumnInfo } from '@types/index'
 
+const { t } = useI18n()
 const connectionStore = useConnectionStore()
 const schemaStore = useSchemaStore()
 const queryStore = useQueryStore()
@@ -46,10 +48,10 @@ const getColumnIcon = (column: ColumnInfo) => {
   return null
 }
 
-const tabs = [
-  { id: 'tables' as const, label: 'Tables', icon: TableCellsIcon },
-  { id: 'er' as const, label: 'ER', icon: TableCellsIcon }
-]
+const tabs = computed(() => [
+  { id: 'tables' as const, label: t('databaseTree.tables'), icon: TableCellsIcon },
+  { id: 'er' as const, label: t('databaseTree.erDiagram'), icon: TableCellsIcon }
+])
 </script>
 
 <template>
@@ -88,17 +90,17 @@ const tabs = [
       <template v-if="activeTab === 'tables'">
         <!-- Loading -->
         <div v-if="schemaStore.isLoading" class="flex items-center justify-center h-32 text-surface-400">
-          Loading...
+          {{ t('common.loading') }}
         </div>
 
         <!-- No Connection -->
         <div v-else-if="!connectionStore.activeConnection" class="flex items-center justify-center h-32 text-surface-400 text-sm px-4 text-center">
-          Open a database to view tables
+          {{ t('databaseTree.noConnection') }}
         </div>
 
         <!-- No Tables -->
         <div v-else-if="schemaStore.tables.length === 0" class="flex items-center justify-center h-32 text-surface-400 text-sm">
-          No tables found
+          {{ t('databaseTree.noTables') }}
         </div>
 
         <!-- Tables List -->
@@ -134,8 +136,8 @@ const tabs = [
                 :key="column.name"
                 class="flex items-center space-x-1 py-0.5 pl-6 text-sm"
               >
-                <KeyIcon v-if="column.is_primary_key" class="w-3.5 h-3.5 text-amber-500" title="Primary Key" />
-                <LinkIcon v-else-if="column.is_foreign_key" class="w-3.5 h-3.5 text-blue-500" title="Foreign Key" />
+                <KeyIcon v-if="column.is_primary_key" class="w-3.5 h-3.5 text-amber-500" :title="t('databaseTree.primaryKey')" />
+                <LinkIcon v-else-if="column.is_foreign_key" class="w-3.5 h-3.5 text-blue-500" :title="t('databaseTree.foreignKey')" />
                 <div v-else class="w-3.5" />
                 <span
                   class="flex-1"
@@ -147,19 +149,19 @@ const tabs = [
                 <span v-if="!column.nullable" class="text-xs text-red-500">*</span>
               </div>
               
-              <!-- 快捷操作 -->
+              <!-- Quick Actions -->
               <div class="flex items-center space-x-2 pl-6 py-2">
                 <button
                   class="text-xs text-primary-600 hover:text-primary-700"
                   @click="handleGenerateSelect(table.name)"
                 >
-                  SELECT
+                  {{ t('databaseTree.selectQuery') }}
                 </button>
                 <button
                   class="text-xs text-primary-600 hover:text-primary-700"
                   @click="handleGenerateInsert(table)"
                 >
-                  INSERT
+                  {{ t('databaseTree.insertQuery') }}
                 </button>
               </div>
             </div>
@@ -169,7 +171,7 @@ const tabs = [
 
       <!-- ER Tab -->
       <div v-else-if="activeTab === 'er'" class="flex items-center justify-center h-full text-surface-400 text-sm">
-        ER Diagram (Coming Soon)
+        {{ t('databaseTree.erDiagram') }} (Coming Soon)
       </div>
     </div>
   </div>

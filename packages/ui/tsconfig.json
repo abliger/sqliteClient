@@ -22,7 +22,8 @@
       "@stores/*": ["src/stores/*"],
       "@services/*": ["src/services/*"],
       "@types/*": ["src/types/*"],
-      "@composables/*": ["src/composables/*"]
+      "@composables/*": ["src/composables/*"],
+      "@i18n/*": ["src/i18n/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
