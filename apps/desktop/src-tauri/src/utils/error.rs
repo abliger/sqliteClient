@@ -6,26 +6,26 @@ use thiserror::Error;
 pub enum AppError {
     #[error("Connection error: {0}")]
     ConnectionError(String),
-    
+
     #[error("Query error: {0}")]
     QueryError(String),
-    
+
     #[error("Database error: {0}")]
     DatabaseError(String),
-    
+
     #[error("IO error: {0}")]
     IoError(String),
-    
+
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
-    
+
     #[error("Not found: {0}")]
     NotFound(String),
-    
+
     #[allow(dead_code)]
     #[error("Operation cancelled")]
     Cancelled,
-    
+
     #[error("Internal error: {0}")]
     InternalError(String),
 }
@@ -68,5 +68,67 @@ impl serde::Serialize for AppError {
         S: serde::Serializer,
     {
         serializer.serialize_str(&self.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app_error_display() {
+        let err = AppError::ConnectionError("test error".to_string());
+        assert_eq!(err.to_string(), "Connection error: test error");
+
+        let err = AppError::QueryError("query failed".to_string());
+        assert_eq!(err.to_string(), "Query error: query failed");
+
+        let err = AppError::DatabaseError("db error".to_string());
+        assert_eq!(err.to_string(), "Database error: db error");
+
+        let err = AppError::IoError("io error".to_string());
+        assert_eq!(err.to_string(), "IO error: io error");
+
+        let err = AppError::InvalidParameter("param".to_string());
+        assert_eq!(err.to_string(), "Invalid parameter: param");
+
+        let err = AppError::NotFound("item".to_string());
+        assert_eq!(err.to_string(), "Not found: item");
+
+        let err = AppError::Cancelled;
+        assert_eq!(err.to_string(), "Operation cancelled");
+
+        let err = AppError::InternalError("internal".to_string());
+        assert_eq!(err.to_string(), "Internal error: internal");
+    }
+
+    #[test]
+    fn test_app_error_from_rusqlite() {
+        let rusqlite_err = rusqlite::Error::InvalidQuery;
+        let app_err: AppError = rusqlite_err.into();
+        assert!(matches!(app_err, AppError::DatabaseError(_)));
+    }
+
+    #[test]
+    fn test_app_error_from_io() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let app_err: AppError = io_err.into();
+        assert!(matches!(app_err, AppError::IoError(_)));
+    }
+
+    #[test]
+    fn test_app_error_serialize() {
+        let err = AppError::ConnectionError("test".to_string());
+        let serialized = serde_json::to_string(&err).unwrap();
+        assert_eq!(serialized, "\"Connection error: test\"");
+    }
+
+    #[test]
+    fn test_app_result_type() {
+        let result: AppResult<i32> = Ok(42);
+        assert!(result.is_ok());
+
+        let result: AppResult<i32> = Err(AppError::NotFound("test".to_string()));
+        assert!(result.is_err());
     }
 }

@@ -16,19 +16,17 @@ pub async fn export_to_csv(
     output_path: String,
 ) -> AppResult<()> {
     let pool = connection_manager.get_pool(&connection_id)?;
-    
+
     let result = crate::core::query_engine::QueryEngine::execute_query(&pool, &sql, None)?;
-    
+
     match result {
         QueryResult::Rows { columns, rows, .. } => {
             export_rows_to_csv(&rows, &columns, Path::new(&output_path))?;
             Ok(())
         }
-        QueryResult::Execution { .. } => {
-            Err(crate::utils::error::AppError::InvalidParameter(
-                "Cannot export DDL/DML results".to_string()
-            ))
-        }
+        QueryResult::Execution { .. } => Err(crate::utils::error::AppError::InvalidParameter(
+            "Cannot export DDL/DML results".to_string(),
+        )),
     }
 }
 
@@ -41,19 +39,17 @@ pub async fn export_to_json(
     pretty: Option<bool>,
 ) -> AppResult<()> {
     let pool = connection_manager.get_pool(&connection_id)?;
-    
+
     let result = crate::core::query_engine::QueryEngine::execute_query(&pool, &sql, None)?;
-    
+
     match result {
         QueryResult::Rows { rows, .. } => {
             export_rows_to_json(&rows, Path::new(&output_path), pretty.unwrap_or(true))?;
             Ok(())
         }
-        QueryResult::Execution { .. } => {
-            Err(crate::utils::error::AppError::InvalidParameter(
-                "Cannot export DDL/DML results".to_string()
-            ))
-        }
+        QueryResult::Execution { .. } => Err(crate::utils::error::AppError::InvalidParameter(
+            "Cannot export DDL/DML results".to_string(),
+        )),
     }
 }
 
@@ -67,9 +63,19 @@ pub async fn export_query_to_file(
 ) -> AppResult<()> {
     match format.as_str() {
         "csv" => export_to_csv(connection_manager, connection_id, sql, output_path).await,
-        "json" => export_to_json(connection_manager, connection_id, sql, output_path, Some(true)).await,
-        _ => Err(crate::utils::error::AppError::InvalidParameter(
-            format!("Unsupported format: {}", format)
-        )),
+        "json" => {
+            export_to_json(
+                connection_manager,
+                connection_id,
+                sql,
+                output_path,
+                Some(true),
+            )
+            .await
+        }
+        _ => Err(crate::utils::error::AppError::InvalidParameter(format!(
+            "Unsupported format: {}",
+            format
+        ))),
     }
 }

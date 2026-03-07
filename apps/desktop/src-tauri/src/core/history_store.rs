@@ -19,24 +19,24 @@ impl HistoryStore {
             .path()
             .app_data_dir()
             .map_err(|e| AppError::IoError(e.to_string()))?;
-        
+
         std::fs::create_dir_all(&app_dir)?;
-        
+
         let db_path = app_dir.join("history.db");
         let conn = Connection::open(db_path)?;
-        
+
         let store = Self {
             conn: Arc::new(Mutex::new(conn)),
         };
-        
+
         store.init_tables()?;
-        
+
         Ok(store)
     }
 
     fn init_tables(&self) -> AppResult<()> {
         let conn = self.conn.lock();
-        
+
         conn.execute_batch(
             r#"
             CREATE TABLE IF NOT EXISTS query_history (
@@ -76,15 +76,15 @@ impl HistoryStore {
                 INSERT INTO query_history_fts(query_history_fts, rowid, sql) 
                 VALUES ('delete', old.rowid, old.sql);
             END;
-            "#
+            "#,
         )?;
-        
+
         Ok(())
     }
 
     pub fn add_history_item(&self, item: &QueryHistoryItem) -> AppResult<()> {
         let conn = self.conn.lock();
-        
+
         conn.execute(
             r#"
             INSERT INTO query_history 
@@ -103,54 +103,54 @@ impl HistoryStore {
                 item.row_count.map(|v| v as i64)
             ],
         )?;
-        
+
         Ok(())
     }
 
     pub fn get_history(&self, filter: &QueryHistoryFilter) -> AppResult<Vec<QueryHistoryItem>> {
         let conn = self.conn.lock();
-        
+
         let mut sql = String::from(
             "SELECT id, sql, connection_id, connection_name, executed_at, duration_ms, 
              is_success, error_message, row_count 
-             FROM query_history WHERE 1=1"
+             FROM query_history WHERE 1=1",
         );
         let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-        
+
         if let Some(conn_id) = &filter.connection_id {
             sql.push_str(" AND connection_id = ?");
             params.push(Box::new(conn_id.clone()));
         }
-        
+
         if let Some(is_success) = filter.is_success {
             sql.push_str(" AND is_success = ?");
             params.push(Box::new(is_success));
         }
-        
+
         if let Some(from_date) = filter.from_date {
             sql.push_str(" AND executed_at >= ?");
             params.push(Box::new(from_date.to_rfc3339()));
         }
-        
+
         if let Some(to_date) = filter.to_date {
             sql.push_str(" AND executed_at <= ?");
             params.push(Box::new(to_date.to_rfc3339()));
         }
-        
+
         // Full-text search
         if let Some(search) = &filter.search {
             sql.push_str(
-                " AND id IN (SELECT rowid FROM query_history_fts WHERE query_history_fts MATCH ?)"
+                " AND id IN (SELECT rowid FROM query_history_fts WHERE query_history_fts MATCH ?)",
             );
             params.push(Box::new(search.clone()));
         }
-        
+
         sql.push_str(" ORDER BY executed_at DESC LIMIT ? OFFSET ?");
         params.push(Box::new(filter.limit as i64));
         params.push(Box::new(filter.offset as i64));
-        
+
         let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
-        
+
         let mut stmt = conn.prepare(&sql)?;
         let rows = stmt.query_map(param_refs.as_slice(), |row| {
             Ok(QueryHistoryItem {
@@ -158,7 +158,9 @@ impl HistoryStore {
                 sql: row.get(1)?,
                 connection_id: row.get(2)?,
                 connection_name: row.get(3)?,
-                executed_at: row.get::<_, String>(4)?.parse::<DateTime<Utc>>()
+                executed_at: row
+                    .get::<_, String>(4)?
+                    .parse::<DateTime<Utc>>()
                     .map_err(|_| rusqlite::Error::InvalidQuery)?,
                 duration_ms: row.get::<_, i64>(5)? as u64,
                 is_success: row.get(6)?,
@@ -166,12 +168,12 @@ impl HistoryStore {
                 row_count: row.get::<_, Option<i64>>(8)?.map(|v| v as usize),
             })
         })?;
-        
+
         let mut items = Vec::new();
         for row in rows {
             items.push(row?);
         }
-        
+
         Ok(items)
     }
 
@@ -183,13 +185,16 @@ impl HistoryStore {
 
     pub fn clear_history(&self, connection_id: Option<&str>) -> AppResult<usize> {
         let conn = self.conn.lock();
-        
+
         let affected = if let Some(conn_id) = connection_id {
-            conn.execute("DELETE FROM query_history WHERE connection_id = ?", params![conn_id])?
+            conn.execute(
+                "DELETE FROM query_history WHERE connection_id = ?",
+                params![conn_id],
+            )?
         } else {
             conn.execute("DELETE FROM query_history", [])?
         };
-        
+
         Ok(affected)
     }
 

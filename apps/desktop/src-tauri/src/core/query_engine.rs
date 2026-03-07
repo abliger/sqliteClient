@@ -19,14 +19,16 @@ impl QueryEngine {
         limit: Option<usize>,
     ) -> AppResult<QueryResult> {
         let start = Instant::now();
-        let mut conn = pool.get().map_err(|e| AppError::ConnectionError(e.to_string()))?;
-        
+        let mut conn = pool
+            .get()
+            .map_err(|e| AppError::ConnectionError(e.to_string()))?;
+
         // 检查是否是 SELECT 查询
         let trimmed = sql.trim().to_uppercase();
-        let is_select = trimmed.starts_with("SELECT") || 
-                       trimmed.starts_with("WITH") ||
-                       trimmed.starts_with("PRAGMA");
-        
+        let is_select = trimmed.starts_with("SELECT")
+            || trimmed.starts_with("WITH")
+            || trimmed.starts_with("PRAGMA");
+
         if is_select {
             Self::execute_select(&mut conn, sql, limit)
         } else {
@@ -45,35 +47,35 @@ impl QueryEngine {
             .into_iter()
             .map(|s| s.to_string())
             .collect();
-        
+
         let limit = limit.unwrap_or(1000);
         let mut rows = Vec::with_capacity(limit.min(1000));
-        
+
         let mut rows_iter = stmt.query([])?;
         let mut count = 0;
-        
+
         while let Some(row) = rows_iter.next()? {
             if count >= limit {
                 break;
             }
-            
+
             let mut values = HashMap::new();
             for (i, col_name) in column_names.iter().enumerate() {
                 let value = Self::convert_value(row.get_ref(i)?);
                 values.insert(col_name.clone(), value);
             }
-            
+
             rows.push(QueryRow { values });
             count += 1;
         }
-        
+
         // 尝试获取总行数（如果适用）
         let total_count = if count >= limit {
             None // 可能有更多数据
         } else {
             Some(count)
         };
-        
+
         Ok(QueryResult::Rows {
             columns: column_names,
             rows,
@@ -89,12 +91,12 @@ impl QueryEngine {
         elapsed: Duration,
     ) -> AppResult<QueryResult> {
         let changes_before = conn.changes();
-        
+
         conn.execute_batch(sql)?;
-        
+
         let rows_affected = conn.changes() - changes_before;
         let last_insert_id = conn.last_insert_rowid();
-        
+
         Ok(QueryResult::Execution {
             rows_affected: rows_affected as usize,
             last_insert_id: Some(last_insert_id),
@@ -127,6 +129,12 @@ struct StreamState {
     is_complete: bool,
 }
 
+impl Default for StreamManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[allow(dead_code)]
 impl StreamManager {
     pub fn new() -> Self {
@@ -143,12 +151,17 @@ impl StreamManager {
         batch_size: usize,
     ) -> AppResult<StreamStatus> {
         let stream_id = uuid::Uuid::new_v4().to_string();
-        
+
         // 执行查询并获取第一批数据
         let result = QueryEngine::execute_query(pool, sql, Some(batch_size))?;
-        
+
         match result {
-            QueryResult::Rows { columns, rows, has_more, .. } => {
+            QueryResult::Rows {
+                columns,
+                rows,
+                has_more,
+                ..
+            } => {
                 let status = StreamStatus {
                     stream_id: stream_id.clone(),
                     total_rows: None, // 未知总数
@@ -156,21 +169,21 @@ impl StreamManager {
                     has_more,
                     columns: columns.clone(),
                 };
-                
+
                 let state = StreamState {
                     columns,
                     rows,
                     current_index: 0,
                     is_complete: !has_more,
                 };
-                
+
                 self.streams.lock().insert(stream_id, state);
-                
+
                 Ok(status)
             }
-            QueryResult::Execution { .. } => {
-                Err(AppError::QueryError("Stream not supported for DDL/DML".to_string()))
-            }
+            QueryResult::Execution { .. } => Err(AppError::QueryError(
+                "Stream not supported for DDL/DML".to_string(),
+            )),
         }
     }
 
@@ -180,17 +193,17 @@ impl StreamManager {
         let state = streams
             .get_mut(stream_id)
             .ok_or_else(|| AppError::NotFound("Stream not found".to_string()))?;
-        
+
         let start = state.current_index;
         let end = (start + batch_size).min(state.rows.len());
-        
+
         if start >= state.rows.len() {
             return Ok(vec![]);
         }
-        
+
         let batch: Vec<QueryRow> = state.rows[start..end].to_vec();
         state.current_index = end;
-        
+
         Ok(batch)
     }
 

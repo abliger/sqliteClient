@@ -17,10 +17,10 @@ pub async fn get_table_data(
     order_dir: Option<String>,
 ) -> AppResult<QueryResult> {
     let pool = connection_manager.get_pool(&connection_id)?;
-    
+
     let limit = limit.unwrap_or(100);
     let offset = offset.unwrap_or(0);
-    
+
     let order_clause = match order_by {
         Some(col) => {
             let dir = order_dir.unwrap_or_else(|| "ASC".to_string());
@@ -28,12 +28,12 @@ pub async fn get_table_data(
         }
         None => String::new(),
     };
-    
+
     let sql = format!(
         "SELECT * FROM \"{}\" {} LIMIT {} OFFSET {}",
         table_name, order_clause, limit, offset
     );
-    
+
     crate::core::query_engine::QueryEngine::execute_query(&pool, &sql, None)
 }
 
@@ -45,21 +45,25 @@ pub async fn insert_row(
     data: HashMap<String, CellValue>,
 ) -> AppResult<QueryResult> {
     let pool = connection_manager.get_pool(&connection_id)?;
-    
+
     if data.is_empty() {
         return Err(AppError::InvalidParameter("No data provided".to_string()));
     }
-    
+
     let columns: Vec<String> = data.keys().cloned().collect();
-    let values: Vec<String> = data.values().map(|v| cell_value_to_sql(v)).collect();
-    
+    let values: Vec<String> = data.values().map(cell_value_to_sql).collect();
+
     let sql = format!(
         "INSERT INTO \"{}\" ({}) VALUES ({})",
         table_name,
-        columns.iter().map(|c| format!("\"{}\"", c)).collect::<Vec<_>>().join(", "),
+        columns
+            .iter()
+            .map(|c| format!("\"{}\"", c))
+            .collect::<Vec<_>>()
+            .join(", "),
         values.join(", ")
     );
-    
+
     crate::core::query_engine::QueryEngine::execute_query(&pool, &sql, None)
 }
 
@@ -72,34 +76,34 @@ pub async fn update_row(
     conditions: HashMap<String, CellValue>,
 ) -> AppResult<QueryResult> {
     let pool = connection_manager.get_pool(&connection_id)?;
-    
+
     if data.is_empty() {
         return Err(AppError::InvalidParameter("No data provided".to_string()));
     }
-    
+
     if conditions.is_empty() {
         return Err(AppError::InvalidParameter(
-            "Update requires conditions to prevent accidental updates".to_string()
+            "Update requires conditions to prevent accidental updates".to_string(),
         ));
     }
-    
+
     let set_clause: Vec<String> = data
         .iter()
         .map(|(k, v)| format!("\"{}\" = {}", k, cell_value_to_sql(v)))
         .collect();
-    
+
     let where_clause: Vec<String> = conditions
         .iter()
         .map(|(k, v)| format!("\"{}\" = {}", k, cell_value_to_sql(v)))
         .collect();
-    
+
     let sql = format!(
         "UPDATE \"{}\" SET {} WHERE {}",
         table_name,
         set_clause.join(", "),
         where_clause.join(" AND ")
     );
-    
+
     crate::core::query_engine::QueryEngine::execute_query(&pool, &sql, None)
 }
 
@@ -111,24 +115,24 @@ pub async fn delete_row(
     conditions: HashMap<String, CellValue>,
 ) -> AppResult<QueryResult> {
     let pool = connection_manager.get_pool(&connection_id)?;
-    
+
     if conditions.is_empty() {
         return Err(AppError::InvalidParameter(
-            "Delete requires conditions to prevent accidental deletions".to_string()
+            "Delete requires conditions to prevent accidental deletions".to_string(),
         ));
     }
-    
+
     let where_clause: Vec<String> = conditions
         .iter()
         .map(|(k, v)| format!("\"{}\" = {}", k, cell_value_to_sql(v)))
         .collect();
-    
+
     let sql = format!(
         "DELETE FROM \"{}\" WHERE {}",
         table_name,
         where_clause.join(" AND ")
     );
-    
+
     crate::core::query_engine::QueryEngine::execute_query(&pool, &sql, None)
 }
 

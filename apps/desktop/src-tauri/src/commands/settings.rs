@@ -1,7 +1,7 @@
-use tauri::{State, Manager};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use tauri::{Manager, State};
 
 use crate::utils::error::{AppError, AppResult};
 
@@ -30,10 +30,10 @@ impl SettingsStore {
             .path()
             .app_config_dir()
             .map_err(|e| AppError::IoError(e.to_string()))?;
-        
+
         // Ensure config directory exists
         fs::create_dir_all(&config_dir)?;
-        
+
         Ok(Self { config_dir })
     }
 
@@ -43,7 +43,7 @@ impl SettingsStore {
 
     pub fn get_settings(&self) -> AppResult<AppSettings> {
         let path = self.settings_path();
-        
+
         if !path.exists() {
             return Ok(AppSettings::default());
         }

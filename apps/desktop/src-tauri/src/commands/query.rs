@@ -19,11 +19,11 @@ pub async fn execute_query(
 ) -> AppResult<QueryResult> {
     let start = Instant::now();
     let pool = connection_manager.get_pool(&connection_id)?;
-    
+
     let result = crate::core::query_engine::QueryEngine::execute_query(&pool, &sql, limit);
-    
+
     let duration_ms = start.elapsed().as_millis() as u64;
-    
+
     // 记录历史
     let history_item = QueryHistoryItem {
         id: uuid::Uuid::new_v4().to_string(),
@@ -40,9 +40,9 @@ pub async fn execute_query(
             Err(_) => None,
         },
     };
-    
+
     let _ = history_store.add_history_item(&history_item);
-    
+
     result
 }
 
@@ -54,25 +54,27 @@ pub async fn execute_query_stream(
     batch_size: usize,
 ) -> AppResult<StreamStatus> {
     let pool = connection_manager.get_pool(&connection_id)?;
-    
+
     // 简化实现：先返回普通查询结果，标记为流式
-    let result = crate::core::query_engine::QueryEngine::execute_query(&pool, &sql, Some(batch_size))?;
-    
+    let result =
+        crate::core::query_engine::QueryEngine::execute_query(&pool, &sql, Some(batch_size))?;
+
     match result {
-        QueryResult::Rows { columns, rows, has_more, .. } => {
-            Ok(StreamStatus {
-                stream_id: uuid::Uuid::new_v4().to_string(),
-                total_rows: None,
-                fetched_rows: rows.len(),
-                has_more,
-                columns,
-            })
-        }
-        QueryResult::Execution { .. } => {
-            Err(crate::utils::error::AppError::QueryError(
-                "Stream not supported for DDL/DML".to_string()
-            ))
-        }
+        QueryResult::Rows {
+            columns,
+            rows,
+            has_more,
+            ..
+        } => Ok(StreamStatus {
+            stream_id: uuid::Uuid::new_v4().to_string(),
+            total_rows: None,
+            fetched_rows: rows.len(),
+            has_more,
+            columns,
+        }),
+        QueryResult::Execution { .. } => Err(crate::utils::error::AppError::QueryError(
+            "Stream not supported for DDL/DML".to_string(),
+        )),
     }
 }
 
@@ -87,9 +89,7 @@ pub async fn fetch_stream_batch(
 }
 
 #[tauri::command]
-pub async fn cancel_query(
-    _query_id: String,
-) -> AppResult<()> {
+pub async fn cancel_query(_query_id: String) -> AppResult<()> {
     // 实现查询取消逻辑
     Ok(())
 }

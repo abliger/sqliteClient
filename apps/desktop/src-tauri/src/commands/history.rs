@@ -17,7 +17,7 @@ pub async fn get_query_history(
         offset: offset.unwrap_or(0),
         ..Default::default()
     };
-    
+
     history_store.get_history(&filter)
 }
 

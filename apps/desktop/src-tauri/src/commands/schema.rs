@@ -23,13 +23,13 @@ pub async fn get_table_schema(
 ) -> AppResult<TableInfo> {
     let pool = connection_manager.get_pool(&connection_id)?;
     let tables = SchemaAnalyzer::list_tables(&pool)?;
-    
+
     tables
         .into_iter()
         .find(|t| t.name == table_name)
-        .ok_or_else(|| crate::utils::error::AppError::NotFound(
-            format!("Table {} not found", table_name)
-        ))
+        .ok_or_else(|| {
+            crate::utils::error::AppError::NotFound(format!("Table {} not found", table_name))
+        })
 }
 
 #[tauri::command]
