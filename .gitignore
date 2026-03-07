@@ -40,3 +40,6 @@ src-tauri/gen/
 *.tmp
 *.temp
 .cache/
+
+# Turborepo
+.turbo/
