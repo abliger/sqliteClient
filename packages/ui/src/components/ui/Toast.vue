@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+// Vue imports
 import { useToastStore, type ToastType } from '@stores/toast'
 import {
   CheckCircleIcon,
@@ -75,7 +75,10 @@ const getStyle = (type: ToastType) => styleMap[type]
               />
             </div>
             <div class="ml-3 w-0 flex-1 pt-0.5">
-              <p class="text-sm font-medium" :class="getStyle(toast.type).text">
+              <p
+                class="text-sm font-medium"
+                :class="getStyle(toast.type).text"
+              >
                 {{ toast.title }}
               </p>
               <p

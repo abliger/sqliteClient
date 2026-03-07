@@ -57,8 +57,14 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
-  async function setLocale(locale: LocaleType) {
-    await saveSettings({ locale })
+  async function setLocale(newLocale: LocaleType) {
+    await saveSettings({ locale: newLocale })
+    // 同步更新菜单语言
+    try {
+      await invoke('update_menu_locale', { locale: newLocale })
+    } catch (err) {
+      console.error('Failed to update menu locale:', err)
+    }
   }
 
   async function setTheme(theme: 'auto' | 'light' | 'dark') {

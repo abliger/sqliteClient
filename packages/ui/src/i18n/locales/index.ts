@@ -3,7 +3,7 @@ import zhCN from './zh-CN'
 
 export type LocaleType = 'en' | 'zh-CN'
 
-export const locales: { [key in LocaleType]: { name: string; label: string; messages: typeof en } } = {
+export const locales: { [_key in LocaleType]: { name: string; label: string; messages: typeof en } } = {
   'en': {
     name: 'English',
     label: 'English',

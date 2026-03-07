@@ -42,7 +42,7 @@ const handleGenerateInsert = (table: TableInfo) => {
   queryStore.addTab(sql)
 }
 
-const getColumnIcon = (column: ColumnInfo) => {
+const _getColumnIcon = (column: ColumnInfo) => {
   if (column.is_primary_key) return KeyIcon
   if (column.is_foreign_key) return LinkIcon
   return null
@@ -57,7 +57,10 @@ const tabs = computed(() => [
 <template>
   <div class="h-full flex flex-col">
     <!-- 元数据信息 -->
-    <div v-if="connectionStore.activeConnection" class="px-3 py-2 border-b border-surface-200 bg-surface-50">
+    <div
+      v-if="connectionStore.activeConnection"
+      class="px-3 py-2 border-b border-surface-200 bg-surface-50"
+    >
       <div class="flex items-center space-x-2 mb-1">
         <CircleStackIcon class="w-4 h-4 text-surface-500" />
         <span class="text-sm font-medium truncate">{{ connectionStore.activeConnection.config.name }}</span>
@@ -79,7 +82,10 @@ const tabs = computed(() => [
           : 'text-surface-600 hover:bg-surface-100'"
         @click="activeTab = tab.id"
       >
-        <component :is="tab.icon" class="w-4 h-4" />
+        <component
+          :is="tab.icon"
+          class="w-4 h-4"
+        />
         <span>{{ tab.label }}</span>
       </button>
     </div>
@@ -89,22 +95,34 @@ const tabs = computed(() => [
       <!-- Tables Tab -->
       <template v-if="activeTab === 'tables'">
         <!-- Loading -->
-        <div v-if="schemaStore.isLoading" class="flex items-center justify-center h-32 text-surface-400">
+        <div
+          v-if="schemaStore.isLoading"
+          class="flex items-center justify-center h-32 text-surface-400"
+        >
           {{ t('common.loading') }}
         </div>
 
         <!-- No Connection -->
-        <div v-else-if="!connectionStore.activeConnection" class="flex items-center justify-center h-32 text-surface-400 text-sm px-4 text-center">
+        <div
+          v-else-if="!connectionStore.activeConnection"
+          class="flex items-center justify-center h-32 text-surface-400 text-sm px-4 text-center"
+        >
           {{ t('databaseTree.noConnection') }}
         </div>
 
         <!-- No Tables -->
-        <div v-else-if="schemaStore.tables.length === 0" class="flex items-center justify-center h-32 text-surface-400 text-sm">
+        <div
+          v-else-if="schemaStore.tables.length === 0"
+          class="flex items-center justify-center h-32 text-surface-400 text-sm"
+        >
           {{ t('databaseTree.noTables') }}
         </div>
 
         <!-- Tables List -->
-        <div v-else class="overflow-y-auto scrollbar-thin">
+        <div
+          v-else
+          class="overflow-y-auto scrollbar-thin"
+        >
           <div
             v-for="table in schemaStore.sortedTables"
             :key="table.name"
@@ -120,8 +138,14 @@ const tabs = computed(() => [
                 class="p-0.5 rounded hover:bg-surface-200"
                 @click.stop="schemaStore.toggleTableExpanded(table.name)"
               >
-                <ChevronDownIcon v-if="schemaStore.isTableExpanded(table.name)" class="w-4 h-4 text-surface-500" />
-                <ChevronRightIcon v-else class="w-4 h-4 text-surface-500" />
+                <ChevronDownIcon
+                  v-if="schemaStore.isTableExpanded(table.name)"
+                  class="w-4 h-4 text-surface-500"
+                />
+                <ChevronRightIcon
+                  v-else
+                  class="w-4 h-4 text-surface-500"
+                />
               </button>
               <TableCellsIcon class="w-4 h-4 text-surface-500" />
               <span class="flex-1 text-sm truncate">{{ table.name }}</span>
@@ -129,16 +153,30 @@ const tabs = computed(() => [
             </div>
 
             <!-- Table Columns -->
-            <div v-if="schemaStore.isTableExpanded(table.name)" class="border-l-2 border-surface-200 ml-4 my-1">
+            <div
+              v-if="schemaStore.isTableExpanded(table.name)"
+              class="border-l-2 border-surface-200 ml-4 my-1"
+            >
               <!-- Column -->
               <div
                 v-for="column in table.columns"
                 :key="column.name"
                 class="flex items-center space-x-1 py-0.5 pl-6 text-sm"
               >
-                <KeyIcon v-if="column.is_primary_key" class="w-3.5 h-3.5 text-amber-500" :title="t('databaseTree.primaryKey')" />
-                <LinkIcon v-else-if="column.is_foreign_key" class="w-3.5 h-3.5 text-blue-500" :title="t('databaseTree.foreignKey')" />
-                <div v-else class="w-3.5" />
+                <KeyIcon
+                  v-if="column.is_primary_key"
+                  class="w-3.5 h-3.5 text-amber-500"
+                  :title="t('databaseTree.primaryKey')"
+                />
+                <LinkIcon
+                  v-else-if="column.is_foreign_key"
+                  class="w-3.5 h-3.5 text-blue-500"
+                  :title="t('databaseTree.foreignKey')"
+                />
+                <div
+                  v-else
+                  class="w-3.5"
+                />
                 <span
                   class="flex-1"
                   :class="column.is_primary_key ? 'font-medium text-surface-900' : 'text-surface-700'"
@@ -146,7 +184,10 @@ const tabs = computed(() => [
                   {{ column.name }}
                 </span>
                 <span class="text-xs text-surface-400">{{ column.data_type }}</span>
-                <span v-if="!column.nullable" class="text-xs text-red-500">*</span>
+                <span
+                  v-if="!column.nullable"
+                  class="text-xs text-red-500"
+                >*</span>
               </div>
               
               <!-- Quick Actions -->
@@ -170,7 +211,10 @@ const tabs = computed(() => [
       </template>
 
       <!-- ER Tab -->
-      <div v-else-if="activeTab === 'er'" class="flex items-center justify-center h-full text-surface-400 text-sm">
+      <div
+        v-else-if="activeTab === 'er'"
+        class="flex items-center justify-center h-full text-surface-400 text-sm"
+      >
         {{ t('databaseTree.erDiagram') }} (Coming Soon)
       </div>
     </div>

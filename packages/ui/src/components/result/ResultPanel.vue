@@ -120,7 +120,10 @@ const handleExportJSON = async () => {
       </div>
 
       <!-- 导出按钮 -->
-      <div v-if="currentResult?.type === 'rows'" class="flex items-center space-x-2">
+      <div
+        v-if="currentResult?.type === 'rows'"
+        class="flex items-center space-x-2"
+      >
         <button
           class="btn-ghost text-xs"
           :disabled="isExporting"
@@ -145,10 +148,17 @@ const handleExportJSON = async () => {
       <!-- Results Tab -->
       <template v-if="activeTab === 'results'">
         <!-- Empty State -->
-        <div v-if="!currentResult" class="flex flex-col items-center justify-center h-full text-surface-400">
+        <div
+          v-if="!currentResult"
+          class="flex flex-col items-center justify-center h-full text-surface-400"
+        >
           <TableCellsIcon class="w-12 h-12 mb-3 opacity-50" />
-          <p class="text-sm">{{ t('results.executeHint') }}</p>
-          <p class="text-xs mt-1">{{ t('results.shortcutHint') }}</p>
+          <p class="text-sm">
+            {{ t('results.executeHint') }}
+          </p>
+          <p class="text-xs mt-1">
+            {{ t('results.shortcutHint') }}
+          </p>
         </div>
 
         <!-- Rows Result -->
@@ -160,7 +170,10 @@ const handleExportJSON = async () => {
         />
 
         <!-- Execution Result -->
-        <div v-else-if="currentResult.type === 'execution'" class="flex flex-col items-center justify-center h-full">
+        <div
+          v-else-if="currentResult.type === 'execution'"
+          class="flex flex-col items-center justify-center h-full"
+        >
           <CheckCircleIcon class="w-12 h-12 text-green-500 mb-3" />
           <p class="text-lg font-medium text-surface-800">
             {{ t('results.executionSuccess') }}

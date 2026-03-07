@@ -37,7 +37,7 @@ export const useToastStore = defineStore('toast', () => {
     toasts.value.unshift(newToast)
 
     // Auto dismiss
-    if (newToast.duration > 0) {
+    if (newToast.duration && newToast.duration > 0) {
       setTimeout(() => {
         removeToast(id)
       }, newToast.duration)

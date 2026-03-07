@@ -46,7 +46,7 @@ describe('History Store', () => {
   it('should clear history items', async () => {
     const store = useHistoryStore()
     const { historyService } = await import('@services/history')
-    vi.mocked(historyService.clearHistory).mockResolvedValue(undefined)
+    vi.mocked(historyService.clearHistory).mockResolvedValue(0)
     
     store.items = [
       { id: '1', sql: 'SELECT 1' },

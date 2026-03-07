@@ -114,7 +114,10 @@ const handleBackdropClick = (e: MouseEvent) => {
                 </label>
                 <div class="flex items-center space-x-3 p-3 bg-surface-50 rounded-lg border border-surface-200">
                   <FolderIcon class="w-5 h-5 text-surface-500 flex-shrink-0" />
-                  <span class="text-sm text-surface-600 truncate flex-1" :title="selectedPath">
+                  <span
+                    class="text-sm text-surface-600 truncate flex-1"
+                    :title="selectedPath"
+                  >
                     {{ selectedPath || t('newDatabase.noLocation') }}
                   </span>
                 </div>
@@ -132,7 +135,7 @@ const handleBackdropClick = (e: MouseEvent) => {
                     class="w-full px-3 py-2 border border-surface-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                     :placeholder="t('newDatabase.namePlaceholder')"
                     @keyup.enter="handleConfirm"
-                  />
+                  >
                   <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-surface-400">
                     .db
                   </span>
@@ -143,7 +146,10 @@ const handleBackdropClick = (e: MouseEvent) => {
               </div>
 
               <!-- Full Path Preview -->
-              <div v-if="fullPath" class="space-y-2">
+              <div
+                v-if="fullPath"
+                class="space-y-2"
+              >
                 <label class="block text-sm font-medium text-surface-700">
                   {{ t('newDatabase.fullPath') }}
                 </label>
@@ -155,8 +161,13 @@ const handleBackdropClick = (e: MouseEvent) => {
               </div>
 
               <!-- Error Message -->
-              <div v-if="error" class="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p class="text-sm text-red-600">{{ error }}</p>
+              <div
+                v-if="error"
+                class="p-3 bg-red-50 border border-red-200 rounded-lg"
+              >
+                <p class="text-sm text-red-600">
+                  {{ error }}
+                </p>
               </div>
             </div>
 

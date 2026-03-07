@@ -131,13 +131,13 @@ const goToNextPage = () => {
               <template v-if="editingCell?.row === rowIndex && editingCell?.col === col">
                 <input
                   v-model="editValue"
+                  v-focus
                   type="text"
                   class="w-full px-1 py-0.5 text-sm border border-primary-500 rounded"
                   @blur="handleSaveEdit"
                   @keyup.enter="handleSaveEdit"
                   @keyup.esc="handleCancelEdit"
-                  v-focus
-                />
+                >
               </template>
               <template v-else>
                 {{ formatCellValue(row.values[col] || { type: 'Null' }) }}
@@ -160,10 +160,18 @@ const goToNextPage = () => {
           class="text-xs border border-surface-300 rounded px-2 py-1"
           @change="handlePageSizeChange"
         >
-          <option :value="50">50 rows</option>
-          <option :value="100">100 rows</option>
-          <option :value="500">500 rows</option>
-          <option :value="1000">1000 rows</option>
+          <option :value="50">
+            50 rows
+          </option>
+          <option :value="100">
+            100 rows
+          </option>
+          <option :value="500">
+            500 rows
+          </option>
+          <option :value="1000">
+            1000 rows
+          </option>
         </select>
         <button
           class="p-1 rounded hover:bg-surface-200 disabled:opacity-50"

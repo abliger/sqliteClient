@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { PlusIcon, XMarkIcon, FolderOpenIcon, DocumentPlusIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon, FolderOpenIcon, DocumentPlusIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
 import { useSettingsStore } from '@stores/settings'
@@ -122,7 +122,10 @@ const formatFileSize = (bytes: number): string => {
   <div class="h-12 bg-surface-100 border-b border-surface-200 flex items-center px-2 space-x-1">
     <!-- 新建/打开按钮 -->
     <div class="flex items-center space-x-1 mr-2">
-      <Tooltip :content="t('connection.openDatabaseTip')" position="bottom">
+      <Tooltip
+        :content="t('connection.openDatabaseTip')"
+        position="bottom"
+      >
         <button
           class="p-1.5 rounded hover:bg-surface-200 text-surface-600"
           @click="handleOpenDatabase"
@@ -130,7 +133,10 @@ const formatFileSize = (bytes: number): string => {
           <FolderOpenIcon class="w-5 h-5" />
         </button>
       </Tooltip>
-      <Tooltip :content="t('connection.newDatabaseTip')" position="bottom">
+      <Tooltip
+        :content="t('connection.newDatabaseTip')"
+        position="bottom"
+      >
         <button
           class="p-1.5 rounded hover:bg-surface-200 text-surface-600"
           @click="handleCreateDatabase"
@@ -171,14 +177,20 @@ const formatFileSize = (bytes: number): string => {
         </button>
       </div>
 
-      <div v-if="connectionStore.connections.length === 0" class="text-sm text-surface-400 px-2">
+      <div
+        v-if="connectionStore.connections.length === 0"
+        class="text-sm text-surface-400 px-2"
+      >
         {{ t('connection.noConnections') }}
       </div>
     </div>
 
     <!-- Settings Button -->
     <div class="ml-auto">
-      <Tooltip :content="t('settings.title')" position="bottom">
+      <Tooltip
+        :content="t('settings.title')"
+        position="bottom"
+      >
         <button
           class="p-1.5 rounded hover:bg-surface-200 text-surface-600"
           @click="settingsStore.openSettingsPanel"

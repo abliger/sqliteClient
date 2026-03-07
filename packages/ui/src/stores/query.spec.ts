@@ -17,8 +17,15 @@ describe('Query Store', () => {
     setActivePinia(createPinia())
   })
 
-  it('should initialize with default state', () => {
+  // Helper to setup store with a connection
+  function setupStoreWithConnection() {
     const store = useQueryStore()
+    store.setCurrentConnection('test-connection-id')
+    return store
+  }
+
+  it('should initialize with default state', () => {
+    const store = setupStoreWithConnection()
     
     expect(store.tabs).toHaveLength(1)
     expect(store.activeTabId).not.toBeNull()
@@ -26,7 +33,7 @@ describe('Query Store', () => {
   })
 
   it('should add a new tab', () => {
-    const store = useQueryStore()
+    const store = setupStoreWithConnection()
     const initialTabCount = store.tabs.length
     
     store.addTab()
@@ -35,7 +42,7 @@ describe('Query Store', () => {
   })
 
   it('should add a new tab with SQL', () => {
-    const store = useQueryStore()
+    const store = setupStoreWithConnection()
     const sql = 'SELECT * FROM users'
     
     store.addTab(sql)
@@ -45,7 +52,7 @@ describe('Query Store', () => {
   })
 
   it('should remove a tab', () => {
-    const store = useQueryStore()
+    const store = setupStoreWithConnection()
     store.addTab()
     const initialTabCount = store.tabs.length
     const tabToRemove = store.tabs[0].id
@@ -57,7 +64,7 @@ describe('Query Store', () => {
   })
 
   it('should set active tab', () => {
-    const store = useQueryStore()
+    const store = setupStoreWithConnection()
     store.addTab()
     const newTab = store.tabs[store.tabs.length - 1]
     
@@ -67,7 +74,7 @@ describe('Query Store', () => {
   })
 
   it('should update tab SQL', () => {
-    const store = useQueryStore()
+    const store = setupStoreWithConnection()
     const tab = store.tabs[0]
     const newSql = 'SELECT * FROM orders'
     
@@ -77,7 +84,7 @@ describe('Query Store', () => {
   })
 
   it('should update tab name', () => {
-    const store = useQueryStore()
+    const store = setupStoreWithConnection()
     const tab = store.tabs[0]
     const newName = 'Custom Query'
     
@@ -87,7 +94,7 @@ describe('Query Store', () => {
   })
 
   it('should not remove the last tab', () => {
-    const store = useQueryStore()
+    const store = setupStoreWithConnection()
     // Ensure only one tab exists
     while (store.tabs.length > 1) {
       store.removeTab(store.tabs[store.tabs.length - 1].id)

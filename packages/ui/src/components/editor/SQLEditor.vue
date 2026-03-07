@@ -3,7 +3,7 @@ import { ref, onMounted, watch, onUnmounted, nextTick, computed } from 'vue'
 import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
 import { useSchemaStore } from '@stores/schema'
-import { useSQLCompletion } from '@composables/useSQLCompletion'
+import { useSQLCompletion, FullFeaturedStrategyFactory } from '@composables/sql-completion'
 import EditorToolbar from './EditorToolbar.vue'
 import QueryTabs from './QueryTabs.vue'
 import * as monaco from 'monaco-editor'
@@ -50,7 +50,14 @@ const getTableByName = computed(() => {
 // 注册 SQL 智能提示
 const { dispose: disposeCompletion } = useSQLCompletion({
   tables: schemaStore.tables,
-  getTableByName: (name: string) => getTableByName.value(name)
+  getTableByName: (name: string) => getTableByName.value(name),
+  strategyFactory: new FullFeaturedStrategyFactory(),
+  config: {
+    enableKeywords: true,
+    enableFunctions: true,
+    enableTables: true,
+    enableColumns: true
+  }
 })
 
 // 当活动连接变化时，加载 schema 数据
@@ -218,11 +225,18 @@ const handleFormat = () => {
     <QueryTabs />
 
     <!-- 工具栏 -->
-    <EditorToolbar :is-executing="queryStore.activeTab?.isExecuting || false"
-      :can-execute="!!connectionStore.activeConnectionId" @execute="handleExecuteQuery"
-      @execute-selected="handleExecuteSelected" @format="handleFormat" />
+    <EditorToolbar
+      :is-executing="queryStore.activeTab?.isExecuting || false"
+      :can-execute="!!connectionStore.activeConnectionId"
+      @execute="handleExecuteQuery"
+      @execute-selected="handleExecuteSelected"
+      @format="handleFormat"
+    />
 
     <!-- 编辑器区域 -->
-    <div ref="editorContainer" class="flex-1 min-h-0" />
+    <div
+      ref="editorContainer"
+      class="flex-1 min-h-0"
+    />
   </div>
 </template>

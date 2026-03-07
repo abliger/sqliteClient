@@ -5,7 +5,7 @@ import { useSettingsStore } from '@stores/settings'
 import { availableLocales, type LocaleType, setI18nLanguage } from '@i18n/index'
 import { XMarkIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 
-const { t, locale: i18nLocale } = useI18n()
+const { t } = useI18n()
 const settingsStore = useSettingsStore()
 
 const currentLocale = computed(() => settingsStore.locale)
@@ -92,8 +92,16 @@ const closePanel = () => {
                 v-if="currentLocale === option.value"
                 class="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center"
               >
-                <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                <svg
+                  class="w-3 h-3 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd"
+                  />
                 </svg>
               </div>
             </button>
@@ -123,8 +131,16 @@ const closePanel = () => {
                 v-if="currentTheme === option.value"
                 class="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center"
               >
-                <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                <svg
+                  class="w-3 h-3 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd"
+                  />
                 </svg>
               </div>
             </button>

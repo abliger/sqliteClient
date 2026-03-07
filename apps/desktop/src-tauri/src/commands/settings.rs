@@ -59,6 +59,11 @@ impl SettingsStore {
         fs::write(&path, content)?;
         Ok(())
     }
+
+    pub fn get_locale(&self) -> AppResult<String> {
+        let settings = self.get_settings()?;
+        Ok(settings.locale)
+    }
 }
 
 #[tauri::command]
