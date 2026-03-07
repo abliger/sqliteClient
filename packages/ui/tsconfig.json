@@ -23,7 +23,8 @@
       "@services/*": ["src/services/*"],
       "@types/*": ["src/types/*"],
       "@composables/*": ["src/composables/*"],
-      "@i18n/*": ["src/i18n/*"]
+      "@i18n/*": ["src/i18n/*"],
+      "@directives/*": ["src/directives/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],

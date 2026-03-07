@@ -15,6 +15,7 @@ export default defineConfig(async () => ({
       '@types': resolve(__dirname, 'src/types'),
       '@composables': resolve(__dirname, 'src/composables'),
       '@i18n': resolve(__dirname, 'src/i18n'),
+      '@directives': resolve(__dirname, 'src/directives'),
     },
   },
   clearScreen: false,

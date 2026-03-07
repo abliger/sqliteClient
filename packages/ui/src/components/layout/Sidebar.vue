@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 
 interface Props {
   defaultWidth?: number
@@ -16,12 +16,15 @@ const props = withDefaults(defineProps<Props>(), {
 const width = ref(props.defaultWidth)
 const isResizing = ref(false)
 
+let mouseMoveHandler: ((e: MouseEvent) => void) | null = null
+let mouseUpHandler: (() => void) | null = null
+
 const startResize = (e: MouseEvent) => {
   isResizing.value = true
   const startX = e.clientX
   const startWidth = width.value
 
-  const handleMouseMove = (e: MouseEvent) => {
+  mouseMoveHandler = (e: MouseEvent) => {
     if (!isResizing.value) return
     const delta = e.clientX - startX
     const newWidth = Math.max(
@@ -31,19 +34,37 @@ const startResize = (e: MouseEvent) => {
     width.value = newWidth
   }
 
-  const handleMouseUp = () => {
+  mouseUpHandler = () => {
     isResizing.value = false
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
+    if (mouseMoveHandler) {
+      document.removeEventListener('mousemove', mouseMoveHandler)
+    }
+    if (mouseUpHandler) {
+      document.removeEventListener('mouseup', mouseUpHandler)
+    }
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
+    mouseMoveHandler = null
+    mouseUpHandler = null
   }
 
-  document.addEventListener('mousemove', handleMouseMove)
-  document.addEventListener('mouseup', handleMouseUp)
+  document.addEventListener('mousemove', mouseMoveHandler)
+  document.addEventListener('mouseup', mouseUpHandler)
   document.body.style.cursor = 'col-resize'
   document.body.style.userSelect = 'none'
 }
+
+// Cleanup on component unmount
+onUnmounted(() => {
+  if (mouseMoveHandler) {
+    document.removeEventListener('mousemove', mouseMoveHandler)
+  }
+  if (mouseUpHandler) {
+    document.removeEventListener('mouseup', mouseUpHandler)
+  }
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+})
 </script>
 
 <template>

@@ -1,39 +1,51 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, onUnmounted, nextTick } from 'vue'
 import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
 import EditorToolbar from './EditorToolbar.vue'
 import QueryTabs from './QueryTabs.vue'
 import * as monaco from 'monaco-editor'
+import type { editor } from 'monaco-editor'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
 import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 
-// 配置 Monaco Worker
-self.MonacoEnvironment = {
-  getWorker(_: any, label: string) {
-    if (label === 'json') {
-      return new jsonWorker()
+// 配置 Monaco Worker - 使用全局变量避免重复配置
+declare global {
+  interface Window {
+    MonacoEnvironment?: {
+      getWorker: (_workerId: string, label: string) => Worker
     }
-    if (label === 'css' || label === 'scss' || label === 'less') {
-      return new cssWorker()
+  }
+}
+
+if (!window.MonacoEnvironment) {
+  window.MonacoEnvironment = {
+    getWorker(_workerId: string, label: string) {
+      if (label === 'json') {
+        return new jsonWorker()
+      }
+      if (label === 'css' || label === 'scss' || label === 'less') {
+        return new cssWorker()
+      }
+      if (label === 'html' || label === 'handlebars' || label === 'razor') {
+        return new htmlWorker()
+      }
+      if (label === 'typescript' || label === 'javascript') {
+        return new tsWorker()
+      }
+      return new editorWorker()
     }
-    if (label === 'html' || label === 'handlebars' || label === 'razor') {
-      return new htmlWorker()
-    }
-    if (label === 'typescript' || label === 'javascript') {
-      return new tsWorker()
-    }
-    return new editorWorker()
   }
 }
 
 const connectionStore = useConnectionStore()
 const queryStore = useQueryStore()
 const editorContainer = ref<HTMLDivElement>()
-let editor: monaco.editor.IStandaloneCodeEditor | null = null
+let editor: editor.IStandaloneCodeEditor | null = null
+let disposeContentListener: (() => void) | null = null
 
 // 初始化 Monaco 编辑器
 onMounted(() => {
@@ -61,12 +73,13 @@ onMounted(() => {
   })
 
   // 监听内容变化
-  editor.onDidChangeModelContent(() => {
+  const contentListener = editor.onDidChangeModelContent(() => {
     const value = editor?.getValue() || ''
     if (queryStore.activeTab) {
       queryStore.updateTabSql(queryStore.activeTab.id, value)
     }
   })
+  disposeContentListener = () => contentListener.dispose()
 
   // 添加快捷键
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
@@ -81,17 +94,62 @@ onMounted(() => {
 // 当活动标签变化时，更新编辑器内容
 watch(
   () => queryStore.activeTabId,
-  (newTabId) => {
+  (newTabId, oldTabId) => {
     if (!editor || !newTabId) return
+    
+    // 保存旧标签的状态
+    if (oldTabId) {
+      const oldState = editor.saveViewState()
+      if (oldState) {
+        queryStore.saveEditorState(oldTabId, editor.getValue(), {
+          line: oldState.cursorState[0]?.position?.lineNumber || 1,
+          column: oldState.cursorState[0]?.position?.column || 1
+        })
+      }
+    }
+    
+    // 加载新标签的内容和状态
     const tab = queryStore.tabs.find(t => t.id === newTabId)
     if (tab) {
       const currentValue = editor.getValue()
       if (currentValue !== tab.sql) {
         editor.setValue(tab.sql)
       }
+      
+      // 恢复光标位置
+      const savedState = queryStore.getEditorState(newTabId)
+      if (savedState?.cursorPosition) {
+        nextTick(() => {
+          editor?.setPosition({
+            lineNumber: savedState.cursorPosition!.line,
+            column: savedState.cursorPosition!.column
+          })
+          editor?.revealLineInCenter(savedState.cursorPosition!.line)
+        })
+      }
     }
   }
 )
+
+// 清理函数
+onUnmounted(() => {
+  if (disposeContentListener) {
+    disposeContentListener()
+  }
+  if (editor) {
+    // 保存最终状态
+    const currentTabId = queryStore.activeTabId
+    if (currentTabId) {
+      const state = editor.saveViewState()
+      queryStore.saveEditorState(currentTabId, editor.getValue(), state ? {
+        line: state.cursorState[0]?.position?.lineNumber || 1,
+        column: state.cursorState[0]?.position?.column || 1
+      } : undefined)
+    }
+    editor.dispose()
+    editor = null
+  }
+})
 
 const handleExecuteQuery = async () => {
   if (!editor || !connectionStore.activeConnectionId) return
@@ -103,6 +161,7 @@ const handleExecuteQuery = async () => {
     await queryStore.executeQuery(connectionStore.activeConnectionId, sql, 1000)
   } catch (err) {
     console.error('Query execution failed:', err)
+    // 错误处理已在 store 中，这里可以添加额外的 UI 反馈
   }
 }
 

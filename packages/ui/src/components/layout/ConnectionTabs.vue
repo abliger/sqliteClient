@@ -4,13 +4,18 @@ import { useI18n } from 'vue-i18n'
 import { PlusIcon, XMarkIcon, FolderOpenIcon, DocumentPlusIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import { useConnectionStore } from '@stores/connection'
 import { useSettingsStore } from '@stores/settings'
+import { useToastStore } from '@stores/toast'
 import { open } from '@tauri-apps/plugin-dialog'
 import Tooltip from '@components/ui/Tooltip.vue'
+import CreateDatabaseDialog from '@components/dialogs/CreateDatabaseDialog.vue'
 
 const { t } = useI18n()
 const connectionStore = useConnectionStore()
 const settingsStore = useSettingsStore()
+const toastStore = useToastStore()
 const isCreating = ref(false)
+const isCreateDialogOpen = ref(false)
+const selectedFolderPath = ref('')
 
 const handleOpenDatabase = async () => {
   try {
@@ -23,37 +28,81 @@ const handleOpenDatabase = async () => {
     })
 
     if (selected && typeof selected === 'string') {
-      const fileName = selected.split('/').pop() || 'Untitled'
+      const fileName = selected.split(/[/\\]/).pop() || 'Untitled'
       const name = fileName.replace(/\.[^/.]+$/, '')
       await connectionStore.createConnection(name, selected)
+      toastStore.success(
+        t('connection.openSuccess'),
+        fileName
+      )
     }
   } catch (err) {
     console.error('Failed to open database:', err)
+    toastStore.error(
+      t('connection.openError'),
+      err instanceof Error ? err.message : String(err)
+    )
   }
 }
 
 const handleCreateDatabase = async () => {
   try {
+    // Open folder picker to select save location
     const selected = await open({
+      directory: true,
       multiple: false,
-      filters: [
-        { name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3'] }
-      ]
     })
 
     if (selected && typeof selected === 'string') {
-      const fileName = selected.split('/').pop() || 'Untitled'
-      const name = fileName.replace(/\.[^/.]+$/, '')
-      await connectionStore.createNewDatabase(name, selected)
+      selectedFolderPath.value = selected
+      isCreateDialogOpen.value = true
     }
   } catch (err) {
+    console.error('Failed to select folder:', err)
+    toastStore.error(
+      t('connection.selectFolderError'),
+      err instanceof Error ? err.message : String(err)
+    )
+  }
+}
+
+const handleCreateConfirm = async (name: string, path: string) => {
+  try {
+    isCreating.value = true
+    await connectionStore.createNewDatabase(name, path)
+    toastStore.success(
+      t('connection.createSuccess'),
+      `${name}.db`
+    )
+  } catch (err) {
     console.error('Failed to create database:', err)
+    toastStore.error(
+      t('connection.createError'),
+      err instanceof Error ? err.message : String(err)
+    )
+  } finally {
+    isCreating.value = false
   }
 }
 
 const handleCloseConnection = async (connectionId: string, event: Event) => {
   event.stopPropagation()
-  await connectionStore.closeConnection(connectionId)
+  try {
+    const conn = connectionStore.connections.find(c => c.config.id === connectionId)
+    await connectionStore.closeConnection(connectionId)
+    if (conn) {
+      toastStore.info(
+        t('connection.closeSuccess'),
+        conn.config.name
+      )
+    }
+  } catch (err) {
+    console.error('Failed to close connection:', err)
+    toastStore.error(
+      t('connection.closeError'),
+      err instanceof Error ? err.message : String(err)
+    )
+  }
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -135,4 +184,12 @@ const formatFileSize = (bytes: number): string => {
       </Tooltip>
     </div>
   </div>
+
+  <!-- Create Database Dialog -->
+  <CreateDatabaseDialog
+    :is-open="isCreateDialogOpen"
+    :default-path="selectedFolderPath"
+    @close="isCreateDialogOpen = false"
+    @confirm="handleCreateConfirm"
+  />
 </template>

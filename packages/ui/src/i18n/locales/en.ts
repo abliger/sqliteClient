@@ -28,6 +28,25 @@ export default {
     version: 'Version',
     tables: 'Tables',
     size: 'Size',
+    // Toast messages
+    openSuccess: 'Database Opened',
+    openError: 'Failed to Open Database',
+    createSuccess: 'Database Created',
+    createError: 'Failed to Create Database',
+    closeSuccess: 'Connection Closed',
+    closeError: 'Failed to Close Connection',
+    selectFolderError: 'Failed to Select Folder',
+  },
+
+  // New Database Dialog
+  newDatabase: {
+    location: 'Save Location',
+    noLocation: 'No folder selected',
+    name: 'Database Name',
+    namePlaceholder: 'Enter database name',
+    nameHint: 'The .db extension will be added automatically',
+    fullPath: 'Full Path',
+    create: 'Create Database',
   },
 
   // Database Tree
@@ -60,11 +79,18 @@ export default {
   // Results
   results: {
     title: 'Results',
+    messages: 'Messages',
     rowsAffected: 'rows affected',
     executionTime: 'Execution time',
     noResults: 'No results to display',
     exportCSV: 'Export CSV',
     exportJSON: 'Export JSON',
+    exportSuccess: 'Export Successful',
+    exportError: 'Export Failed',
+    executeHint: 'Execute a query to see results',
+    shortcutHint: 'Press Ctrl+Enter to run',
+    executionSuccess: 'Query executed successfully',
+    lastInsertId: 'Last insert ID',
   },
 
   // Settings

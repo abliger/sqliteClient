@@ -20,7 +20,7 @@
   }
 
   * {
-    @apply border-surface-200;
+    border-color: #e2e8f0; /* surface-200 equivalent */
   }
 
   html, body, #app {

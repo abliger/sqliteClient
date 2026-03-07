@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useQueryStore } from '@stores/query'
 import { useConnectionStore } from '@stores/connection'
+import { useToastStore } from '@stores/toast'
 import { exportService } from '@services/export'
 import { save } from '@tauri-apps/plugin-dialog'
 import ResultGrid from './ResultGrid.vue'
@@ -12,8 +14,10 @@ import {
   CheckCircleIcon
 } from '@heroicons/vue/24/outline'
 
+const { t } = useI18n()
 const queryStore = useQueryStore()
 const connectionStore = useConnectionStore()
+const toastStore = useToastStore()
 const activeTab = ref<'results' | 'messages'>('results')
 const isExporting = ref(false)
 
@@ -40,6 +44,16 @@ const handleExportCSV = async () => {
       sql: queryStore.activeTab?.sql || '',
       outputPath: filePath
     })
+    toastStore.success(
+      t('results.exportSuccess'),
+      filePath.split(/[/\\]/).pop() || filePath
+    )
+  } catch (err) {
+    console.error('Export failed:', err)
+    toastStore.error(
+      t('results.exportError'),
+      err instanceof Error ? err.message : String(err)
+    )
   } finally {
     isExporting.value = false
   }
@@ -64,6 +78,16 @@ const handleExportJSON = async () => {
       sql: queryStore.activeTab?.sql || '',
       outputPath: filePath
     })
+    toastStore.success(
+      t('results.exportSuccess'),
+      filePath.split(/[/\\]/).pop() || filePath
+    )
+  } catch (err) {
+    console.error('Export failed:', err)
+    toastStore.error(
+      t('results.exportError'),
+      err instanceof Error ? err.message : String(err)
+    )
   } finally {
     isExporting.value = false
   }
@@ -82,7 +106,7 @@ const handleExportJSON = async () => {
             : 'text-surface-500 border-transparent hover:text-surface-700'"
           @click="activeTab = 'results'"
         >
-          Results
+          {{ t('results.title') }}
         </button>
         <button
           class="text-sm font-medium pb-2 border-b-2 transition-colors"
@@ -91,7 +115,7 @@ const handleExportJSON = async () => {
             : 'text-surface-500 border-transparent hover:text-surface-700'"
           @click="activeTab = 'messages'"
         >
-          Messages
+          {{ t('results.messages') }}
         </button>
       </div>
 
@@ -123,8 +147,8 @@ const handleExportJSON = async () => {
         <!-- Empty State -->
         <div v-if="!currentResult" class="flex flex-col items-center justify-center h-full text-surface-400">
           <TableCellsIcon class="w-12 h-12 mb-3 opacity-50" />
-          <p class="text-sm">Execute a query to see results</p>
-          <p class="text-xs mt-1">Press Ctrl+Enter to run</p>
+          <p class="text-sm">{{ t('results.executeHint') }}</p>
+          <p class="text-xs mt-1">{{ t('results.shortcutHint') }}</p>
         </div>
 
         <!-- Rows Result -->
@@ -139,12 +163,12 @@ const handleExportJSON = async () => {
         <div v-else-if="currentResult.type === 'execution'" class="flex flex-col items-center justify-center h-full">
           <CheckCircleIcon class="w-12 h-12 text-green-500 mb-3" />
           <p class="text-lg font-medium text-surface-800">
-            Query executed successfully
+            {{ t('results.executionSuccess') }}
           </p>
           <div class="mt-4 space-y-2 text-sm text-surface-600">
-            <p>Rows affected: <span class="font-medium">{{ currentResult.rows_affected }}</span></p>
+            <p>{{ t('results.rowsAffected') }}: <span class="font-medium">{{ currentResult.rows_affected }}</span></p>
             <p v-if="currentResult.last_insert_id">
-              Last insert ID: <span class="font-medium">{{ currentResult.last_insert_id }}</span>
+              {{ t('results.lastInsertId') }}: <span class="font-medium">{{ currentResult.last_insert_id }}</span>
             </p>
           </div>
         </div>

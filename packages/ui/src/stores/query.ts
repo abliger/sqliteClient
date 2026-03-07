@@ -8,12 +8,16 @@ export const useQueryStore = defineStore('query', () => {
   // State
   const tabs = ref<QueryTab[]>([])
   const activeTabId = ref<string>('')
-  {
-    const first = createNewTab()
-    tabs.value.push(first)
-    activeTabId.value = first.id
-  }
   const editorStates = ref<Map<string, { content: string; cursorPosition?: { line: number; column: number } }>>(new Map())
+  
+  // Initialize with default tab
+  function initializeDefaultTab() {
+    if (tabs.value.length === 0) {
+      const first = createNewTab()
+      tabs.value.push(first)
+      activeTabId.value = first.id
+    }
+  }
 
   // Getters
   const activeTab = computed(() => {
@@ -126,6 +130,9 @@ export const useQueryStore = defineStore('query', () => {
     return editorStates.value.get(tabId)
   }
 
+  // Auto-initialize on first use
+  initializeDefaultTab()
+
   return {
     // State
     tabs,
@@ -144,6 +151,7 @@ export const useQueryStore = defineStore('query', () => {
     executeQuery,
     clearResult,
     saveEditorState,
-    getEditorState
+    getEditorState,
+    initializeDefaultTab
   }
 })
