@@ -14,6 +14,7 @@ use core::history_store::HistoryStore;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // 初始化应用状态
             let app_handle = app.handle();
