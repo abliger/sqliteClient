@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useDebounceFn } from '@vueuse/core'
 import { useQueryStore } from '@stores/query'
 import { useConnectionStore } from '@stores/connection'
 import { useSchemaStore } from '@stores/schema'
@@ -9,12 +10,14 @@ import { exportService } from '@services/export'
 import { crudService } from '@services/crud'
 import * as crudLogService from '@services/crudLog'
 import { useCrudLogStore } from '@stores/crudLog'
+import { extractPrimaryTableName, isEditableQuery } from '@utils/sqlParser'
 import { save } from '@tauri-apps/plugin-dialog'
 import ResultGrid from './ResultGrid.vue'
 import ResultStatus from './ResultStatus.vue'
 import CrudLogPanel from './CrudLogPanel.vue'
+import QueryHistoryPanel from './QueryHistoryPanel.vue'
 import EditRowDialog from '@components/dialogs/EditRowDialog.vue'
-import { ArrowDownTrayIcon, TableCellsIcon, CheckCircleIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, TableCellsIcon, CheckCircleIcon, ArrowsRightLeftIcon } from '@heroicons/vue/24/outline'
 import type { QueryRow, CellValue, CrudOperationType, CrudOperationLog } from '@types'
 
 const { t } = useI18n()
@@ -23,7 +26,7 @@ const connectionStore = useConnectionStore()
 const schemaStore = useSchemaStore()
 const toastStore = useToastStore()
 const crudLogStore = useCrudLogStore()
-const activeTab = ref<'results' | 'messages' | 'logs'>('results')
+const activeTab = ref<'results' | 'messages' | 'logs' | 'history' | 'compare'>('results')
 const isExporting = ref(false)
 const isEditDialogOpen = ref(false)
 const editingRow = ref<QueryRow | null>(null)
@@ -32,20 +35,16 @@ const currentResult = computed(() => queryStore.activeTab?.result)
 const isExecuting = computed(() => queryStore.activeTab?.isExecuting || false)
 const executionTime = computed(() => queryStore.activeTab?.executionTime)
 
-// 从 SQL 中尝试解析表名
+// 从 SQL 中提取表名（使用改进的解析器）
 const currentTableName = computed(() => {
     const sql = queryStore.activeTab?.sql || ''
-    if (!sql) return null
+    return extractPrimaryTableName(sql)
+})
 
-    // 简单的正则匹配：SELECT ... FROM table_name 或 SELECT ... FROM "table_name"
-    const fromMatch = sql.match(/\bFROM\s+["']?(\w+)["']?/i)
-    if (fromMatch) return fromMatch[1]
-
-    // 匹配 UPDATE table_name
-    const updateMatch = sql.match(/\bUPDATE\s+["']?(\w+)["']?/i)
-    if (updateMatch) return updateMatch[1]
-
-    return null
+// 是否可以编辑结果（单表简单查询）
+const isResultEditable = computed(() => {
+    const sql = queryStore.activeTab?.sql || ''
+    return isEditableQuery(sql) && !!currentTableName.value
 })
 
 // 获取当前表的表结构信息
@@ -98,8 +97,8 @@ const logCrudOperation = async (
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const handleEditRow = (row: QueryRow, _rowIndex: number) => {
-    // 检查是否有可编辑的表
-    if (!currentTableName.value) {
+    // 检查结果是否可编辑
+    if (!isResultEditable.value) {
         toastStore.error(t('results.noTableName'))
         return
     }
@@ -107,9 +106,9 @@ const handleEditRow = (row: QueryRow, _rowIndex: number) => {
     isEditDialogOpen.value = true
 }
 
-// 处理直接从表格删除行
+// 处理直接从表格删除行（带防抖）
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const handleDeleteRowFromGrid = async (row: QueryRow, _rowIndex: number) => {
+const handleDeleteRowFromGrid = useDebounceFn(async (row: QueryRow, _rowIndex: number) => {
     if (!connectionStore.activeConnectionId || !currentTableName.value) {
         toastStore.error(t('results.noTableName'))
         return
@@ -173,9 +172,9 @@ const handleDeleteRowFromGrid = async (row: QueryRow, _rowIndex: number) => {
         await logCrudOperation('DELETE', currentTableName.value, sql, undefined, oldData)
         toastStore.error(t('results.deleteError'), err instanceof Error ? err.message : String(err))
     }
-}
+}, 300)
 
-const handleSaveRow = async (data: Record<string, CellValue>) => {
+const handleSaveRow = useDebounceFn(async (data: Record<string, CellValue>) => {
     if (!connectionStore.activeConnectionId || !currentTableName.value || !editingRow.value) return
 
     const startTime = Date.now()
@@ -243,7 +242,7 @@ const handleSaveRow = async (data: Record<string, CellValue>) => {
         await logCrudOperation('UPDATE', currentTableName.value, sql, data, oldData)
         toastStore.error(t('results.updateError'), err instanceof Error ? err.message : String(err))
     }
-}
+}, 300)
 
 const handleDeleteRow = async () => {
     if (!connectionStore.activeConnectionId || !currentTableName.value || !editingRow.value) return
@@ -382,6 +381,35 @@ const handleExportJSON = async () => {
                 >
                     {{ t('results.operationLogs') }}
                 </button>
+                <button
+                    class="text-sm font-medium pb-2 border-b-2 transition-colors"
+                    :class="
+                        activeTab === 'history'
+                            ? 'text-primary-600 dark:text-primary-400 border-primary-600 dark:border-primary-400'
+                            : 'text-surface-500 dark:text-surface-400 border-transparent hover:text-surface-700 dark:hover:text-surface-300'
+                    "
+                    @click="activeTab = 'history'"
+                >
+                    {{ t('results.queryHistory') }}
+                </button>
+                <button
+                    class="text-sm font-medium pb-2 border-b-2 transition-colors flex items-center"
+                    :class="
+                        activeTab === 'compare'
+                            ? 'text-primary-600 dark:text-primary-400 border-primary-600 dark:border-primary-400'
+                            : 'text-surface-500 dark:text-surface-400 border-transparent hover:text-surface-700 dark:hover:text-surface-300'
+                    "
+                    @click="activeTab = 'compare'"
+                >
+                    <ArrowsRightLeftIcon class="w-3.5 h-3.5 mr-1" />
+                    {{ t('results.compare') || '对比' }}
+                    <span 
+                        v-if="queryStore.activeTabSnapshots.length > 0"
+                        class="ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-400"
+                    >
+                        {{ queryStore.activeTabSnapshots.length }}
+                    </span>
+                </button>
             </div>
 
             <!-- 导出按钮 -->
@@ -426,7 +454,7 @@ const handleExportJSON = async () => {
                     :rows="currentResult.rows"
                     :has-more="currentResult.has_more"
                     :table-name="currentTableName"
-                    :allow-edit="!!currentTableName"
+                    :allow-edit="isResultEditable"
                     @edit-row="handleEditRow"
                     @delete-row="handleDeleteRowFromGrid"
                 />
@@ -475,6 +503,12 @@ const handleExportJSON = async () => {
             
             <!-- Operation Logs Tab -->
             <CrudLogPanel v-if="activeTab === 'logs'" />
+            
+            <!-- Query History Tab -->
+            <QueryHistoryPanel v-if="activeTab === 'history'" />
+            
+            <!-- Compare Tab -->
+            <ResultComparePanel v-if="activeTab === 'compare'" />
         </div>
     </div>
 </template>

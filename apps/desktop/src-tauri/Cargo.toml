@@ -47,8 +47,10 @@ once_cell = { workspace = true }
 parking_lot = { workspace = true }
 dirs = { workspace = true }
 
-# Export
+# Export/Import
 csv = { workspace = true }
+calamine = "0.24"
+hex = "0.4"
 
 # Shared types
 sqlite-client-shared = { path = "../../../packages/shared" }

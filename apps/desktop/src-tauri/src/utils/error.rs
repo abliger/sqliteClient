@@ -16,6 +16,9 @@ pub enum AppError {
     #[error("IO error: {0}")]
     IoError(String),
 
+    #[error("File error: {0}")]
+    FileError(String),
+
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
 

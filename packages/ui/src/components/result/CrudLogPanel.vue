@@ -35,9 +35,20 @@ const isDetailOpen = ref(false)
 // 统计信息
 const stats = computed(() => crudLogStore.stats)
 
-// 日志列表
+// 当前激活的连接 ID
+const activeConnectionId = computed(() => connectionStore.activeConnectionId)
+
+// 日志列表 - 只显示当前连接相关的日志
 const logs = computed(() => {
+  // 如果没有激活的连接，不显示任何日志
+  if (!activeConnectionId.value) {
+    return []
+  }
+  
   let result = crudLogStore.logs
+  
+  // 只显示当前连接的日志
+  result = result.filter(log => log.connection_id === activeConnectionId.value)
   
   // 按 Tab 筛选
   if (filterTabId.value) {
@@ -138,11 +149,18 @@ const groupedLogs = computed(() => {
 
 // 加载日志
 const loadLogs = async () => {
-  await crudLogStore.loadLogs(connectionStore.activeConnectionId || undefined, 200)
-  await crudLogStore.loadTableNames()
-  if (connectionStore.activeConnectionId) {
-    await crudLogStore.loadStats(connectionStore.activeConnectionId)
+  const connectionId = connectionStore.activeConnectionId
+  
+  // 如果没有激活的连接，清空日志
+  if (!connectionId) {
+    crudLogStore.clearLogs()
+    return
   }
+  
+  // 只加载当前连接的日志
+  await crudLogStore.loadLogs(connectionId, 200)
+  await crudLogStore.loadTableNames()
+  await crudLogStore.loadStats(connectionId)
 }
 
 // 查看详情
@@ -175,8 +193,12 @@ const formatJson = (jsonStr?: string) => {
   }
 }
 
-// 监听连接变化，重新加载日志
-watch(() => connectionStore.activeConnectionId, () => {
+// 监听连接变化，重新加载日志并清空筛选
+watch(() => connectionStore.activeConnectionId, (newConnectionId, oldConnectionId) => {
+  // 连接变化时清空筛选条件
+  if (newConnectionId !== oldConnectionId) {
+    clearFilters()
+  }
   loadLogs()
 })
 
@@ -276,8 +298,15 @@ onMounted(() => {
     
     <!-- 日志列表 -->
     <div class="flex-1 overflow-y-auto">
+      <!-- 无连接状态 -->
+      <div v-if="!activeConnectionId" class="flex flex-col items-center justify-center h-full text-surface-400 dark:text-surface-500">
+        <TableCellsIcon class="w-12 h-12 mb-3 opacity-50" />
+        <p class="text-sm">{{ t('crudLog.noConnection') }}</p>
+        <p class="text-xs mt-1">{{ t('crudLog.selectConnectionHint') }}</p>
+      </div>
+      
       <!-- 空状态 -->
-      <div v-if="logs.length === 0" class="flex flex-col items-center justify-center h-full text-surface-400 dark:text-surface-500">
+      <div v-else-if="logs.length === 0" class="flex flex-col items-center justify-center h-full text-surface-400 dark:text-surface-500">
         <ClockIcon class="w-12 h-12 mb-3 opacity-50" />
         <p class="text-sm">{{ t('crudLog.empty') }}</p>
         <p class="text-xs mt-1">{{ t('crudLog.emptyHint') }}</p>

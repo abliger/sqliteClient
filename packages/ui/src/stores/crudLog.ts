@@ -56,7 +56,7 @@ export const useCrudLogStore = defineStore('crudLog', () => {
     try {
       const filter: Parameters<typeof crudLogService.queryCrudLogs>[0] = {}
       if (connectionId) {
-        filter.connectionId = connectionId
+        filter.connection_id = connectionId
       }
       logs.value = await crudLogService.queryCrudLogs(filter, limit)
       return logs.value

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import { queryService } from '@services/query'
-import type { QueryResult, QueryTab } from '@types'
+import type { QueryResult, QueryTab, QueryResultSnapshot, CompareViewSettings } from '@types'
 
 // 保存到 localStorage 的 Tab 类型（不包含运行时数据）
 interface SavedQueryTab {
@@ -18,6 +18,15 @@ interface SavedQueryTabs {
     activeTabId: string
   }
 }
+
+// 保存到 localStorage 的快照数据结构
+interface SavedSnapshots {
+  [connectionId: string]: {
+    [tabId: string]: QueryResultSnapshot[]
+  }
+}
+
+const SNAPSHOTS_STORAGE_KEY = 'sqlite-client-query-snapshots'
 
 const STORAGE_KEY = 'sqlite-client-query-tabs-v2'
 
@@ -54,6 +63,12 @@ export const useQueryStore = defineStore('query', () => {
   // 编辑器状态
   const editorStates = ref<Map<string, { content: string; cursorPosition?: { line: number; column: number } }>>(new Map())
 
+  // 查询结果快照（按 connectionId -> tabId 分组）
+  const querySnapshots = ref<Record<string, Record<string, QueryResultSnapshot[]>>>({})
+
+  // 对比视图设置（按 connectionId -> tabId 分组）
+  const compareSettings = ref<Record<string, Record<string, CompareViewSettings>>>({})
+
   // 获取当前连接的 tabs
   const tabs = computed<QueryTab[]>(() => {
     if (!currentConnectionId.value) return []
@@ -69,6 +84,25 @@ export const useQueryStore = defineStore('query', () => {
   // Getters
   const activeTab = computed(() => {
     return tabs.value.find(t => t.id === activeTabId.value)
+  })
+
+  // 获取当前 Tab 的快照列表
+  const activeTabSnapshots = computed<QueryResultSnapshot[]>(() => {
+    if (!currentConnectionId.value || !activeTabId.value) return []
+    return querySnapshots.value[currentConnectionId.value]?.[activeTabId.value] || []
+  })
+
+  // 获取当前 Tab 的对比设置
+  const activeTabCompareSettings = computed<CompareViewSettings>(() => {
+    if (!currentConnectionId.value || !activeTabId.value) {
+      return { enabled: false, selectedSnapshotIds: [], highlightDiff: true, mode: 'side-by-side' }
+    }
+    return compareSettings.value[currentConnectionId.value]?.[activeTabId.value] || {
+      enabled: false,
+      selectedSnapshotIds: [],
+      highlightDiff: true,
+      mode: 'side-by-side'
+    }
   })
 
   const activeTabIndex = computed(() => {
@@ -372,13 +406,17 @@ export const useQueryStore = defineStore('query', () => {
   function cleanupOrphanedTabs(activeConnectionIds: string[]) {
     const activeIds = new Set(activeConnectionIds)
     const savedData = loadSavedQueryTabs()
+    const savedSnapshots = loadSavedSnapshots()
     let hasChanges = false
+    let hasSnapshotChanges = false
     
     // 清理内存中的 orphan tabs
     Object.keys(connectionTabs.value).forEach(connId => {
       if (!activeIds.has(connId)) {
         delete connectionTabs.value[connId]
         delete connectionActiveTabIds.value[connId]
+        delete querySnapshots.value[connId]
+        delete compareSettings.value[connId]
       }
     })
     
@@ -389,10 +427,196 @@ export const useQueryStore = defineStore('query', () => {
         hasChanges = true
       }
     })
+
+    // 清理 localStorage 中的 orphan snapshots
+    Object.keys(savedSnapshots).forEach(connId => {
+      if (!activeIds.has(connId)) {
+        delete savedSnapshots[connId]
+        hasSnapshotChanges = true
+      }
+    })
     
     if (hasChanges) {
       saveQueryTabsToStorage(savedData)
     }
+    if (hasSnapshotChanges) {
+      saveSnapshotsToStorage(savedSnapshots)
+    }
+  }
+
+  // ============================================
+  // 查询结果快照管理
+  // ============================================
+
+  // 从 localStorage 加载保存的快照
+  function loadSavedSnapshots(): SavedSnapshots {
+    try {
+      const saved = localStorage.getItem(SNAPSHOTS_STORAGE_KEY)
+      if (saved) {
+        return JSON.parse(saved)
+      }
+    } catch (err) {
+      console.error('Failed to load saved snapshots:', err)
+    }
+    return {}
+  }
+
+  // 保存快照到 localStorage
+  function saveSnapshotsToStorage(data: SavedSnapshots) {
+    try {
+      localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(data))
+    } catch (err) {
+      console.error('Failed to save snapshots:', err)
+    }
+  }
+
+  // 为当前 Tab 创建快照
+  function createSnapshot(name?: string): QueryResultSnapshot | null {
+    if (!currentConnectionId.value || !activeTabId.value) {
+      console.warn('[QueryStore] Cannot create snapshot: no current connection or tab')
+      return null
+    }
+
+    const tab = activeTab.value
+    if (!tab?.result || tab.result.type !== 'rows') {
+      console.warn('[QueryStore] Cannot create snapshot: no rows result')
+      return null
+    }
+
+    const snapshot: QueryResultSnapshot = {
+      id: uuidv4(),
+      name: name || `Snapshot ${activeTabSnapshots.value.length + 1}`,
+      sql: tab.sql,
+      result: tab.result,
+      createdAt: new Date().toISOString(),
+      executionTimeMs: tab.executionTime || 0
+    }
+
+    // 初始化存储结构
+    if (!querySnapshots.value[currentConnectionId.value]) {
+      querySnapshots.value[currentConnectionId.value] = {}
+    }
+    if (!querySnapshots.value[currentConnectionId.value][activeTabId.value]) {
+      querySnapshots.value[currentConnectionId.value][activeTabId.value] = []
+    }
+
+    // 添加快照
+    querySnapshots.value[currentConnectionId.value][activeTabId.value].push(snapshot)
+
+    // 持久化
+    persistSnapshots(currentConnectionId.value, activeTabId.value)
+
+    console.log('[QueryStore] Created snapshot:', snapshot.id, 'for tab:', activeTabId.value)
+    return snapshot
+  }
+
+  // 删除快照
+  function deleteSnapshot(snapshotId: string): boolean {
+    if (!currentConnectionId.value || !activeTabId.value) return false
+
+    const snapshots = querySnapshots.value[currentConnectionId.value]?.[activeTabId.value]
+    if (!snapshots) return false
+
+    const index = snapshots.findIndex(s => s.id === snapshotId)
+    if (index === -1) return false
+
+    snapshots.splice(index, 1)
+    persistSnapshots(currentConnectionId.value, activeTabId.value)
+
+    // 从对比设置中移除
+    const settings = compareSettings.value[currentConnectionId.value]?.[activeTabId.value]
+    if (settings) {
+      settings.selectedSnapshotIds = settings.selectedSnapshotIds.filter(id => id !== snapshotId)
+      if (settings.selectedSnapshotIds.length < 2) {
+        settings.enabled = false
+      }
+    }
+
+    console.log('[QueryStore] Deleted snapshot:', snapshotId)
+    return true
+  }
+
+  // 重命名快照
+  function renameSnapshot(snapshotId: string, newName: string): boolean {
+    if (!currentConnectionId.value || !activeTabId.value) return false
+
+    const snapshots = querySnapshots.value[currentConnectionId.value]?.[activeTabId.value]
+    if (!snapshots) return false
+
+    const snapshot = snapshots.find(s => s.id === snapshotId)
+    if (!snapshot) return false
+
+    snapshot.name = newName
+    persistSnapshots(currentConnectionId.value, activeTabId.value)
+
+    return true
+  }
+
+  // 持久化指定 Tab 的快照
+  function persistSnapshots(connectionId: string, tabId: string) {
+    const snapshots = querySnapshots.value[connectionId]?.[tabId] || []
+    const savedData = loadSavedSnapshots()
+    
+    if (!savedData[connectionId]) {
+      savedData[connectionId] = {}
+    }
+    savedData[connectionId][tabId] = snapshots
+    
+    saveSnapshotsToStorage(savedData)
+  }
+
+  // 更新对比设置
+  function updateCompareSettings(settings: Partial<CompareViewSettings>) {
+    if (!currentConnectionId.value || !activeTabId.value) return
+
+    if (!compareSettings.value[currentConnectionId.value]) {
+      compareSettings.value[currentConnectionId.value] = {}
+    }
+    if (!compareSettings.value[currentConnectionId.value][activeTabId.value]) {
+      compareSettings.value[currentConnectionId.value][activeTabId.value] = {
+        enabled: false,
+        selectedSnapshotIds: [],
+        highlightDiff: true,
+        mode: 'side-by-side'
+      }
+    }
+
+    Object.assign(compareSettings.value[currentConnectionId.value][activeTabId.value], settings)
+  }
+
+  // 切换对比模式
+  function toggleCompareMode(enabled: boolean) {
+    updateCompareSettings({ enabled })
+  }
+
+  // 选择/取消选择快照用于对比
+  function toggleSnapshotSelection(snapshotId: string) {
+    const settings = activeTabCompareSettings.value
+    const selectedIds = [...settings.selectedSnapshotIds]
+    const index = selectedIds.indexOf(snapshotId)
+
+    if (index === -1) {
+      // 最多选择 2 个快照进行对比
+      if (selectedIds.length >= 2) {
+        selectedIds.shift() // 移除第一个，保持最多2个
+      }
+      selectedIds.push(snapshotId)
+    } else {
+      selectedIds.splice(index, 1)
+    }
+
+    updateCompareSettings({ 
+      selectedSnapshotIds: selectedIds,
+      enabled: selectedIds.length >= 2
+    })
+  }
+
+  // 获取指定快照
+  function getSnapshot(snapshotId: string): QueryResultSnapshot | undefined {
+    if (!currentConnectionId.value || !activeTabId.value) return undefined
+    return querySnapshots.value[currentConnectionId.value]?.[activeTabId.value]?.find(
+      s => s.id === snapshotId
+    )
   }
 
   return {
@@ -401,12 +625,16 @@ export const useQueryStore = defineStore('query', () => {
     connectionTabs,
     connectionActiveTabIds,
     editorStates,
+    querySnapshots,
+    compareSettings,
     // Computed
     tabs,
     activeTabId,
     activeTab,
     activeTabIndex,
     hasUnsavedChanges,
+    activeTabSnapshots,
+    activeTabCompareSettings,
     // Actions
     setCurrentConnection,
     addTab,
@@ -423,6 +651,14 @@ export const useQueryStore = defineStore('query', () => {
     persistConnectionTabs,
     persistAllConnectionTabs,
     restoreConnectionTabs,
-    getTabsByConnection
+    getTabsByConnection,
+    // Snapshot actions
+    createSnapshot,
+    deleteSnapshot,
+    renameSnapshot,
+    getSnapshot,
+    updateCompareSettings,
+    toggleCompareMode,
+    toggleSnapshotSelection
   }
 })

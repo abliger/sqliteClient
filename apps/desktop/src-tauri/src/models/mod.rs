@@ -1,7 +1,9 @@
 pub mod connection;
 pub mod crud_log;
+pub mod ddl;
 pub mod erdiagram;
 pub mod history;
+pub mod import;
 pub mod query;
 pub mod schema;
 

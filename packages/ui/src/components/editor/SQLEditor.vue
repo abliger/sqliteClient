@@ -4,10 +4,13 @@ import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
 import { useSchemaStore } from '@stores/schema'
 import { useSettingsStore } from '@stores/settings'
+import { useTemplateStore } from '@stores/template'
 import { useSQLCompletion, FullFeaturedStrategyFactory } from '@composables/sql-completion'
 import { sqlFormatter } from '@services/formatter'
 import EditorToolbar from './EditorToolbar.vue'
 import QueryTabs from './QueryTabs.vue'
+import SqlImportDialog from '@components/dialogs/SqlImportDialog.vue'
+import TemplatePanel from './TemplatePanel.vue'
 import * as monaco from 'monaco-editor'
 import type { editor as MonacoEditor } from 'monaco-editor'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
@@ -47,9 +50,30 @@ const connectionStore = useConnectionStore()
 const queryStore = useQueryStore()
 const schemaStore = useSchemaStore()
 const settingsStore = useSettingsStore()
+// Template store is imported but only used through TemplatePanel component
+void useTemplateStore
 const editorContainer = ref<HTMLDivElement>()
 let editor: MonacoEditor.IStandaloneCodeEditor | null = null
 let disposeContentListener: (() => void) | null = null
+
+// SQL 导入对话框状态
+const showImportDialog = ref(false)
+
+// 模板面板状态
+const showTemplatePanel = ref(false)
+
+function handleImportSql() {
+  if (!connectionStore.activeConnectionId) return
+  showImportDialog.value = true
+}
+
+function handleImportCompleted(result: import('@types').SqlFileExecutionResult) {
+  void result // Result unused but kept for potential future use
+  // 导入完成后可以刷新 schema
+  if (connectionStore.activeConnectionId) {
+    schemaStore.loadTables(connectionStore.activeConnectionId)
+  }
+}
 
 // Monaco 主题映射
 const monacoTheme = computed(() => {
@@ -305,6 +329,49 @@ const registerSQLFormatter = () => {
 const handleFormat = () => {
   editor?.trigger('keyboard', 'editor.action.formatDocument', null)
 }
+
+// 切换模板面板
+const handleToggleTemplates = () => {
+  showTemplatePanel.value = !showTemplatePanel.value
+}
+
+// 插入 SQL 片段
+const handleInsertSnippet = (sql: string) => {
+  if (!editor) return
+
+  const selection = editor.getSelection()
+  if (selection && !selection.isEmpty()) {
+    // 如果有选中的内容，替换选中内容
+    editor.executeEdits('snippet', [
+      {
+        range: selection,
+        text: sql,
+      },
+    ])
+  } else {
+    // 在光标位置插入
+    const position = editor.getPosition()
+    if (position) {
+      editor.executeEdits('snippet', [
+        {
+          range: new monaco.Range(
+            position.lineNumber,
+            position.column,
+            position.lineNumber,
+            position.column
+          ),
+          text: sql,
+        },
+      ])
+    }
+  }
+
+  // 关闭面板
+  showTemplatePanel.value = false
+
+  // 聚焦编辑器
+  editor.focus()
+}
 </script>
 
 <template>
@@ -319,9 +386,40 @@ const handleFormat = () => {
             @execute="handleExecuteQuery"
             @execute-selected="handleExecuteSelected"
             @format="handleFormat"
+            @import-sql="handleImportSql"
+            @toggle-templates="handleToggleTemplates"
+        />
+
+        <!-- SQL 导入对话框 -->
+        <SqlImportDialog
+            v-model="showImportDialog"
+            :connection-id="connectionStore.activeConnectionId || ''"
+            @completed="handleImportCompleted"
         />
 
         <!-- 编辑器区域 -->
-        <div ref="editorContainer" class="flex-1 min-h-0" />
+        <div class="flex-1 min-h-0 flex">
+          <div ref="editorContainer" class="flex-1 min-h-0" />
+
+          <!-- 模板面板 -->
+          <Transition
+            enter-active-class="transition-all duration-200 ease-out"
+            enter-from-class="opacity-0 translate-x-4 w-0"
+            enter-to-class="opacity-100 translate-x-0 w-80"
+            leave-active-class="transition-all duration-200 ease-in"
+            leave-from-class="opacity-100 translate-x-0 w-80"
+            leave-to-class="opacity-0 translate-x-4 w-0"
+          >
+            <div
+              v-if="showTemplatePanel"
+              class="border-l border-surface-200 dark:border-surface-700 overflow-hidden"
+            >
+              <TemplatePanel
+                @insert="handleInsertSnippet"
+                @close="showTemplatePanel = false"
+              />
+            </div>
+          </Transition>
+        </div>
     </div>
 </template>

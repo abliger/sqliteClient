@@ -12,6 +12,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import MainLayout from '@components/layout/MainLayout.vue'
 import SettingsPanel from '@components/settings/SettingsPanel.vue'
 import Toast from '@components/ui/Toast.vue'
+import ImportWizard from '@components/dialogs/ImportWizard.vue'
 
 const { t } = useI18n()
 const connectionStore = useConnectionStore()
@@ -170,6 +171,7 @@ watch(() => settingsStore.theme, updateTheme)
             <MainLayout />
             <SettingsPanel />
             <Toast />
+            <ImportWizard />
         </template>
     </div>
 </template>

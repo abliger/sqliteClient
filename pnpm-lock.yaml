@@ -69,6 +69,9 @@ importers:
       '@tauri-apps/plugin-fs':
         specifier: ^2.0.0
         version: 2.4.5
+      '@vueuse/core':
+        specifier: ^14.2.1
+        version: 14.2.1(vue@3.5.29)
       echarts:
         specifier: ^5.4.3
         version: 5.6.0
@@ -1699,6 +1702,10 @@ packages:
     resolution: {integrity: sha512-jg+97EGIcY9AGHJJRaaPVgetKDsrTgbRjQ5Msgjh/DQKEFl0DtyRr/VCOyD1T2R1MNeWPK/u7JoGhlDZnKBAfA==}
     dev: true
 
+  /@types/web-bluetooth@0.0.21:
+    resolution: {integrity: sha512-oIQLCGWtcFZy2JW77j9k8nHzAOpqMHLQejDA48XXMWH6tjCQHz5RCFz1bzsmROyL6PUm+LLnUiI4BCn221inxA==}
+    dev: false
+
   /@types/whatwg-mimetype@3.0.2:
     resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
     dev: true
@@ -2429,6 +2436,29 @@ packages:
       js-beautify: 1.15.4
       vue-component-type-helpers: 2.2.12
     dev: true
+
+  /@vueuse/core@14.2.1(vue@3.5.29):
+    resolution: {integrity: sha512-3vwDzV+GDUNpdegRY6kzpLm4Igptq+GA0QkJ3W61Iv27YWwW/ufSlOfgQIpN6FZRMG0mkaz4gglJRtq5SeJyIQ==}
+    peerDependencies:
+      vue: ^3.5.0
+    dependencies:
+      '@types/web-bluetooth': 0.0.21
+      '@vueuse/metadata': 14.2.1
+      '@vueuse/shared': 14.2.1(vue@3.5.29)
+      vue: 3.5.29(typescript@5.9.3)
+    dev: false
+
+  /@vueuse/metadata@14.2.1:
+    resolution: {integrity: sha512-1ButlVtj5Sb/HDtIy1HFr1VqCP4G6Ypqt5MAo0lCgjokrk2mvQKsK2uuy0vqu/Ks+sHfuHo0B9Y9jn9xKdjZsw==}
+    dev: false
+
+  /@vueuse/shared@14.2.1(vue@3.5.29):
+    resolution: {integrity: sha512-shTJncjV9JTI4oVNyF1FQonetYAiTBd+Qj7cY89SWbXSkx7gyhrgtEdF2ZAVWS1S3SHlaROO6F2IesJxQEkZBw==}
+    peerDependencies:
+      vue: ^3.5.0
+    dependencies:
+      vue: 3.5.29(typescript@5.9.3)
+    dev: false
 
   /abbrev@2.0.0:
     resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}

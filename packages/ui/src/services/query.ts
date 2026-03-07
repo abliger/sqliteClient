@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { QueryResult, QueryRow } from '@types'
+import type { QueryResult, QueryRow, SqlFileExecutionResult } from '@types'
 
 export interface ExecuteQueryOptions {
   connectionId: string
@@ -38,5 +38,15 @@ export const queryService = {
 
   async cancelQuery(queryId: string): Promise<void> {
     return invoke('cancel_query', { queryId })
+  },
+
+  async executeSqlFile(
+    connectionId: string,
+    filePath: string
+  ): Promise<SqlFileExecutionResult> {
+    return invoke('execute_sql_file', {
+      connectionId,
+      filePath
+    })
   }
 }

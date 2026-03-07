@@ -1,7 +1,9 @@
 pub mod connection_manager;
 pub mod connection_store;
 pub mod crud_log_store;
+pub mod ddl_engine;
 pub mod history_store;
+pub mod import_engine;
 pub mod query_engine;
 pub mod schema_analyzer;
 
@@ -15,5 +17,7 @@ pub use crud_log_store::CrudLogStore;
 pub use history_store::HistoryStore;
 #[allow(unused_imports)]
 pub use query_engine::QueryEngine;
+#[allow(unused_imports)]
+pub use ddl_engine::DdlEngine;
 #[allow(unused_imports)]
 pub use schema_analyzer::SchemaAnalyzer;

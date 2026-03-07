@@ -4,22 +4,53 @@ import { useI18n } from 'vue-i18n'
 import { useConnectionStore } from '@stores/connection'
 import { useSchemaStore } from '@stores/schema'
 import { useQueryStore } from '@stores/query'
+import { useImportStore } from '@stores/import'
 import {
     ChevronRightIcon,
     ChevronDownIcon,
     TableCellsIcon,
     KeyIcon,
     LinkIcon,
-    CircleStackIcon
+    CircleStackIcon,
+    PlusIcon,
+    PencilIcon,
+    TrashIcon,
 } from '@heroicons/vue/24/outline'
 import type { TableInfo } from '@types'
+import TableDesignerDialog from '@components/designer/TableDesignerDialog.vue'
 
 const { t } = useI18n()
 const connectionStore = useConnectionStore()
 const schemaStore = useSchemaStore()
 const queryStore = useQueryStore()
+const importStore = useImportStore()
 
 const activeTab = ref<'tables' | 'er'>('tables')
+
+// 表结构设计器状态
+const showDesigner = ref(false)
+const editingTable = ref<TableInfo | undefined>(undefined)
+const designerConnectionId = computed(() => connectionStore.activeConnectionId || '')
+
+// 打开新建表设计器
+const openCreateTable = () => {
+    editingTable.value = undefined
+    showDesigner.value = true
+}
+
+// 打开编辑表设计器
+const openEditTable = (table: TableInfo) => {
+    editingTable.value = table
+    showDesigner.value = true
+}
+
+// 设计器操作成功回调
+const onDesignerSuccess = () => {
+    // 刷新表列表
+    if (connectionStore.activeConnectionId) {
+        schemaStore.loadTables(connectionStore.activeConnectionId)
+    }
+}
 
 const handleTableClick = (table: TableInfo) => {
     schemaStore.selectedTable = table.name
@@ -56,6 +87,10 @@ const handleGenerateInsert = (table: TableInfo) => {
     queryStore.addTab(sql)
 }
 
+const handleOpenImport = () => {
+    importStore.openWizard()
+}
+
 // const _unusedGetColumnIcon = (column: ColumnInfo) => {
 //   if (column.is_primary_key) return KeyIcon
 //   if (column.is_foreign_key) return LinkIcon
@@ -88,6 +123,14 @@ const tabs = computed(() => [
                     {{ (connectionStore.activeConnection.metadata.size_bytes / 1024).toFixed(1) }} KB
                 </div>
             </div>
+            <!-- 导入按钮 -->
+            <button
+                class="mt-2 w-full flex items-center justify-center space-x-1 px-2 py-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
+                @click="handleOpenImport"
+            >
+                <DocumentArrowUpIcon class="w-3.5 h-3.5" />
+                <span>{{ t('databaseTree.importData') }}</span>
+            </button>
         </div>
 
         <!-- 标签页 -->
@@ -226,8 +269,33 @@ const tabs = computed(() => [
                                     {{ t('databaseTree.insertQuery') }}
                                 </button>
                             </div>
+
+                            <!-- 表结构操作 -->
+                            <div class="flex items-center space-x-2 pl-6 py-1 border-t border-surface-100 dark:border-surface-800 mt-1">
+                                <button
+                                    class="flex items-center gap-1 text-xs text-surface-600 dark:text-surface-400 hover:text-blue-600 dark:hover:text-blue-400"
+                                    @click="openEditTable(table)"
+                                >
+                                    <PencilIcon class="w-3 h-3" />
+                                    {{ t('databaseTree.editTable') }}
+                                </button>
+                            </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- 新建表按钮 -->
+                <div
+                    v-if="connectionStore.activeConnection"
+                    class="sticky bottom-0 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700 p-2"
+                >
+                    <button
+                        class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:bg-primary-600 dark:hover:bg-primary-500"
+                        @click="openCreateTable"
+                    >
+                        <PlusIcon class="w-4 h-4" />
+                        {{ t('databaseTree.createTable') }}
+                    </button>
                 </div>
             </template>
 
@@ -238,5 +306,13 @@ const tabs = computed(() => [
                 </div>
             </template>
         </div>
+
+        <!-- 表结构设计器 -->
+        <TableDesignerDialog
+            v-model="showDesigner"
+            :connection-id="designerConnectionId"
+            :existing-table="editingTable"
+            @success="onDesignerSuccess"
+        />
     </div>
 </template>

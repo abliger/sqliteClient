@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { PlayIcon, PlayCircleIcon, SparklesIcon } from '@heroicons/vue/24/outline'
+import { PlayIcon, PlayCircleIcon, SparklesIcon, DocumentArrowUpIcon, BookmarkSquareIcon } from '@heroicons/vue/24/outline'
 
 const { t } = useI18n()
 
@@ -18,6 +18,8 @@ const emit = defineEmits<{
     execute: []
     executeSelected: []
     format: []
+    importSql: []
+    toggleTemplates: []
 }>()
 </script>
 
@@ -49,10 +51,33 @@ const emit = defineEmits<{
 
             <div class="w-px h-6 bg-surface-300 dark:bg-surface-600 mx-2" />
 
+            <!-- Import SQL -->
+            <button
+                class="btn-ghost disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="!canExecute"
+                :title="t('editor.importSql')"
+                @click="emit('importSql')"
+            >
+                <DocumentArrowUpIcon class="w-4 h-4 mr-1.5" />
+                {{ t('editor.import') }}
+            </button>
+
             <!-- Format -->
             <button class="btn-ghost" :title="t('editor.formatSQL')" @click="emit('format')">
                 <SparklesIcon class="w-4 h-4 mr-1.5" />
                 {{ t('editor.format') }}
+            </button>
+
+            <div class="w-px h-6 bg-surface-300 dark:bg-surface-600 mx-2" />
+
+            <!-- Templates -->
+            <button
+                class="btn-ghost"
+                :title="t('editor.templates')"
+                @click="emit('toggleTemplates')"
+            >
+                <BookmarkSquareIcon class="w-4 h-4 mr-1.5" />
+                {{ t('editor.snippets') }}
             </button>
         </div>
 

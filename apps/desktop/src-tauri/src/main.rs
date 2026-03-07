@@ -187,6 +187,7 @@ fn main() {
             commands::query::execute_query_stream,
             commands::query::fetch_stream_batch,
             commands::query::cancel_query,
+            commands::query::execute_sql_file,
             // 元数据/结构
             commands::schema::list_tables,
             commands::schema::get_table_schema,
@@ -215,6 +216,21 @@ fn main() {
             commands::crud_log::delete_crud_logs_by_tab,
             commands::crud_log::get_crud_log_table_names,
             commands::crud_log::get_crud_log_stats,
+            // DDL 操作
+            commands::ddl::preview_create_table,
+            commands::ddl::preview_alter_table,
+            commands::ddl::preview_drop_table,
+            commands::ddl::create_table,
+            commands::ddl::alter_table,
+            commands::ddl::drop_table,
+            commands::ddl::get_sqlite_data_types,
+            commands::ddl::get_foreign_key_actions,
+            // 导入
+            commands::import::parse_import_file,
+            commands::import::detect_column_types,
+            commands::import::execute_import,
+            commands::import::get_supported_import_formats,
+            commands::import::validate_table_name,
             // 设置
             commands::settings::get_app_settings,
             commands::settings::save_app_settings,

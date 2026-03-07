@@ -25,7 +25,8 @@
       "@types/*": ["src/types/*"],
       "@composables/*": ["src/composables/*"],
       "@i18n/*": ["src/i18n/*"],
-      "@directives/*": ["src/directives/*"]
+      "@directives/*": ["src/directives/*"],
+      "@utils/*": ["src/utils/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "env.d.ts"],

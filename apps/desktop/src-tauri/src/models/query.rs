@@ -221,6 +221,57 @@ pub struct StreamStatus {
     pub columns: Vec<String>,
 }
 
+/// SQL 文件执行进度
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SqlFileExecutionProgress {
+    /// 当前执行的语句索引
+    pub current_statement: usize,
+    /// 总语句数
+    pub total_statements: usize,
+    /// 当前执行的 SQL 语句（截断显示）
+    pub current_sql: String,
+    /// 已执行成功的语句数
+    pub success_count: usize,
+    /// 已执行失败的语句数
+    pub error_count: usize,
+    /// 是否已完成
+    pub is_complete: bool,
+}
+
+/// SQL 文件执行结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SqlFileExecutionResult {
+    /// 文件路径
+    pub file_path: String,
+    /// 总语句数
+    pub total_statements: usize,
+    /// 成功执行的语句数
+    pub success_count: usize,
+    /// 执行失败的语句数
+    pub error_count: usize,
+    /// 执行详情
+    pub statements: Vec<StatementExecutionResult>,
+    /// 总执行时间（毫秒）
+    pub total_duration_ms: u64,
+}
+
+/// 单条语句执行结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatementExecutionResult {
+    /// 语句序号
+    pub index: usize,
+    /// SQL 语句（截断）
+    pub sql: String,
+    /// 是否成功
+    pub success: bool,
+    /// 错误信息（失败时）
+    pub error_message: Option<String>,
+    /// 执行时间（毫秒）
+    pub duration_ms: u64,
+    /// 影响的行数（如果是 DML）
+    pub rows_affected: Option<usize>,
+}
+
 /// 流状态（内部使用）
 #[derive(Debug)]
 pub struct StreamState {

@@ -16,6 +16,7 @@ export default defineConfig(async () => ({
       '@composables': resolve(__dirname, 'src/composables'),
       '@i18n': resolve(__dirname, 'src/i18n'),
       '@directives': resolve(__dirname, 'src/directives'),
+      '@utils': resolve(__dirname, 'src/utils'),
     },
   },
   clearScreen: false,
