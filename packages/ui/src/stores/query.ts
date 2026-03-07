@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import { queryService } from '@services/query'
-import type { QueryResult, QueryTab } from '@types/index'
+import type { QueryResult, QueryTab } from '@types'
 
 export const useQueryStore = defineStore('query', () => {
   // State

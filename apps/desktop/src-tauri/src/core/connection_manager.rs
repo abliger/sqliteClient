@@ -6,6 +6,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::OpenFlags;
 
+use crate::core::connection_store::ConnectionStore;
 use crate::core::history_store::HistoryStore;
 use crate::models::connection::{
     ConnectionConfig, ConnectionInfo, ConnectionStatus, DatabaseMetadata,
@@ -20,29 +21,73 @@ pub struct ConnectionHandle {
 
 pub struct ConnectionManager {
     connections: Arc<RwLock<HashMap<String, ConnectionHandle>>>,
+    connection_store: Arc<ConnectionStore>,
     #[allow(dead_code)]
     history_store: Arc<HistoryStore>,
 }
 
 impl ConnectionManager {
-    pub fn new(history_store: Arc<HistoryStore>) -> Self {
+    pub fn new(
+        connection_store: Arc<ConnectionStore>,
+        history_store: Arc<HistoryStore>,
+    ) -> Self {
         Self {
             connections: Arc::new(RwLock::new(HashMap::new())),
+            connection_store,
             history_store,
         }
     }
 
+    /// 从存储加载所有保存的连接配置
+    pub fn load_saved_connections(&self) -> AppResult<Vec<ConnectionConfig>> {
+        self.connection_store.load_connections()
+    }
+
+    /// 恢复保存的连接（启动时调用）
+    pub fn restore_connections(&self) -> AppResult<Vec<ConnectionInfo>> {
+        let configs = self.connection_store.load_connections()?;
+        let mut restored = Vec::new();
+
+        for config in configs {
+            // 尝试重新连接，如果文件存在
+            if std::path::Path::new(&config.db_path).exists() {
+                match self.do_create_connection(config.clone()) {
+                    Ok(info) => restored.push(info),
+                    Err(e) => {
+                        eprintln!("Failed to restore connection {}: {}", config.id, e);
+                    }
+                }
+            } else {
+                eprintln!(
+                    "Database file not found for connection {}: {}",
+                    config.name, config.db_path
+                );
+            }
+        }
+
+        Ok(restored)
+    }
+
     pub fn create_connection(&self, name: String, db_path: String) -> AppResult<ConnectionInfo> {
+        let config = ConnectionConfig::new(name, db_path);
+        let info = self.do_create_connection(config)?;
+        
+        // 保存到持久化存储
+        self.connection_store.save_connection(&info.config)?;
+        
+        Ok(info)
+    }
+
+    fn do_create_connection(&self, config: ConnectionConfig) -> AppResult<ConnectionInfo> {
         // 检查文件是否存在
-        if !std::path::Path::new(&db_path).exists() {
+        if !std::path::Path::new(&config.db_path).exists() {
             return Err(AppError::IoError(format!(
                 "Database file not found: {}",
-                db_path
+                config.db_path
             )));
         }
 
-        let config = ConnectionConfig::new(name, db_path.clone());
-        let manager = SqliteConnectionManager::file(&db_path)
+        let manager = SqliteConnectionManager::file(&config.db_path)
             .with_flags(OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_URI);
 
         let pool = Pool::builder()
@@ -102,12 +147,19 @@ impl ConnectionManager {
         };
 
         self.connections.write().insert(config.id.clone(), handle);
+        
+        // 保存到持久化存储
+        self.connection_store.save_connection(&config)?;
 
         Ok(info)
     }
 
     pub fn close_connection(&self, connection_id: &str) -> AppResult<()> {
         self.connections.write().remove(connection_id);
+        
+        // 从持久化存储中删除
+        self.connection_store.delete_connection(connection_id)?;
+        
         Ok(())
     }
 

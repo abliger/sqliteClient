@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { DatabaseSchema, ERDiagram, IndexInfo, TableInfo, TriggerInfo } from '@types/index'
+import type { DatabaseSchema, ERDiagram, IndexInfo, TableInfo, TriggerInfo } from '@types'
 
 export const schemaService = {
   async listTables(connectionId: string): Promise<TableInfo[]> {

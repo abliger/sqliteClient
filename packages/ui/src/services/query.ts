@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { QueryResult, QueryRow } from '@types/index'
+import type { QueryResult, QueryRow } from '@types'
 
 export interface ExecuteQueryOptions {
   connectionId: string

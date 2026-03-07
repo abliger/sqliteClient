@@ -5,7 +5,7 @@ import { useQueryStore } from '@stores/query'
 import EditorToolbar from './EditorToolbar.vue'
 import QueryTabs from './QueryTabs.vue'
 import * as monaco from 'monaco-editor'
-import type { editor } from 'monaco-editor'
+import type { editor as MonacoEditor } from 'monaco-editor'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
@@ -13,16 +13,8 @@ import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 
 // 配置 Monaco Worker - 使用全局变量避免重复配置
-declare global {
-  interface Window {
-    MonacoEnvironment?: {
-      getWorker: (_workerId: string, label: string) => Worker
-    }
-  }
-}
-
-if (!window.MonacoEnvironment) {
-  window.MonacoEnvironment = {
+if (!(window as any).MonacoEnvironment) {
+  (window as any).MonacoEnvironment = {
     getWorker(_workerId: string, label: string) {
       if (label === 'json') {
         return new jsonWorker()
@@ -44,7 +36,7 @@ if (!window.MonacoEnvironment) {
 const connectionStore = useConnectionStore()
 const queryStore = useQueryStore()
 const editorContainer = ref<HTMLDivElement>()
-let editor: editor.IStandaloneCodeEditor | null = null
+let editor: MonacoEditor.IStandaloneCodeEditor | null = null
 let disposeContentListener: (() => void) | null = null
 
 // 初始化 Monaco 编辑器
@@ -96,7 +88,7 @@ watch(
   () => queryStore.activeTabId,
   (newTabId, oldTabId) => {
     if (!editor || !newTabId) return
-    
+
     // 保存旧标签的状态
     if (oldTabId) {
       const oldState = editor.saveViewState()
@@ -107,7 +99,7 @@ watch(
         })
       }
     }
-    
+
     // 加载新标签的内容和状态
     const tab = queryStore.tabs.find(t => t.id === newTabId)
     if (tab) {
@@ -115,7 +107,7 @@ watch(
       if (currentValue !== tab.sql) {
         editor.setValue(tab.sql)
       }
-      
+
       // 恢复光标位置
       const savedState = queryStore.getEditorState(newTabId)
       if (savedState?.cursorPosition) {

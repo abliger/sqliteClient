@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { historyService } from '@services/history'
-import type { QueryHistoryItem } from '@types/index'
+import type { QueryHistoryItem } from '@types'
 
 export const useHistoryStore = defineStore('history', () => {
   // State

@@ -12,7 +12,7 @@ import {
   LinkIcon,
   CircleStackIcon
 } from '@heroicons/vue/24/outline'
-import type { TableInfo, ColumnInfo } from '@types/index'
+import type { TableInfo, ColumnInfo } from '@types'
 
 const { t } = useI18n()
 const connectionStore = useConnectionStore()

@@ -1,7 +1,8 @@
 use tauri::State;
 
 use crate::core::connection_manager::ConnectionManager;
-use crate::models::connection::ConnectionInfo;
+use crate::core::connection_store::ConnectionStore;
+use crate::models::connection::{ConnectionConfig, ConnectionInfo};
 use crate::utils::error::AppResult;
 
 #[tauri::command]
@@ -58,4 +59,20 @@ pub async fn refresh_connection_metadata(
     connection_id: String,
 ) -> AppResult<crate::models::connection::DatabaseMetadata> {
     connection_manager.refresh_metadata(&connection_id)
+}
+
+/// 恢复所有保存的连接（应用启动时调用）
+#[tauri::command]
+pub async fn restore_saved_connections(
+    connection_manager: State<'_, ConnectionManager>,
+) -> AppResult<Vec<ConnectionInfo>> {
+    connection_manager.restore_connections()
+}
+
+/// 加载保存的连接配置（不自动连接）
+#[tauri::command]
+pub async fn load_saved_connection_configs(
+    connection_store: State<'_, ConnectionStore>,
+) -> AppResult<Vec<ConnectionConfig>> {
+    connection_store.load_connections()
 }

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { CellValue, QueryResult } from '@types/index'
+import type { CellValue, QueryResult } from '@types'
 
 export interface GetTableDataOptions {
   connectionId: string

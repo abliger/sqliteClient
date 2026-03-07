@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { QueryResult } from '@types/index'
+import type { QueryResult } from '@types'
 import {
   ClockIcon,
   InformationCircleIcon

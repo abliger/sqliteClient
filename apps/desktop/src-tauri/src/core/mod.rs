@@ -1,10 +1,13 @@
 pub mod connection_manager;
+pub mod connection_store;
 pub mod history_store;
 pub mod query_engine;
 pub mod schema_analyzer;
 
 #[allow(unused_imports)]
 pub use connection_manager::ConnectionManager;
+#[allow(unused_imports)]
+pub use connection_store::ConnectionStore;
 #[allow(unused_imports)]
 pub use history_store::HistoryStore;
 #[allow(unused_imports)]

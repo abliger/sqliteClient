@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { schemaService } from '@services/schema'
-import type { ERDiagram, TableInfo } from '@types/index'
+import type { ERDiagram, TableInfo } from '@types'
 
 export const useSchemaStore = defineStore('schema', () => {
   // State

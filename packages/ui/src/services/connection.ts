@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { ConnectionInfo } from '@types/index'
+import type { ConnectionConfig, ConnectionInfo } from '@types'
 
 export const connectionService = {
   async createConnection(name: string, dbPath: string): Promise<ConnectionInfo> {
@@ -28,5 +28,19 @@ export const connectionService = {
 
   async refreshMetadata(connectionId: string): Promise<ConnectionInfo['metadata']> {
     return invoke('refresh_connection_metadata', { connectionId })
+  },
+
+  /**
+   * 恢复所有保存的连接（应用启动时调用）
+   */
+  async restoreSavedConnections(): Promise<ConnectionInfo[]> {
+    return invoke('restore_saved_connections')
+  },
+
+  /**
+   * 加载保存的连接配置（不自动连接）
+   */
+  async loadSavedConnectionConfigs(): Promise<ConnectionConfig[]> {
+    return invoke('load_saved_connection_configs')
   }
 }

@@ -11,8 +11,8 @@ const connectionStore = useConnectionStore()
 const settingsStore = useSettingsStore()
 
 onMounted(async () => {
-  // 初始化时加载已保存的连接和设置
-  connectionStore.loadConnections()
+  // 初始化时恢复保存的连接和设置
+  await connectionStore.restoreSavedConnections()
   await settingsStore.loadSettings()
   
   // 应用保存的语言设置

@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::sync::Arc;
+
 use tauri::Manager;
 
 mod commands;
@@ -10,8 +12,8 @@ mod utils;
 
 use commands::settings::SettingsStore;
 use core::connection_manager::ConnectionManager;
+use core::connection_store::ConnectionStore;
 use core::history_store::HistoryStore;
-use std::sync::Arc;
 
 fn main() {
     tauri::Builder::default()
@@ -27,14 +29,20 @@ fn main() {
                     .expect("Failed to initialize history store")
             }));
 
+            // 初始化连接配置存储
+            let connection_store = Arc::new(
+                ConnectionStore::new(app_handle).expect("Failed to initialize connection store")
+            );
+
             // 初始化连接管理器
-            let connection_manager = ConnectionManager::new(history_store.clone());
+            let connection_manager = ConnectionManager::new(connection_store.clone(), history_store.clone());
 
             // 初始化设置存储
             let settings_store =
                 SettingsStore::new(app_handle).expect("Failed to initialize settings store");
 
             app.manage(connection_manager);
+            app.manage(connection_store);
             app.manage(history_store.clone());
             app.manage(settings_store);
 
@@ -43,10 +51,13 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             // 连接管理
             commands::connection::create_connection,
+            commands::connection::create_new_database,
             commands::connection::close_connection,
             commands::connection::list_connections,
             commands::connection::get_connection_info,
             commands::connection::test_connection,
+            commands::connection::restore_saved_connections,
+            commands::connection::load_saved_connection_configs,
             // 查询执行
             commands::query::execute_query,
             commands::query::execute_query_stream,

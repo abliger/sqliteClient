@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { connectionService } from '@services/connection'
-import type { ConnectionInfo, DatabaseMetadata } from '@types/index'
+import type { ConnectionConfig, ConnectionInfo, DatabaseMetadata } from '@types'
 
 export const useConnectionStore = defineStore('connection', () => {
   // State
@@ -27,6 +27,38 @@ export const useConnectionStore = defineStore('connection', () => {
       error.value = err instanceof Error ? err.message : 'Failed to load connections'
     } finally {
       isLoading.value = false
+    }
+  }
+
+  /**
+   * 应用启动时恢复保存的连接
+   */
+  async function restoreSavedConnections() {
+    isLoading.value = true
+    error.value = null
+    try {
+      connections.value = await connectionService.restoreSavedConnections()
+      // 如果有连接，设置第一个为活动连接
+      if (connections.value.length > 0 && !activeConnectionId.value) {
+        activeConnectionId.value = connections.value[0].config.id
+      }
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to restore connections'
+      console.error('Failed to restore connections:', err)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
+   * 加载保存的连接配置（不自动连接）
+   */
+  async function loadSavedConnectionConfigs(): Promise<ConnectionConfig[]> {
+    try {
+      return await connectionService.loadSavedConnectionConfigs()
+    } catch (err) {
+      console.error('Failed to load saved connection configs:', err)
+      return []
     }
   }
 
@@ -100,6 +132,8 @@ export const useConnectionStore = defineStore('connection', () => {
     connectionCount,
     // Actions
     loadConnections,
+    restoreSavedConnections,
+    loadSavedConnectionConfigs,
     createConnection,
     createNewDatabase,
     closeConnection,

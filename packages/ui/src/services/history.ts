@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { QueryHistoryItem } from '@types/index'
+import type { QueryHistoryItem } from '@types'
 
 export const historyService = {
   async getQueryHistory(limit?: number, offset?: number): Promise<QueryHistoryItem[]> {
