@@ -2,7 +2,22 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import { queryService } from '@services/query'
-import type { QueryResult, QueryTab, SavedQueryTab, SavedQueryTabs } from '@types'
+import type { QueryResult, QueryTab } from '@types'
+
+// 保存到 localStorage 的 Tab 类型（不包含运行时数据）
+interface SavedQueryTab {
+  id: string
+  name: string
+  sql: string
+}
+
+// 保存到 localStorage 的数据结构
+interface SavedQueryTabs {
+  [connectionId: string]: {
+    tabs: SavedQueryTab[]
+    activeTabId: string
+  }
+}
 
 const STORAGE_KEY = 'sqlite-client-query-tabs-v2'
 
@@ -314,7 +329,7 @@ export const useQueryStore = defineStore('query', () => {
     
     if (saved && saved.tabs.length > 0) {
       // 恢复 tabs（不包含运行时数据如 result, isExecuting）
-      connectionTabs.value[connectionId] = saved.tabs.map(t => ({
+      connectionTabs.value[connectionId] = saved.tabs.map((t: SavedQueryTab) => ({
         ...t,
         isExecuting: false,
         result: undefined,

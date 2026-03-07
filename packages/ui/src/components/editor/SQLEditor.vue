@@ -3,7 +3,9 @@ import { ref, onMounted, watch, onUnmounted, nextTick, computed } from 'vue'
 import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
 import { useSchemaStore } from '@stores/schema'
+import { useSettingsStore } from '@stores/settings'
 import { useSQLCompletion, FullFeaturedStrategyFactory } from '@composables/sql-completion'
+import { sqlFormatter } from '@services/formatter'
 import EditorToolbar from './EditorToolbar.vue'
 import QueryTabs from './QueryTabs.vue'
 import * as monaco from 'monaco-editor'
@@ -44,9 +46,20 @@ if (!(window as WindowWithMonaco).MonacoEnvironment) {
 const connectionStore = useConnectionStore()
 const queryStore = useQueryStore()
 const schemaStore = useSchemaStore()
+const settingsStore = useSettingsStore()
 const editorContainer = ref<HTMLDivElement>()
 let editor: MonacoEditor.IStandaloneCodeEditor | null = null
 let disposeContentListener: (() => void) | null = null
+
+// Monaco 主题映射
+const monacoTheme = computed(() => {
+  const theme = settingsStore.theme
+  if (theme === 'auto') {
+    // 检测系统偏好
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'vs-dark' : 'vs'
+  }
+  return theme === 'dark' ? 'vs-dark' : 'vs'
+})
 
 // 获取表信息的 getter
 const getTableByName = computed(() => {
@@ -79,6 +92,14 @@ watch(
   { immediate: true }
 )
 
+// 监听主题变化，更新编辑器主题
+watch(
+  monacoTheme,
+  (newTheme) => {
+    monaco.editor.setTheme(newTheme)
+  }
+)
+
 // 初始化 Monaco 编辑器
 onMounted(() => {
   if (!editorContainer.value) return
@@ -86,7 +107,7 @@ onMounted(() => {
   editor = monaco.editor.create(editorContainer.value, {
     value: queryStore.activeTab?.sql || '',
     language: 'sql',
-    theme: 'vs-light',
+    theme: monacoTheme.value,
     fontSize: 14,
     fontFamily: 'JetBrains Mono, Fira Code, Consolas, monospace',
     minimap: { enabled: false },
@@ -121,6 +142,25 @@ onMounted(() => {
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, () => {
     editor?.trigger('keyboard', 'editor.action.commentLine', null)
   })
+
+  // 注册 SQL 格式化器
+  registerSQLFormatter()
+
+  // 监听系统主题变化（当设置为 auto 时）
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  const handleThemeChange = () => {
+    if (settingsStore.theme === 'auto') {
+      monaco.editor.setTheme(monacoTheme.value)
+    }
+  }
+  mediaQuery.addEventListener('change', handleThemeChange)
+
+  // 保存清理函数
+  const originalDispose = disposeContentListener
+  disposeContentListener = () => {
+    originalDispose?.()
+    mediaQuery.removeEventListener('change', handleThemeChange)
+  }
 })
 
 // 当活动标签变化时，更新编辑器内容
@@ -167,6 +207,7 @@ watch(
 onUnmounted(() => {
   if (disposeContentListener) {
     disposeContentListener()
+    disposeContentListener = null
   }
   if (editor) {
     // 保存最终状态
@@ -220,29 +261,67 @@ const handleExecuteSelected = async () => {
   }
 }
 
+/**
+ * 注册 SQL 格式化器到 Monaco Editor
+ */
+const registerSQLFormatter = () => {
+  // 注册文档格式化提供者
+  monaco.languages.registerDocumentFormattingEditProvider('sql', {
+    provideDocumentFormattingEdits(model) {
+      const sql = model.getValue()
+      if (!sqlFormatter.canFormat(sql)) {
+        return []
+      }
+
+      const formatted = sqlFormatter.format(sql)
+      return [
+        {
+          range: model.getFullModelRange(),
+          text: formatted,
+        },
+      ]
+    },
+  })
+
+  // 注册选区格式化提供者
+  monaco.languages.registerDocumentRangeFormattingEditProvider('sql', {
+    provideDocumentRangeFormattingEdits(model, range) {
+      const sql = model.getValueInRange(range)
+      if (!sqlFormatter.canFormat(sql)) {
+        return []
+      }
+
+      const formatted = sqlFormatter.format(sql)
+      return [
+        {
+          range: range,
+          text: formatted,
+        },
+      ]
+    },
+  })
+}
+
 const handleFormat = () => {
   editor?.trigger('keyboard', 'editor.action.formatDocument', null)
 }
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-white">
-    <!-- 查询标签页 -->
-    <QueryTabs />
+    <div class="h-full flex flex-col bg-white dark:bg-surface-900">
+        <!-- 查询标签页 -->
+        <QueryTabs />
 
-    <!-- 工具栏 -->
-    <EditorToolbar
-      :is-executing="queryStore.activeTab?.isExecuting || false"
-      :can-execute="!!connectionStore.activeConnectionId"
-      @execute="handleExecuteQuery"
-      @execute-selected="handleExecuteSelected"
-      @format="handleFormat"
-    />
+        <!-- 工具栏 -->
+        <EditorToolbar
+            :is-executing="queryStore.activeTab?.isExecuting || false"
+            :can-execute="!!connectionStore.activeConnectionId"
+            @execute="handleExecuteQuery"
+            @execute-selected="handleExecuteSelected"
+            @format="handleFormat"
+        />
 
-    <!-- 编辑器区域 -->
-    <div
-      ref="editorContainer"
-      class="flex-1 min-h-0"
-    />
-  </div>
+        <!-- 编辑器区域 -->
+        <div ref="editorContainer" class="flex-1 min-h-0" />
+    </div>
 </template>

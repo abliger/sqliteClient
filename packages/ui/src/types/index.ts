@@ -25,6 +25,53 @@ export interface ConnectionInfo {
   metadata: DatabaseMetadata
 }
 
+// 查询执行详细信息 - 用于性能诊断
+export interface QueryExecutionInfo {
+  /** 总执行时间（毫秒） */
+  execution_time_ms: number
+  /** 查询计划分析时间（毫秒） */
+  plan_time_ms?: number
+  /** 实际执行时间（毫秒，不包括计划分析） */
+  query_time_ms?: number
+  /** 扫描的行数（估计值） */
+  rows_scanned?: number
+  /** 返回的行数 */
+  rows_returned: number
+  /** 是否使用了索引 */
+  used_index?: boolean
+  /** 使用的索引列表 */
+  indexes_used: string[]
+  /** 查询计划详情 */
+  query_plan: QueryPlanStep[]
+  /** 是否全表扫描 */
+  is_full_table_scan?: boolean
+  /** 警告信息（如慢查询警告） */
+  warnings: QueryWarning[]
+  /** 优化建议 */
+  suggestions: string[]
+}
+
+/** 查询警告 */
+export interface QueryWarning {
+  level: WarningLevel
+  message: string
+  code?: string
+}
+
+export type WarningLevel = 'info' | 'warning' | 'error'
+
+/** 查询计划步骤 */
+export interface QueryPlanStep {
+  /** 步骤序号 */
+  id: number
+  /** 父步骤序号 */
+  parent?: number
+  /** 不使用的列 */
+  not_used?: number
+  /** 详细信息 */
+  detail: string
+}
+
 // 查询相关类型
 export type CellValue = 
   | { type: 'Null' }
@@ -45,13 +92,16 @@ export interface QueryResultRows {
   total_count?: number
   stream_id?: string
   has_more: boolean
+  /** 详细的执行信息 */
+  execution_info: QueryExecutionInfo
 }
 
 export interface QueryResultExecution {
   type: 'execution'
   rows_affected: number
   last_insert_id?: number
-  execution_time_ms: number
+  /** 详细的执行信息 */
+  execution_info: QueryExecutionInfo
 }
 
 export type QueryResult = QueryResultRows | QueryResultExecution
@@ -160,22 +210,6 @@ export interface QueryTab {
   isExecuting: boolean
   executionTime?: number
 }
-
-// 可序列化的 QueryTab（用于存储）
-export interface SavedQueryTab {
-  id: string
-  name: string
-  sql: string
-}
-
-// 每个连接的 Query Tabs 状态
-export interface ConnectionQueryState {
-  tabs: SavedQueryTab[]
-  activeTabId: string
-}
-
-// 所有连接的 Query Tabs 存储
-export type SavedQueryTabs = Record<string, ConnectionQueryState>
 
 export interface EditorState {
   content: string

@@ -14,13 +14,129 @@ pub enum QueryResult {
         total_count: Option<usize>,
         stream_id: Option<String>,
         has_more: bool,
+        /// 详细的执行信息
+        execution_info: QueryExecutionInfo,
     },
     #[serde(rename = "execution")]
     Execution {
         rows_affected: usize,
         last_insert_id: Option<i64>,
-        execution_time_ms: u64,
+        /// 详细的执行信息
+        execution_info: QueryExecutionInfo,
     },
+}
+
+/// 查询执行详细信息 - 用于性能诊断
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueryExecutionInfo {
+    /// 总执行时间（毫秒）
+    pub execution_time_ms: u64,
+    /// 查询计划分析时间（毫秒）
+    pub plan_time_ms: Option<u64>,
+    /// 实际执行时间（毫秒，不包括计划分析）
+    pub query_time_ms: Option<u64>,
+    /// 扫描的行数（估计值）
+    pub rows_scanned: Option<usize>,
+    /// 返回的行数
+    pub rows_returned: usize,
+    /// 是否使用了索引
+    pub used_index: Option<bool>,
+    /// 使用的索引列表
+    pub indexes_used: Vec<String>,
+    /// 查询计划详情
+    pub query_plan: Vec<QueryPlanStep>,
+    /// 是否全表扫描
+    pub is_full_table_scan: Option<bool>,
+    /// 警告信息（如慢查询警告）
+    pub warnings: Vec<QueryWarning>,
+    /// 优化建议
+    pub suggestions: Vec<String>,
+}
+
+impl QueryExecutionInfo {
+    pub fn new(execution_time_ms: u64, rows_returned: usize) -> Self {
+        Self {
+            execution_time_ms,
+            plan_time_ms: None,
+            query_time_ms: None,
+            rows_scanned: None,
+            rows_returned,
+            used_index: None,
+            indexes_used: Vec::new(),
+            query_plan: Vec::new(),
+            is_full_table_scan: None,
+            warnings: Vec::new(),
+            suggestions: Vec::new(),
+        }
+    }
+
+    /// 添加慢查询警告（如果执行时间超过阈值）
+    pub fn check_slow_query(&mut self, threshold_ms: u64) {
+        if self.execution_time_ms > threshold_ms {
+            self.warnings.push(QueryWarning {
+                level: WarningLevel::Warning,
+                message: format!(
+                    "查询执行时间较长 ({} ms)，建议优化",
+                    self.execution_time_ms
+                ),
+                code: Some("SLOW_QUERY".to_string()),
+            });
+            self.suggestions.push("考虑添加索引或优化查询条件".to_string());
+        }
+    }
+
+    /// 检查是否使用了索引
+    pub fn check_index_usage(&mut self) {
+        if let Some(used_index) = self.used_index {
+            if !used_index && self.rows_scanned.unwrap_or(0) > 1000 {
+                self.warnings.push(QueryWarning {
+                    level: WarningLevel::Warning,
+                    message: "未使用索引，可能导致全表扫描".to_string(),
+                    code: Some("NO_INDEX_USED".to_string()),
+                });
+                self.suggestions.push("为 WHERE、JOIN、ORDER BY 子句中的列添加索引".to_string());
+            }
+        }
+    }
+
+    /// 检查是否全表扫描
+    pub fn check_full_table_scan(&mut self) {
+        if self.is_full_table_scan == Some(true) {
+            self.warnings.push(QueryWarning {
+                level: WarningLevel::Info,
+                message: "查询执行了全表扫描".to_string(),
+                code: Some("FULL_TABLE_SCAN".to_string()),
+            });
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueryWarning {
+    pub level: WarningLevel,
+    pub message: String,
+    pub code: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WarningLevel {
+    Info,
+    Warning,
+    Error,
+}
+
+/// 查询计划步骤
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueryPlanStep {
+    /// 步骤序号
+    pub id: i32,
+    /// 父步骤序号
+    pub parent: Option<i32>,
+    /// 不使用的列
+    pub not_used: Option<i32>,
+    /// 详细信息
+    pub detail: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -82,7 +198,7 @@ impl std::fmt::Display for CellValue {
 pub struct ExecutionResult {
     pub sql: String,
     pub result: QueryResult,
-    pub execution_time_ms: u64,
+    pub execution_info: QueryExecutionInfo,
     pub executed_at: DateTime<Utc>,
 }
 
@@ -103,6 +219,15 @@ pub struct StreamStatus {
     pub fetched_rows: usize,
     pub has_more: bool,
     pub columns: Vec<String>,
+}
+
+/// 流状态（内部使用）
+#[derive(Debug)]
+pub struct StreamState {
+    pub columns: Vec<String>,
+    pub rows: Vec<QueryRow>,
+    pub current_index: usize,
+    pub is_complete: bool,
 }
 
 #[cfg(test)]
@@ -172,12 +297,14 @@ mod tests {
             total_count: Some(100),
             stream_id: None,
             has_more: false,
+            execution_info: QueryExecutionInfo::new(100, 0),
         };
 
         let json = serde_json::to_string(&result).unwrap();
         assert!(json.contains("rows"));
         assert!(json.contains("id"));
         assert!(json.contains("name"));
+        assert!(json.contains("execution_info"));
     }
 
     #[test]
@@ -185,13 +312,14 @@ mod tests {
         let result = QueryResult::Execution {
             rows_affected: 5,
             last_insert_id: Some(42),
-            execution_time_ms: 100,
+            execution_info: QueryExecutionInfo::new(50, 0),
         };
 
         let json = serde_json::to_string(&result).unwrap();
         assert!(json.contains("execution"));
         assert!(json.contains("rows_affected"));
         assert!(json.contains("42"));
+        assert!(json.contains("execution_info"));
     }
 
     #[test]
@@ -219,13 +347,21 @@ mod tests {
             result: QueryResult::Execution {
                 rows_affected: 1,
                 last_insert_id: Some(1),
-                execution_time_ms: 50,
+                execution_info: QueryExecutionInfo::new(50, 0),
             },
-            execution_time_ms: 50,
+            execution_info: QueryExecutionInfo::new(50, 0),
             executed_at: Utc::now(),
         };
 
         let json = serde_json::to_string(&exec_result).unwrap();
         assert!(json.contains("SELECT * FROM users"));
+    }
+
+    #[test]
+    fn test_query_execution_info_warnings() {
+        let mut info = QueryExecutionInfo::new(5000, 100);
+        info.check_slow_query(1000);
+        assert_eq!(info.warnings.len(), 1);
+        assert_eq!(info.warnings[0].code, Some("SLOW_QUERY".to_string()));
     }
 }

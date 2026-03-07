@@ -68,20 +68,20 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    class="relative flex-shrink-0 bg-white border-r border-surface-200 flex flex-col"
-    :style="{ width: `${width}px` }"
-  >
-    <!-- 内容区域 -->
-    <div class="flex-1 overflow-hidden">
-      <slot />
-    </div>
-
-    <!-- 调整大小的手柄 -->
     <div
-      class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-400 transition-colors"
-      :class="isResizing ? 'bg-primary-500' : 'bg-transparent'"
-      @mousedown="startResize"
-    />
-  </div>
+        class="relative flex-shrink-0 bg-white dark:bg-surface-900 border-r border-surface-200 dark:border-surface-700 flex flex-col"
+        :style="{ width: `${width}px` }"
+    >
+        <!-- 内容区域 -->
+        <div class="flex-1 overflow-hidden">
+            <slot />
+        </div>
+
+        <!-- 调整大小的手柄 -->
+        <div
+            class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-400 transition-colors"
+            :class="isResizing ? 'bg-primary-500' : 'bg-transparent'"
+            @mousedown="startResize"
+        />
+    </div>
 </template>

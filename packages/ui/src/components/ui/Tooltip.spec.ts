@@ -36,7 +36,7 @@ describe('Tooltip Component', () => {
       },
     })
 
-    expect(wrapper.vm.props.position).toBe('top')
+    expect(wrapper.props('position')).toBe('top')
   })
 
   it('should accept delay prop', () => {
@@ -50,7 +50,7 @@ describe('Tooltip Component', () => {
       },
     })
 
-    expect(wrapper.vm.props.delay).toBe(500)
+    expect(wrapper.props('delay')).toBe(500)
   })
 
   it('should show tooltip on mouse enter after delay', async () => {
