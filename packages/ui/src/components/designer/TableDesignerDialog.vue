@@ -201,7 +201,11 @@ function removeIndex(index: number) {
 async function previewDDL() {
   if (!validateForm()) return
 
+  // 立即切换到 DDL 标签页，提升用户体验
+  activeTab.value = 'ddl'
   isLoading.value = true
+  previewResult.value = null
+
   try {
     if (isEditMode.value && props.existingTable) {
       // 编辑模式：生成变更
@@ -215,9 +219,10 @@ async function previewDDL() {
       // 新建模式
       previewResult.value = await schemaService.previewCreateTable(tableForm.value)
     }
-    activeTab.value = 'ddl'
   } catch (err) {
     toastStore.error('预览DDL失败', String(err))
+    // 出错时回到字段标签页，方便用户修改
+    activeTab.value = 'columns'
   } finally {
     isLoading.value = false
   }
