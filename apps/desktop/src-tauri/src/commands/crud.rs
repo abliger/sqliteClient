@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use tauri::State;
 
 use crate::core::connection_manager::ConnectionManager;
-use crate::models::query::{CellValue, QueryResult, QueryRow};
+use crate::models::query::{CellValue, QueryResult};
 use crate::utils::error::{AppError, AppResult};
 
 #[tauri::command]

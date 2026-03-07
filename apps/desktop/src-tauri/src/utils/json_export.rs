@@ -4,7 +4,7 @@ use std::path::Path;
 
 use serde_json::Value;
 
-use crate::utils::error::{AppError, AppResult};
+use crate::utils::error::AppResult;
 use crate::models::query::QueryRow;
 
 pub fn export_rows_to_json(
@@ -26,6 +26,7 @@ pub fn export_rows_to_json(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn export_rows_to_jsonl(rows: &[QueryRow], output_path: &Path) -> AppResult<()> {
     let mut file = File::create(output_path)?;
     
@@ -37,16 +38,19 @@ pub fn export_rows_to_jsonl(rows: &[QueryRow], output_path: &Path) -> AppResult<
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn write_json_array_start<W: Write>(writer: &mut W) -> AppResult<()> {
     writer.write_all(b"[")?;
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn write_json_array_end<W: Write>(writer: &mut W) -> AppResult<()> {
     writer.write_all(b"]\n")?;
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn write_json_row<W: Write>(
     writer: &mut W,
     row: &QueryRow,

@@ -50,3 +50,46 @@
 2026-03-07T11:01:50.131122Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
 2026-03-07T11:01:51.731907Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/editor/SQLEditor.vue")}
 2026-03-07T11:01:51.731920Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T11:13:24.612228Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/dist")}
+2026-03-07T11:13:24.612255Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T11:13:24.612280Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-03-07T11:13:37.112479Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/commands/connection.rs")}
+2026-03-07T11:13:37.112488Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:13:38.212360Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/commands/crud.rs")}
+2026-03-07T11:13:38.212370Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:13:40.112068Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/commands/query.rs")}
+2026-03-07T11:13:40.112076Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:13:57.311961Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/core/connection_manager.rs")}
+2026-03-07T11:13:57.311971Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:13:57.811696Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/core/history_store.rs")}
+2026-03-07T11:13:57.811707Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:13:59.111318Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/core/schema_analyzer.rs")}
+2026-03-07T11:13:59.111327Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:14:20.711687Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/utils/error.rs")}
+2026-03-07T11:14:20.711697Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:14:22.610938Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/utils/csv_export.rs")}
+2026-03-07T11:14:22.610949Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:14:23.611923Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/utils/json_export.rs")}
+2026-03-07T11:14:23.611934Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:14:29.510794Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/core/mod.rs")}
+2026-03-07T11:14:29.510809Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:14:33.011318Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/models/mod.rs")}
+2026-03-07T11:14:33.011327Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:14:33.809859Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/utils/mod.rs")}
+2026-03-07T11:14:33.809867Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:14:45.710483Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/core/query_engine.rs")}
+2026-03-07T11:14:45.710492Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:14:54.311234Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/models/query.rs")}
+2026-03-07T11:14:54.311243Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:14:55.209704Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/models/history.rs")}
+2026-03-07T11:14:55.209718Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:15:15.809372Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/utils/error.rs")}
+2026-03-07T11:15:15.809385Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:15:17.809875Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/commands/connection.rs")}
+2026-03-07T11:15:17.809885Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:15:21.708293Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/core/connection_manager.rs")}
+2026-03-07T11:15:21.708306Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:15:23.509155Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/utils/csv_export.rs")}
+2026-03-07T11:15:23.509168Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))
+2026-03-07T11:15:27.408698Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/desktop/src-tauri/src/utils/json_export.rs")}
+2026-03-07T11:15:27.408711Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/desktop"), path: AnchoredSystemPathBuf("apps/desktop") }}))

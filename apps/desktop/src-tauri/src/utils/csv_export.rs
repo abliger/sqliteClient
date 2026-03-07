@@ -1,8 +1,7 @@
-use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use crate::utils::error::{AppError, AppResult};
+use crate::utils::error::AppResult;
 use crate::models::query::QueryRow;
 
 pub fn export_rows_to_csv(
@@ -33,6 +32,7 @@ pub fn export_rows_to_csv(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn write_csv_header<W: Write>(
     writer: &mut csv::Writer<W>,
     columns: &[String],
@@ -41,6 +41,7 @@ pub fn write_csv_header<W: Write>(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn write_csv_row<W: Write>(
     writer: &mut csv::Writer<W>,
     row: &QueryRow,

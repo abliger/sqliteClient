@@ -2,10 +2,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use parking_lot::RwLock;
-use r2d2::{Pool, PooledConnection};
+use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::OpenFlags;
-use tauri::AppHandle;
 
 use crate::core::history_store::HistoryStore;
 use crate::models::connection::{ConnectionConfig, ConnectionInfo, ConnectionStatus, DatabaseMetadata};
@@ -19,6 +18,7 @@ pub struct ConnectionHandle {
 
 pub struct ConnectionManager {
     connections: Arc<RwLock<HashMap<String, ConnectionHandle>>>,
+    #[allow(dead_code)]
     history_store: Arc<HistoryStore>,
 }
 
@@ -68,6 +68,7 @@ impl ConnectionManager {
         Ok(info)
     }
 
+    #[allow(dead_code)]
     pub fn create_new_database(&self, name: String, db_path: String) -> AppResult<ConnectionInfo> {
         // 创建新数据库文件
         let manager = SqliteConnectionManager::file(&db_path);
@@ -106,6 +107,7 @@ impl ConnectionManager {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn get_connection(&self, _connection_id: &str) -> AppResult<Arc<ConnectionHandle>> {
         Err(AppError::InternalError("Use get_pool instead".to_string()))
     }
@@ -191,6 +193,7 @@ impl ConnectionManager {
         })
     }
 
+    #[allow(dead_code)]
     pub fn refresh_metadata(&self, connection_id: &str) -> AppResult<DatabaseMetadata> {
         let pool = self.get_pool(connection_id)?;
         let metadata = self.fetch_metadata(&pool)?;

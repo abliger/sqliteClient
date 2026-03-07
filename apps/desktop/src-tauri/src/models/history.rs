@@ -26,6 +26,7 @@ pub struct QueryHistoryFilter {
 }
 
 impl QueryHistoryFilter {
+    #[allow(dead_code)]
     pub fn with_limit(limit: usize) -> Self {
         Self {
             limit,

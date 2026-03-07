@@ -1,7 +1,7 @@
 use tauri::State;
 
 use crate::core::connection_manager::ConnectionManager;
-use crate::models::connection::{ConnectionConfig, ConnectionInfo};
+use crate::models::connection::ConnectionInfo;
 use crate::utils::error::AppResult;
 
 #[tauri::command]
@@ -13,6 +13,7 @@ pub async fn create_connection(
     connection_manager.create_connection(name, db_path)
 }
 
+#[allow(dead_code)]
 #[tauri::command]
 pub async fn create_new_database(
     connection_manager: State<'_, ConnectionManager>,
@@ -50,6 +51,7 @@ pub async fn test_connection(db_path: String) -> AppResult<()> {
     ConnectionManager::test_connection(&db_path)
 }
 
+#[allow(dead_code)]
 #[tauri::command]
 pub async fn refresh_connection_metadata(
     connection_manager: State<'_, ConnectionManager>,

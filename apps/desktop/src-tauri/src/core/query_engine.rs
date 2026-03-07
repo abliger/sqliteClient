@@ -114,10 +114,12 @@ impl QueryEngine {
 }
 
 // 流式查询管理器
+#[allow(dead_code)]
 pub struct StreamManager {
     streams: Arc<Mutex<HashMap<String, StreamState>>>,
 }
 
+#[allow(dead_code)]
 struct StreamState {
     columns: Vec<String>,
     rows: Vec<QueryRow>,
@@ -125,6 +127,7 @@ struct StreamState {
     is_complete: bool,
 }
 
+#[allow(dead_code)]
 impl StreamManager {
     pub fn new() -> Self {
         Self {
@@ -132,6 +135,7 @@ impl StreamManager {
         }
     }
 
+    #[allow(dead_code)]
     pub fn create_stream(
         &self,
         pool: &Pool<SqliteConnectionManager>,
@@ -170,6 +174,7 @@ impl StreamManager {
         }
     }
 
+    #[allow(dead_code)]
     pub fn fetch_batch(&self, stream_id: &str, batch_size: usize) -> AppResult<Vec<QueryRow>> {
         let mut streams = self.streams.lock();
         let state = streams
@@ -189,6 +194,7 @@ impl StreamManager {
         Ok(batch)
     }
 
+    #[allow(dead_code)]
     pub fn close_stream(&self, stream_id: &str) {
         self.streams.lock().remove(stream_id);
     }

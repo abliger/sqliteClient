@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+#[allow(unused_imports)]
+use serde::Serialize;
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
@@ -21,6 +22,7 @@ pub enum AppError {
     #[error("Not found: {0}")]
     NotFound(String),
     
+    #[allow(dead_code)]
     #[error("Operation cancelled")]
     Cancelled,
     

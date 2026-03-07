@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::params;
+
 
 use crate::models::schema::{ColumnInfo, DatabaseSchema, ForeignKeyInfo, IndexInfo, TableInfo, TriggerInfo};
 use crate::models::erdiagram::{ColumnNode, ERDiagram, RelationEdge, RelationType, TableNode};
@@ -14,7 +14,7 @@ impl SchemaAnalyzer {
     pub fn get_database_schema(
         pool: &Pool<SqliteConnectionManager>,
     ) -> AppResult<DatabaseSchema> {
-        let conn = pool.get().map_err(|e| AppError::ConnectionError(e.to_string()))?;
+        let _conn = pool.get().map_err(|e| AppError::ConnectionError(e.to_string()))?;
         
         let tables = Self::list_tables(pool)?;
         let indexes = Self::list_indexes(pool)?;

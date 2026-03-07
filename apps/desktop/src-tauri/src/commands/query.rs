@@ -78,8 +78,8 @@ pub async fn execute_query_stream(
 
 #[tauri::command]
 pub async fn fetch_stream_batch(
-    stream_id: String,
-    batch_size: usize,
+    _stream_id: String,
+    _batch_size: usize,
 ) -> AppResult<Vec<crate::models::query::QueryRow>> {
     // 简化实现：流式查询需要更复杂的存储机制
     // 这里返回空数组，表示没有更多数据
@@ -88,7 +88,7 @@ pub async fn fetch_stream_batch(
 
 #[tauri::command]
 pub async fn cancel_query(
-    query_id: String,
+    _query_id: String,
 ) -> AppResult<()> {
     // 实现查询取消逻辑
     Ok(())

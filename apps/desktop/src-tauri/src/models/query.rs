@@ -77,6 +77,7 @@ impl std::fmt::Display for CellValue {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionResult {
     pub sql: String,
@@ -85,6 +86,7 @@ pub struct ExecutionResult {
     pub executed_at: DateTime<Utc>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct StreamHandle {
     pub id: String,
