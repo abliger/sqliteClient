@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { PlusIcon, XMarkIcon, FolderOpenIcon, DocumentPlusIcon } from '@heroicons/vue/24/outline'
 import { useConnectionStore } from '@stores/connection'
 import { open } from '@tauri-apps/plugin-dialog'
+import Tooltip from '@components/ui/Tooltip.vue'
 
 const connectionStore = useConnectionStore()
 const isCreating = ref(false)
@@ -64,20 +65,22 @@ const formatFileSize = (bytes: number): string => {
   <div class="h-12 bg-surface-100 border-b border-surface-200 flex items-center px-2 space-x-1">
     <!-- 新建/打开按钮 -->
     <div class="flex items-center space-x-1 mr-2">
-      <button
-        class="p-1.5 rounded hover:bg-surface-200 text-surface-600"
-        title="Open Database"
-        @click="handleOpenDatabase"
-      >
-        <FolderOpenIcon class="w-5 h-5" />
-      </button>
-      <button
-        class="p-1.5 rounded hover:bg-surface-200 text-surface-600"
-        title="New Database"
-        @click="handleCreateDatabase"
-      >
-        <DocumentPlusIcon class="w-5 h-5" />
-      </button>
+      <Tooltip content="Open Database" position="bottom">
+        <button
+          class="p-1.5 rounded hover:bg-surface-200 text-surface-600"
+          @click="handleOpenDatabase"
+        >
+          <FolderOpenIcon class="w-5 h-5" />
+        </button>
+      </Tooltip>
+      <Tooltip content="New Database" position="bottom">
+        <button
+          class="p-1.5 rounded hover:bg-surface-200 text-surface-600"
+          @click="handleCreateDatabase"
+        >
+          <DocumentPlusIcon class="w-5 h-5" />
+        </button>
+      </Tooltip>
     </div>
 
     <div class="w-px h-6 bg-surface-300 mx-2" />
