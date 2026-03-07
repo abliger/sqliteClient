@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted, computed, nextTick } from 'vue'
+import { ref, watch, computed, nextTick, onUnmounted } from 'vue'
 import type { PreviewDDLResult } from '@types'
 import { useSettingsStore } from '@stores/settings'
 import * as monaco from 'monaco-editor'
@@ -19,7 +19,11 @@ const settingsStore = useSettingsStore()
 const showCopiedToast = ref(false)
 const editorContainer = ref<HTMLDivElement>()
 let editor: MonacoEditor.IStandaloneCodeEditor | null = null
-const isInitializing = ref(false)
+
+// 重试定时器
+let initRetryTimer: number | null = null
+const MAX_RETRY_COUNT = 20
+let retryCount = 0
 
 // Monaco 主题映射
 const monacoTheme = computed(() => {
@@ -30,21 +34,43 @@ const monacoTheme = computed(() => {
   return theme === 'dark' ? 'vs-dark' : 'vs'
 })
 
-// 初始化 Monaco 编辑器
-async function initEditor() {
-  if (editor || !editorContainer.value || isInitializing.value) return
-  
-  // 确保容器有尺寸
-  const rect = editorContainer.value.getBoundingClientRect()
-  if (rect.width === 0 || rect.height === 0) {
-    console.log('Editor container has no size, retrying...')
-    return false
+// 初始化编辑器（带重试机制）
+function initEditorWithRetry() {
+  // 清除之前的定时器
+  if (initRetryTimer) {
+    clearTimeout(initRetryTimer)
+    initRetryTimer = null
   }
   
-  isInitializing.value = true
+  // 如果已经初始化，直接更新内容
+  if (editor) {
+    updateEditorContent()
+    editor.layout()
+    return
+  }
   
+  // 检查容器是否存在
+  if (!editorContainer.value) {
+    console.log('[DDLPreview] Container not available yet')
+    scheduleRetry()
+    return
+  }
+  
+  // 检查容器尺寸
+  const container = editorContainer.value
+  const rect = container.getBoundingClientRect()
+  
+  console.log('[DDLPreview] Container size check:', rect.width, 'x', rect.height)
+  
+  if (rect.width === 0 || rect.height === 0) {
+    console.log('[DDLPreview] Container has no size, will retry...')
+    scheduleRetry()
+    return
+  }
+  
+  // 容器有尺寸，初始化编辑器
   try {
-    editor = monaco.editor.create(editorContainer.value, {
+    editor = monaco.editor.create(container, {
       value: props.preview?.sql || '',
       language: 'sql',
       theme: monacoTheme.value,
@@ -52,7 +78,7 @@ async function initEditor() {
       fontFamily: 'JetBrains Mono, Fira Code, Consolas, monospace',
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
-      automaticLayout: false,
+      automaticLayout: true,
       readOnly: true,
       lineNumbers: 'on',
       folding: true,
@@ -65,85 +91,72 @@ async function initEditor() {
       wordWrap: 'on',
     })
     
-    console.log('Editor initialized with value:', props.preview?.sql?.substring(0, 50))
-    return true
-  } finally {
-    isInitializing.value = false
+    retryCount = 0
+    console.log('[DDLPreview] Editor initialized successfully')
+  } catch (err) {
+    console.error('[DDLPreview] Failed to initialize editor:', err)
+    scheduleRetry()
   }
 }
 
-// 使用 ResizeObserver 监听容器尺寸变化
-let resizeObserver: ResizeObserver | null = null
-
-function setupResizeObserver() {
-  if (!editorContainer.value) return
+// 安排重试
+function scheduleRetry() {
+  if (retryCount >= MAX_RETRY_COUNT) {
+    console.warn('[DDLPreview] Max retry count reached, giving up')
+    return
+  }
   
-  resizeObserver = new ResizeObserver((entries) => {
-    for (const entry of entries) {
-      const { width, height } = entry.contentRect
-      if (width > 0 && height > 0) {
-        if (editor) {
-          // 编辑器已存在，只需重新布局
-          editor.layout()
-        } else if (props.active) {
-          // 容器有尺寸且组件激活，初始化编辑器
-          initEditor()
-        }
-      }
+  retryCount++
+  initRetryTimer = window.setTimeout(() => {
+    if (props.active) {
+      initEditorWithRetry()
     }
-  })
+  }, 100) as unknown as number
+}
+
+// 更新编辑器内容
+function updateEditorContent() {
+  if (!editor || !props.preview?.sql) return
   
-  resizeObserver.observe(editorContainer.value)
+  const currentValue = editor.getValue()
+  if (currentValue !== props.preview.sql) {
+    editor.setValue(props.preview.sql)
+    console.log('[DDLPreview] SQL content updated')
+  }
 }
 
 // 监听 active 变化
 watch(() => props.active, async (isActive) => {
+  console.log('[DDLPreview] Active changed to:', isActive)
+  
   if (!isActive) return
   
   // 等待 DOM 更新
   await nextTick()
   
-  // 如果编辑器已存在，更新内容并布局
-  if (editor) {
-    if (props.preview?.sql && editor.getValue() !== props.preview.sql) {
-      editor.setValue(props.preview.sql)
-    }
-    editor.layout()
-    return
-  }
-  
-  // 否则尝试初始化
-  setupResizeObserver()
-  
-  // 如果容器已有尺寸，直接初始化
-  if (editorContainer.value) {
-    const rect = editorContainer.value.getBoundingClientRect()
-    if (rect.width > 0 && rect.height > 0) {
-      await initEditor()
-    }
-  }
+  // 重置重试计数并开始初始化
+  retryCount = 0
+  initEditorWithRetry()
 })
 
 // 监听 SQL 变化
 watch(() => props.preview?.sql, (sql) => {
-  if (sql === undefined || !editor) return
-  
-  if (editor.getValue() !== sql) {
-    editor.setValue(sql)
-    console.log('SQL updated:', sql.substring(0, 50))
+  console.log('[DDLPreview] SQL changed, has value:', !!sql)
+  if (sql && props.active) {
+    if (editor) {
+      updateEditorContent()
+    } else {
+      // SQL 来了但编辑器还没初始化，开始初始化
+      retryCount = 0
+      initEditorWithRetry()
+    }
   }
-})
-
-// 监听主题变化
-watch(monacoTheme, (newTheme) => {
-  monaco.editor.setTheme(newTheme)
 })
 
 // 清理
 onUnmounted(() => {
-  if (resizeObserver) {
-    resizeObserver.disconnect()
-    resizeObserver = null
+  if (initRetryTimer) {
+    clearTimeout(initRetryTimer)
   }
   if (editor) {
     editor.dispose()
@@ -287,10 +300,7 @@ function downloadSQL() {
               <span class="text-xs font-medium text-gray-500 dark:text-gray-400">生成的 SQL</span>
               <span class="text-xs text-gray-400">{{ preview.sql?.length || 0 }} 字符</span>
             </div>
-            <!-- 调试：显示原始 SQL 内容 -->
-            <pre v-if="preview.sql?.includes('<')" class="p-4 text-xs text-red-500 bg-red-50 dark:bg-red-900/20 overflow-auto max-h-32">警告：SQL 包含 HTML 标签！
-{{ preview.sql }}</pre>
-            <div ref="editorContainer" class="h-64 w-full" />
+            <div ref="editorContainer" class="h-64 w-full min-h-[200px]" />
           </div>
         </div>
       </template>

@@ -85,6 +85,20 @@ impl HistoryStore {
     pub fn add_history_item(&self, item: &QueryHistoryItem) -> AppResult<()> {
         let conn = self.conn.lock();
 
+        // 检查是否存在相同的 SQL 记录（完全匹配，不区分连接）
+        let exists: bool = conn
+            .query_row(
+                "SELECT 1 FROM query_history WHERE sql = ?1 LIMIT 1",
+                params![item.sql],
+                |_| Ok(true),
+            )
+            .unwrap_or(false);
+
+        // 如果存在相同的 SQL，则不保存
+        if exists {
+            return Ok(());
+        }
+
         conn.execute(
             r#"
             INSERT INTO query_history 

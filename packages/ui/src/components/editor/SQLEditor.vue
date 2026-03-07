@@ -337,7 +337,12 @@ const handleToggleTemplates = () => {
 
 // 插入 SQL 片段
 const handleInsertSnippet = (sql: string) => {
-  if (!editor) return
+  console.log('[SQLEditor] handleInsertSnippet called with sql:', sql)
+  
+  if (!editor) {
+    console.warn('[SQLEditor] Editor not ready')
+    return
+  }
 
   const selection = editor.getSelection()
   if (selection && !selection.isEmpty()) {
@@ -412,7 +417,7 @@ const handleInsertSnippet = (sql: string) => {
           >
             <div
               v-if="showTemplatePanel"
-              class="border-l border-surface-200 dark:border-surface-700 overflow-hidden"
+              class="w-80 border-l border-surface-200 dark:border-surface-700 overflow-hidden flex-shrink-0"
             >
               <TemplatePanel
                 @insert="handleInsertSnippet"

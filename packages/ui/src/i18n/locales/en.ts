@@ -67,6 +67,19 @@ export default {
         deleteTable: 'Delete Table',
     },
 
+    // ER Diagram
+    erDiagram: {
+        title: 'ER Diagram',
+        zoomIn: 'Zoom In',
+        zoomOut: 'Zoom Out',
+        resetView: 'Reset View',
+        refresh: 'Refresh',
+        primaryKey: 'Primary Key',
+        foreignKey: 'Foreign Key',
+        noTables: 'No tables to display',
+        clickRefresh: 'Click refresh to load ER diagram',
+    },
+
     // CRUD Log
     crudLog: {
         title: 'Operation Log',
@@ -150,6 +163,7 @@ export default {
         deleteError: 'Failed to delete row',
         operationLogs: 'Operation Logs',
         queryHistory: 'Query History',
+        compare: 'Compare',
     },
 
     // Query History
@@ -224,7 +238,7 @@ export default {
         namePlaceholder: 'Enter snippet name',
         description: 'Description',
         descriptionPlaceholder: 'Enter description (optional)',
-        category: 'Category',
+        categoryLabel: 'Category',
         tags: 'Tags',
         tagsPlaceholder: 'Separate tags with commas',
         sql: 'SQL',

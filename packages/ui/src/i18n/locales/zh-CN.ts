@@ -67,6 +67,19 @@ export default {
         deleteTable: '删除表',
     },
 
+    // ER Diagram
+    erDiagram: {
+        title: 'ER 图',
+        zoomIn: '放大',
+        zoomOut: '缩小',
+        resetView: '重置视图',
+        refresh: '刷新',
+        primaryKey: '主键',
+        foreignKey: '外键',
+        noTables: '暂无表可显示',
+        clickRefresh: '点击刷新加载 ER 图',
+    },
+
     // CRUD Log
     crudLog: {
         title: '操作日志',
@@ -150,6 +163,7 @@ export default {
         deleteError: '删除记录失败',
         operationLogs: '操作日志',
         queryHistory: '查询历史',
+        compare: '对比',
     },
 
     // Query History
@@ -223,7 +237,7 @@ export default {
         namePlaceholder: '输入片段名称',
         description: '描述',
         descriptionPlaceholder: '输入描述（可选）',
-        category: '分类',
+        categoryLabel: '分类',
         tags: '标签',
         tagsPlaceholder: '用逗号分隔多个标签',
         sql: 'SQL',

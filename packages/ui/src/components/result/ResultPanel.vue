@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDebounceFn } from '@vueuse/core'
 import { useQueryStore } from '@stores/query'
@@ -18,7 +18,8 @@ import CrudLogPanel from './CrudLogPanel.vue'
 import QueryHistoryPanel from './QueryHistoryPanel.vue'
 import ResultComparePanel from './ResultComparePanel.vue'
 import EditRowDialog from '@components/dialogs/EditRowDialog.vue'
-import { ArrowDownTrayIcon, TableCellsIcon, CheckCircleIcon, ArrowsRightLeftIcon } from '@heroicons/vue/24/outline'
+import ERDiagram from '@components/explorer/ERDiagram.vue'
+import { ArrowDownTrayIcon, TableCellsIcon, CheckCircleIcon, ArrowsRightLeftIcon, CameraIcon, ShareIcon } from '@heroicons/vue/24/outline'
 import type { QueryRow, CellValue, CrudOperationType, CrudOperationLog } from '@types'
 
 const { t } = useI18n()
@@ -27,10 +28,26 @@ const connectionStore = useConnectionStore()
 const schemaStore = useSchemaStore()
 const toastStore = useToastStore()
 const crudLogStore = useCrudLogStore()
-const activeTab = ref<'results' | 'messages' | 'logs' | 'history' | 'compare'>('results')
+const activeTab = ref<'results' | 'messages' | 'logs' | 'history' | 'compare' | 'er'>('results')
 const isExporting = ref(false)
 const isEditDialogOpen = ref(false)
 const editingRow = ref<QueryRow | null>(null)
+const isSavingSnapshot = ref(false)
+const lastSnapshotId = ref<string | null>(null)
+
+// 加载 ER 图数据
+const loadERDiagram = async () => {
+    const connectionId = connectionStore.activeConnectionId
+    if (!connectionId) return
+    await schemaStore.loadERDiagram(connectionId)
+}
+
+// 监听标签页切换
+watch(activeTab, (newTab) => {
+    if (newTab === 'er') {
+        loadERDiagram()
+    }
+})
 
 const currentResult = computed(() => queryStore.activeTab?.result)
 const isExecuting = computed(() => queryStore.activeTab?.isExecuting || false)
@@ -340,6 +357,32 @@ const handleExportJSON = async () => {
         isExporting.value = false
     }
 }
+
+// 快速保存快照
+const handleQuickSnapshot = async () => {
+    if (!currentResult.value || currentResult.value.type !== 'rows') {
+        toastStore.warning('没有可保存的查询结果')
+        return
+    }
+
+    isSavingSnapshot.value = true
+    try {
+        const snapshot = queryStore.createSnapshot(`结果 ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`)
+        if (snapshot) {
+            lastSnapshotId.value = snapshot.id
+            const snapshotCount = queryStore.activeTabSnapshots.length
+            toastStore.success(
+                `快照已保存（共 ${snapshotCount} 个）`,
+                snapshotCount >= 2 ? '点击"对比"标签可查看对比' : '继续执行查询并保存新快照来对比'
+            )
+        } else {
+            toastStore.error('保存快照失败')
+        }
+    } finally {
+        isSavingSnapshot.value = false
+    }
+}
+
 </script>
 
 <template>
@@ -403,7 +446,7 @@ const handleExportJSON = async () => {
                     @click="activeTab = 'compare'"
                 >
                     <ArrowsRightLeftIcon class="w-3.5 h-3.5 mr-1" />
-                    {{ t('results.compare') || '对比' }}
+                    {{ t('results.compare') }}
                     <span 
                         v-if="queryStore.activeTabSnapshots.length > 0"
                         class="ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-400"
@@ -411,10 +454,33 @@ const handleExportJSON = async () => {
                         {{ queryStore.activeTabSnapshots.length }}
                     </span>
                 </button>
+                <button
+                    class="text-sm font-medium pb-2 border-b-2 transition-colors flex items-center"
+                    :class="
+                        activeTab === 'er'
+                            ? 'text-primary-600 dark:text-primary-400 border-primary-600 dark:border-primary-400'
+                            : 'text-surface-500 dark:text-surface-400 border-transparent hover:text-surface-700 dark:hover:text-surface-300'
+                    "
+                    @click="activeTab = 'er'"
+                >
+                    <ShareIcon class="w-3.5 h-3.5 mr-1" />
+                    {{ t('erDiagram.title') }}
+                </button>
             </div>
 
             <!-- 导出按钮 -->
             <div v-if="currentResult?.type === 'rows'" class="flex items-center space-x-2">
+                <!-- 保存快照按钮 -->
+                <button 
+                    class="btn-ghost text-xs text-primary-600 dark:text-primary-400" 
+                    :disabled="isSavingSnapshot"
+                    title="保存当前结果为快照，用于后续对比"
+                    @click="handleQuickSnapshot"
+                >
+                    <CameraIcon class="w-3.5 h-3.5 mr-1" />
+                    {{ isSavingSnapshot ? '保存中...' : (lastSnapshotId ? '更新快照' : '保存快照') }}
+                </button>
+                <div class="w-px h-4 bg-surface-300 dark:bg-surface-600 mx-1" />
                 <button class="btn-ghost text-xs" :disabled="isExporting" @click="handleExportCSV">
                     <ArrowDownTrayIcon class="w-3.5 h-3.5 mr-1" />
                     CSV
@@ -510,6 +576,16 @@ const handleExportJSON = async () => {
             
             <!-- Compare Tab -->
             <ResultComparePanel v-if="activeTab === 'compare'" />
+            
+            <!-- ER Diagram Tab -->
+            <div v-if="activeTab === 'er'" class="h-full">
+                <ERDiagram
+                    :diagram="schemaStore.erDiagram"
+                    :loading="schemaStore.loadingERDiagram"
+                    :error="schemaStore.erDiagramError"
+                    @refresh="loadERDiagram"
+                />
+            </div>
         </div>
     </div>
 </template>

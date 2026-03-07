@@ -25,8 +25,6 @@ const schemaStore = useSchemaStore()
 const queryStore = useQueryStore()
 const importStore = useImportStore()
 
-const activeTab = ref<'tables' | 'er'>('tables')
-
 // 表结构设计器状态
 const showDesigner = ref(false)
 const editingTable = ref<TableInfo | undefined>(undefined)
@@ -90,17 +88,6 @@ const handleGenerateInsert = (table: TableInfo) => {
 const handleOpenImport = () => {
     importStore.openWizard()
 }
-
-// const _unusedGetColumnIcon = (column: ColumnInfo) => {
-//   if (column.is_primary_key) return KeyIcon
-//   if (column.is_foreign_key) return LinkIcon
-//   return null
-// }
-
-const tabs = computed(() => [
-    { id: 'tables' as const, label: t('databaseTree.tables'), icon: TableCellsIcon },
-    { id: 'er' as const, label: t('databaseTree.erDiagram'), icon: TableCellsIcon }
-])
 </script>
 
 <template>
@@ -133,178 +120,150 @@ const tabs = computed(() => [
             </button>
         </div>
 
-        <!-- 标签页 -->
-        <div class="flex border-b border-surface-200 dark:border-surface-700">
-            <button
-                v-for="tab in tabs"
-                :key="tab.id"
-                class="flex-1 flex items-center justify-center space-x-1 py-2 text-xs font-medium transition-colors"
-                :class="
-                    activeTab === tab.id
-                        ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400 bg-primary-50 dark:bg-primary-900/20'
-                        : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800'
-                "
-                @click="activeTab = tab.id"
-            >
-                <component :is="tab.icon" class="w-4 h-4" />
-                <span>{{ tab.label }}</span>
-            </button>
-        </div>
-
-        <!-- 内容区 -->
+        <!-- 表列表 -->
         <div class="flex-1 overflow-hidden">
-            <!-- Tables Tab -->
-            <template v-if="activeTab === 'tables'">
-                <!-- Loading -->
-                <div
-                    v-if="schemaStore.isLoading"
-                    class="flex items-center justify-center h-32 text-surface-400 dark:text-surface-500"
-                >
-                    {{ t('common.loading') }}
-                </div>
+            <!-- Loading -->
+            <div
+                v-if="schemaStore.isLoading"
+                class="flex items-center justify-center h-32 text-surface-400 dark:text-surface-500"
+            >
+                {{ t('common.loading') }}
+            </div>
 
-                <!-- No Connection -->
-                <div
-                    v-else-if="!connectionStore.activeConnection"
-                    class="flex items-center justify-center h-32 text-surface-400 dark:text-surface-500 text-sm px-4 text-center"
-                >
-                    {{ t('databaseTree.noConnection') }}
-                </div>
+            <!-- No Connection -->
+            <div
+                v-else-if="!connectionStore.activeConnection"
+                class="flex items-center justify-center h-32 text-surface-400 dark:text-surface-500 text-sm px-4 text-center"
+            >
+                {{ t('databaseTree.noConnection') }}
+            </div>
 
-                <!-- No Tables -->
-                <div
-                    v-else-if="schemaStore.tables.length === 0"
-                    class="flex items-center justify-center h-32 text-surface-400 dark:text-surface-500 text-sm"
-                >
-                    {{ t('databaseTree.noTables') }}
-                </div>
+            <!-- No Tables -->
+            <div
+                v-else-if="schemaStore.tables.length === 0"
+                class="flex items-center justify-center h-32 text-surface-400 dark:text-surface-500 text-sm"
+            >
+                {{ t('databaseTree.noTables') }}
+            </div>
 
-                <!-- Tables List -->
-                <div v-else class="overflow-y-auto scrollbar-thin">
-                    <div v-for="table in schemaStore.sortedTables" :key="table.name">
-                        <!-- Table Header -->
-                        <div
-                            class="group flex items-center space-x-1 px-2 py-1 cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800"
-                            :class="
-                                schemaStore.selectedTable === table.name &&
-                                'bg-primary-50 dark:bg-primary-900/20'
-                            "
-                            @click="handleTableClick(table)"
-                            @dblclick="handleTableDoubleClick(table)"
+            <!-- Tables List -->
+            <div v-else class="overflow-y-auto scrollbar-thin h-full">
+                <div v-for="table in schemaStore.sortedTables" :key="table.name">
+                    <!-- Table Header -->
+                    <div
+                        class="group flex items-center space-x-1 px-2 py-1 cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800"
+                        :class="
+                            schemaStore.selectedTable === table.name &&
+                            'bg-primary-50 dark:bg-primary-900/20'
+                        "
+                        @click="handleTableClick(table)"
+                        @dblclick="handleTableDoubleClick(table)"
+                    >
+                        <button
+                            class="p-0.5 rounded hover:bg-surface-200 dark:hover:bg-surface-700"
+                            @click.stop="schemaStore.toggleTableExpanded(table.name)"
                         >
-                            <button
-                                class="p-0.5 rounded hover:bg-surface-200 dark:hover:bg-surface-700"
-                                @click.stop="schemaStore.toggleTableExpanded(table.name)"
-                            >
-                                <ChevronDownIcon
-                                    v-if="schemaStore.isTableExpanded(table.name)"
-                                    class="w-4 h-4 text-surface-500 dark:text-surface-400"
-                                />
-                                <ChevronRightIcon
-                                    v-else
-                                    class="w-4 h-4 text-surface-500 dark:text-surface-400"
-                                />
-                            </button>
-                            <TableCellsIcon
+                            <ChevronDownIcon
+                                v-if="schemaStore.isTableExpanded(table.name)"
                                 class="w-4 h-4 text-surface-500 dark:text-surface-400"
                             />
-                            <span class="flex-1 text-sm truncate dark:text-surface-200">
-                                {{ table.name }}
+                            <ChevronRightIcon
+                                v-else
+                                class="w-4 h-4 text-surface-500 dark:text-surface-400"
+                            />
+                        </button>
+                        <TableCellsIcon
+                            class="w-4 h-4 text-surface-500 dark:text-surface-400"
+                        />
+                        <span class="flex-1 text-sm truncate dark:text-surface-200">
+                            {{ table.name }}
+                        </span>
+                        <span class="text-xs text-surface-400 dark:text-surface-500">
+                            {{ table.row_count?.toLocaleString() }}
+                        </span>
+                    </div>
+
+                    <!-- Table Columns -->
+                    <div
+                        v-if="schemaStore.isTableExpanded(table.name)"
+                        class="border-l-2 border-surface-200 dark:border-surface-700 ml-4 my-1"
+                    >
+                        <!-- Column -->
+                        <div
+                            v-for="column in table.columns"
+                            :key="column.name"
+                            class="flex items-center space-x-1 py-0.5 pl-6 text-sm"
+                        >
+                            <KeyIcon
+                                v-if="column.is_primary_key"
+                                class="w-3.5 h-3.5 text-amber-500"
+                                :title="t('databaseTree.primaryKey')"
+                            />
+                            <LinkIcon
+                                v-else-if="column.is_foreign_key"
+                                class="w-3.5 h-3.5 text-blue-500"
+                                :title="t('databaseTree.foreignKey')"
+                            />
+                            <div v-else class="w-3.5" />
+                            <span
+                                class="flex-1"
+                                :class="
+                                    column.is_primary_key
+                                        ? 'font-medium text-surface-900 dark:text-surface-100'
+                                        : 'text-surface-700 dark:text-surface-300'
+                                "
+                            >
+                                {{ column.name }}
                             </span>
                             <span class="text-xs text-surface-400 dark:text-surface-500">
-                                {{ table.row_count?.toLocaleString() }}
+                                {{ column.data_type }}
                             </span>
+                            <span v-if="!column.nullable" class="text-xs text-red-500">*</span>
                         </div>
 
-                        <!-- Table Columns -->
-                        <div
-                            v-if="schemaStore.isTableExpanded(table.name)"
-                            class="border-l-2 border-surface-200 dark:border-surface-700 ml-4 my-1"
-                        >
-                            <!-- Column -->
-                            <div
-                                v-for="column in table.columns"
-                                :key="column.name"
-                                class="flex items-center space-x-1 py-0.5 pl-6 text-sm"
+                        <!-- Quick Actions -->
+                        <div class="flex items-center space-x-2 pl-6 py-2">
+                            <button
+                                class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+                                @click="handleGenerateSelect(table.name)"
                             >
-                                <KeyIcon
-                                    v-if="column.is_primary_key"
-                                    class="w-3.5 h-3.5 text-amber-500"
-                                    :title="t('databaseTree.primaryKey')"
-                                />
-                                <LinkIcon
-                                    v-else-if="column.is_foreign_key"
-                                    class="w-3.5 h-3.5 text-blue-500"
-                                    :title="t('databaseTree.foreignKey')"
-                                />
-                                <div v-else class="w-3.5" />
-                                <span
-                                    class="flex-1"
-                                    :class="
-                                        column.is_primary_key
-                                            ? 'font-medium text-surface-900 dark:text-surface-100'
-                                            : 'text-surface-700 dark:text-surface-300'
-                                    "
-                                >
-                                    {{ column.name }}
-                                </span>
-                                <span class="text-xs text-surface-400 dark:text-surface-500">
-                                    {{ column.data_type }}
-                                </span>
-                                <span v-if="!column.nullable" class="text-xs text-red-500">*</span>
-                            </div>
+                                {{ t('databaseTree.selectQuery') }}
+                            </button>
+                            <button
+                                class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+                                @click="handleGenerateInsert(table)"
+                            >
+                                {{ t('databaseTree.insertQuery') }}
+                            </button>
+                        </div>
 
-                            <!-- Quick Actions -->
-                            <div class="flex items-center space-x-2 pl-6 py-2">
-                                <button
-                                    class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
-                                    @click="handleGenerateSelect(table.name)"
-                                >
-                                    {{ t('databaseTree.selectQuery') }}
-                                </button>
-                                <button
-                                    class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
-                                    @click="handleGenerateInsert(table)"
-                                >
-                                    {{ t('databaseTree.insertQuery') }}
-                                </button>
-                            </div>
-
-                            <!-- 表结构操作 -->
-                            <div class="flex items-center space-x-2 pl-6 py-1 border-t border-surface-100 dark:border-surface-800 mt-1">
-                                <button
-                                    class="flex items-center gap-1 text-xs text-surface-600 dark:text-surface-400 hover:text-blue-600 dark:hover:text-blue-400"
-                                    @click="openEditTable(table)"
-                                >
-                                    <PencilIcon class="w-3 h-3" />
-                                    {{ t('databaseTree.editTable') }}
-                                </button>
-                            </div>
+                        <!-- 表结构操作 -->
+                        <div class="flex items-center space-x-2 pl-6 py-1 border-t border-surface-100 dark:border-surface-800 mt-1">
+                            <button
+                                class="flex items-center gap-1 text-xs text-surface-600 dark:text-surface-400 hover:text-blue-600 dark:hover:text-blue-400"
+                                @click="openEditTable(table)"
+                            >
+                                <PencilIcon class="w-3 h-3" />
+                                {{ t('databaseTree.editTable') }}
+                            </button>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- 新建表按钮 -->
-                <div
-                    v-if="connectionStore.activeConnection"
-                    class="sticky bottom-0 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700 p-2"
-                >
-                    <button
-                        class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:bg-primary-600 dark:hover:bg-primary-500"
-                        @click="openCreateTable"
-                    >
-                        <PlusIcon class="w-4 h-4" />
-                        {{ t('databaseTree.createTable') }}
-                    </button>
-                </div>
-            </template>
-
-            <!-- ER Diagram Tab -->
-            <template v-else>
-                <div class="flex items-center justify-center h-32 text-surface-400 text-sm">
-                    ER Diagram (Coming Soon)
-                </div>
-            </template>
+        <!-- 新建表按钮 -->
+        <div
+            v-if="connectionStore.activeConnection"
+            class="sticky bottom-0 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700 p-2"
+        >
+            <button
+                class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:bg-primary-600 dark:hover:bg-primary-500"
+                @click="openCreateTable"
+            >
+                <PlusIcon class="w-4 h-4" />
+                {{ t('databaseTree.createTable') }}
+            </button>
         </div>
 
         <!-- 表结构设计器 -->

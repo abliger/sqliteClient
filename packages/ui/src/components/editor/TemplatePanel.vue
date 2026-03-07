@@ -164,14 +164,21 @@ const handleDuplicate = (snippet: Snippet) => {
 
 // 使用片段（处理变量）
 const useSnippet = (snippet: Snippet) => {
-  if (!snippet.sql) return
+  console.log('[TemplatePanel] useSnippet called:', snippet.name, 'sql:', snippet.sql)
+  
+  if (!snippet.sql) {
+    console.warn('[TemplatePanel] Snippet has no SQL:', snippet)
+    return
+  }
 
   try {
     // 检查是否有变量
     const vars = snippet.variables || extractVariables(snippet.sql)
+    console.log('[TemplatePanel] Variables found:', vars.length, vars)
 
     if (vars.length === 0) {
       // 没有变量，直接插入
+      console.log('[TemplatePanel] Emitting insert event with sql:', snippet.sql)
       emit('insert', snippet.sql)
       return
     }
@@ -188,7 +195,7 @@ const useSnippet = (snippet: Snippet) => {
 
     showVariableDialog.value = true
   } catch (err) {
-    console.error('Failed to use snippet:', err)
+    console.error('[TemplatePanel] Failed to use snippet:', err)
     // 出错时直接插入原始 SQL
     emit('insert', snippet.sql)
   }
@@ -473,7 +480,7 @@ const parseSqlPreview = (sql: string): Array<{ type: 'text' | 'variable'; conten
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
-                {{ t('template.category') }} <span class="text-danger-500">*</span>
+                {{ t('template.categoryLabel') }} <span class="text-danger-500">*</span>
               </label>
               <select
                 v-model="formData.category"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useHistoryStore } from '@stores/history'
 import { useConnectionStore } from '@stores/connection'
@@ -41,6 +41,14 @@ watch(searchQuery, (newQuery) => {
     }
   }, 300)
 })
+
+// 当前活动连接
+const activeConnectionId = computed(() => connectionStore.activeConnectionId)
+
+// 监听活动连接变化，自动过滤对应连接的历史记录
+watch(activeConnectionId, (newConnectionId) => {
+  historyStore.setSelectedConnectionId(newConnectionId)
+}, { immediate: true })
 
 // 加载历史记录
 onMounted(() => {

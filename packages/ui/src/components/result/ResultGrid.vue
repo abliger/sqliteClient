@@ -175,7 +175,7 @@ const goToNextPage = () => {
                         <!-- 操作按钮列 -->
                         <td
                             v-if="allowEdit"
-                            class="px-2 py-2 text-center border-b border-surface-200 dark:border-surface-700 sticky right-0 bg-white dark:bg-surface-900 group-hover:bg-surface-50 dark:group-hover:bg-surface-800/50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors"
+                            class="px-2 py-2 text-center border-b border-surface-200 dark:border-surface-700 sticky right-0 bg-surface-50 dark:bg-surface-800 group-hover:bg-surface-100 dark:group-hover:bg-surface-700 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors"
                         >
                             <div class="flex items-center justify-center space-x-1">
                                 <!-- 编辑按钮 -->

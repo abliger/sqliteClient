@@ -539,13 +539,27 @@ export const useQueryStore = defineStore('query', () => {
 
     // 删除快照
     function deleteSnapshot(snapshotId: string): boolean {
-        if (!currentConnectionId.value || !activeTabId.value) return false
+        console.log('[QueryStore] deleteSnapshot called:', snapshotId)
+        
+        if (!currentConnectionId.value || !activeTabId.value) {
+            console.log('[QueryStore] deleteSnapshot: no connection or tab')
+            return false
+        }
 
         const snapshots = querySnapshots.value[currentConnectionId.value]?.[activeTabId.value]
-        if (!snapshots) return false
+        if (!snapshots) {
+            console.log('[QueryStore] deleteSnapshot: no snapshots found')
+            return false
+        }
 
         const index = snapshots.findIndex(s => s.id === snapshotId)
-        if (index === -1) return false
+        if (index === -1) {
+            console.log('[QueryStore] deleteSnapshot: snapshot not found')
+            return false
+        }
+
+        const deletedSnapshot = snapshots[index]
+        console.log('[QueryStore] deleteSnapshot: deleting', deletedSnapshot.name, 'at index', index)
 
         snapshots.splice(index, 1)
         persistSnapshots(currentConnectionId.value, activeTabId.value)
@@ -561,7 +575,7 @@ export const useQueryStore = defineStore('query', () => {
             }
         }
 
-        console.log('[QueryStore] Deleted snapshot:', snapshotId)
+        console.log('[QueryStore] Deleted snapshot:', snapshotId, '- remaining:', snapshots.length)
         return true
     }
 

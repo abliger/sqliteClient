@@ -11,19 +11,29 @@ export const useHistoryStore = defineStore('history', () => {
     const error = ref<string | null>(null)
     const pageSize = ref(50)
     const currentPage = ref(1)
+    // 当前选中的连接ID过滤
+    const selectedConnectionId = ref<string | null>(null)
 
     // Getters
     const filteredItems = computed(() => {
-        if (!searchQuery.value.trim()) {
-            return items.value
+        let result = items.value
+
+        // 先按连接ID过滤
+        if (selectedConnectionId.value) {
+            result = result.filter(item => item.connection_id === selectedConnectionId.value)
         }
 
-        const query = searchQuery.value.toLowerCase()
-        return items.value.filter(
-            item =>
-                item.sql.toLowerCase().includes(query) ||
-                item.connection_name?.toLowerCase().includes(query),
-        )
+        // 再按搜索关键词过滤
+        if (searchQuery.value.trim()) {
+            const query = searchQuery.value.toLowerCase()
+            result = result.filter(
+                item =>
+                    item.sql.toLowerCase().includes(query) ||
+                    item.connection_name?.toLowerCase().includes(query),
+            )
+        }
+
+        return result
     })
 
     const paginatedItems = computed(() => {
@@ -104,6 +114,11 @@ export const useHistoryStore = defineStore('history', () => {
         currentPage.value = 1
     }
 
+    function setSelectedConnectionId(connectionId: string | null) {
+        selectedConnectionId.value = connectionId
+        currentPage.value = 1 // 重置到第一页
+    }
+
     return {
         // State
         items,
@@ -112,6 +127,8 @@ export const useHistoryStore = defineStore('history', () => {
         error,
         pageSize,
         currentPage,
+        // State
+        selectedConnectionId,
         // Getters
         filteredItems,
         paginatedItems,
@@ -124,5 +141,6 @@ export const useHistoryStore = defineStore('history', () => {
         clearHistory,
         setPage,
         setPageSize,
+        setSelectedConnectionId,
     }
 })

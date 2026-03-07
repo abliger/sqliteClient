@@ -429,7 +429,7 @@ function onBackdropMouseUp(e: MouseEvent) {
 
             <!-- DDL预览 -->
             <DDLPreview
-              v-show="activeTab === 'ddl'"
+              v-if="activeTab === 'ddl'"
               :preview="previewResult"
               :is-loading="isLoading"
               :active="activeTab === 'ddl'"

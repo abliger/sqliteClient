@@ -180,7 +180,7 @@ export interface RelationEdge {
     from_column: string
     to_table: string
     to_column: string
-    relation_type: 'oneToOne' | 'oneToMany' | 'manyToMany'
+    relation_type: 'onetomany' | 'onetoone' | 'manytomany'
 }
 
 export interface ERDiagram {
