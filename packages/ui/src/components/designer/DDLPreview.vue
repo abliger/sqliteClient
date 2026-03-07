@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { ref, watch, onUnmounted, computed, nextTick } from 'vue'
 import type { PreviewDDLResult } from '@types'
 import { useSettingsStore } from '@stores/settings'
 import * as monaco from 'monaco-editor'
@@ -8,6 +8,7 @@ import type { editor as MonacoEditor } from 'monaco-editor'
 const props = defineProps<{
   preview: PreviewDDLResult | null
   isLoading: boolean
+  active?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -18,6 +19,7 @@ const settingsStore = useSettingsStore()
 const showCopiedToast = ref(false)
 const editorContainer = ref<HTMLDivElement>()
 let editor: MonacoEditor.IStandaloneCodeEditor | null = null
+const isInitializing = ref(false)
 
 // Monaco 主题映射
 const monacoTheme = computed(() => {
@@ -28,40 +30,108 @@ const monacoTheme = computed(() => {
   return theme === 'dark' ? 'vs-dark' : 'vs'
 })
 
-// 待设置的 SQL 值（用于在编辑器初始化前缓存）
-const pendingSql = ref<string>('')
+// 初始化 Monaco 编辑器
+async function initEditor() {
+  if (editor || !editorContainer.value || isInitializing.value) return
+  
+  // 确保容器有尺寸
+  const rect = editorContainer.value.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    console.log('Editor container has no size, retrying...')
+    return false
+  }
+  
+  isInitializing.value = true
+  
+  try {
+    editor = monaco.editor.create(editorContainer.value, {
+      value: props.preview?.sql || '',
+      language: 'sql',
+      theme: monacoTheme.value,
+      fontSize: 14,
+      fontFamily: 'JetBrains Mono, Fira Code, Consolas, monospace',
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      automaticLayout: false,
+      readOnly: true,
+      lineNumbers: 'on',
+      folding: true,
+      renderWhitespace: 'none',
+      contextmenu: false,
+      quickSuggestions: false,
+      parameterHints: { enabled: false },
+      suggestOnTriggerCharacters: false,
+      hover: { enabled: false },
+      wordWrap: 'on',
+    })
+    
+    console.log('Editor initialized with value:', props.preview?.sql?.substring(0, 50))
+    return true
+  } finally {
+    isInitializing.value = false
+  }
+}
 
-// 初始化 Monaco 编辑器（只读模式）
-onMounted(async () => {
+// 使用 ResizeObserver 监听容器尺寸变化
+let resizeObserver: ResizeObserver | null = null
+
+function setupResizeObserver() {
   if (!editorContainer.value) return
-
-  // 等待 DOM 渲染完成，确保容器尺寸正确
-  await nextTick()
-  // 额外延迟确保容器可见且尺寸稳定
-  await new Promise(resolve => setTimeout(resolve, 50))
-
-  if (!editorContainer.value) return
-
-  editor = monaco.editor.create(editorContainer.value, {
-    value: pendingSql.value || props.preview?.sql || '',
-    language: 'sql',
-    theme: monacoTheme.value,
-    fontSize: 14,
-    fontFamily: 'JetBrains Mono, Fira Code, Consolas, monospace',
-    minimap: { enabled: false },
-    scrollBeyondLastLine: false,
-    automaticLayout: true,
-    readOnly: true,
-    lineNumbers: 'on',
-    folding: true,
-    renderWhitespace: 'none',
-    contextmenu: false,
-    quickSuggestions: false,
-    parameterHints: { enabled: false },
-    suggestOnTriggerCharacters: false,
-    hover: { enabled: false },
-    wordWrap: 'on',
+  
+  resizeObserver = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      const { width, height } = entry.contentRect
+      if (width > 0 && height > 0) {
+        if (editor) {
+          // 编辑器已存在，只需重新布局
+          editor.layout()
+        } else if (props.active) {
+          // 容器有尺寸且组件激活，初始化编辑器
+          initEditor()
+        }
+      }
+    }
   })
+  
+  resizeObserver.observe(editorContainer.value)
+}
+
+// 监听 active 变化
+watch(() => props.active, async (isActive) => {
+  if (!isActive) return
+  
+  // 等待 DOM 更新
+  await nextTick()
+  
+  // 如果编辑器已存在，更新内容并布局
+  if (editor) {
+    if (props.preview?.sql && editor.getValue() !== props.preview.sql) {
+      editor.setValue(props.preview.sql)
+    }
+    editor.layout()
+    return
+  }
+  
+  // 否则尝试初始化
+  setupResizeObserver()
+  
+  // 如果容器已有尺寸，直接初始化
+  if (editorContainer.value) {
+    const rect = editorContainer.value.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      await initEditor()
+    }
+  }
+})
+
+// 监听 SQL 变化
+watch(() => props.preview?.sql, (sql) => {
+  if (sql === undefined || !editor) return
+  
+  if (editor.getValue() !== sql) {
+    editor.setValue(sql)
+    console.log('SQL updated:', sql.substring(0, 50))
+  }
 })
 
 // 监听主题变化
@@ -69,23 +139,12 @@ watch(monacoTheme, (newTheme) => {
   monaco.editor.setTheme(newTheme)
 })
 
-// 监听 SQL 变化
-watch(() => props.preview?.sql, async (sql) => {
-  if (sql !== undefined) {
-    if (editor) {
-      editor.setValue(sql)
-      // 重新布局确保正确显示
-      await nextTick()
-      editor.layout()
-    } else {
-      // 编辑器尚未初始化，缓存 SQL
-      pendingSql.value = sql
-    }
-  }
-}, { immediate: true })
-
 // 清理
 onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
   if (editor) {
     editor.dispose()
     editor = null
@@ -167,14 +226,22 @@ function downloadSQL() {
 
     <!-- SQL 内容 -->
     <div class="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-950">
-      <div v-if="!preview" class="flex h-full flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+      <div v-if="!preview && !isLoading" class="flex h-full flex-col items-center justify-center text-gray-500 dark:text-gray-400">
         <svg class="mb-4 h-16 w-16 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
         </svg>
         <p class="text-lg">点击"预览DDL"生成SQL</p>
       </div>
 
-      <template v-else>
+      <div v-else-if="isLoading" class="flex h-full flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+        <svg class="mb-4 h-10 w-10 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="text-lg">生成 SQL 中...</p>
+      </div>
+
+      <template v-else-if="preview">
         <div class="h-full overflow-auto p-6">
           <!-- 警告信息 -->
           <div v-if="preview.warnings.length > 0" class="mb-4 space-y-2">
@@ -218,7 +285,7 @@ function downloadSQL() {
           <div class="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
             <div class="flex items-center justify-between border-b border-gray-200 px-4 py-2 dark:border-gray-700">
               <span class="text-xs font-medium text-gray-500 dark:text-gray-400">生成的 SQL</span>
-              <span class="text-xs text-gray-400">{{ preview.sql.length }} 字符</span>
+              <span class="text-xs text-gray-400">{{ preview.sql?.length || 0 }} 字符</span>
             </div>
             <div ref="editorContainer" class="h-64 w-full" />
           </div>

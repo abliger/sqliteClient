@@ -164,26 +164,34 @@ const handleDuplicate = (snippet: Snippet) => {
 
 // 使用片段（处理变量）
 const useSnippet = (snippet: Snippet) => {
-  // 检查是否有变量
-  const vars = snippet.variables || extractVariables(snippet.sql)
+  if (!snippet.sql) return
 
-  if (vars.length === 0) {
-    // 没有变量，直接插入
+  try {
+    // 检查是否有变量
+    const vars = snippet.variables || extractVariables(snippet.sql)
+
+    if (vars.length === 0) {
+      // 没有变量，直接插入
+      emit('insert', snippet.sql)
+      return
+    }
+
+    // 有需要填充的变量
+    selectedSnippet.value = snippet
+    const defaults = generateDefaultVariables(vars)
+
+    // 设置变量默认值
+    variableValues.value = {}
+    vars.forEach(v => {
+      variableValues.value[v.name] = defaults[v.name] || ''
+    })
+
+    showVariableDialog.value = true
+  } catch (err) {
+    console.error('Failed to use snippet:', err)
+    // 出错时直接插入原始 SQL
     emit('insert', snippet.sql)
-    return
   }
-
-  // 有需要填充的变量
-  selectedSnippet.value = snippet
-  const defaults = generateDefaultVariables(vars)
-
-  // 设置变量默认值
-  variableValues.value = {}
-  vars.forEach(v => {
-    variableValues.value[v.name] = defaults[v.name] || ''
-  })
-
-  showVariableDialog.value = true
 }
 
 // 确认插入（带变量）
@@ -213,8 +221,29 @@ watch(searchInput, (val) => {
 })
 
 // 预览 SQL（处理变量高亮）
-const previewSql = (sql: string) => {
-  return sql.replace(/\{\{\s*(\w+)\s*\}\}/g, '<span class="text-primary-500 font-medium">{{$1}}</span>')
+// 安全地解析 SQL 中的变量，返回可用于 v-for 渲染的片段数组
+const parseSqlPreview = (sql: string): Array<{ type: 'text' | 'variable'; content: string }> => {
+  const result: Array<{ type: 'text' | 'variable'; content: string }> = []
+  const regex = /\{\{\s*(\w+)\s*\}\}/g
+  let lastIndex = 0
+  let match
+
+  while ((match = regex.exec(sql)) !== null) {
+    // 添加变量前的文本
+    if (match.index > lastIndex) {
+      result.push({ type: 'text', content: sql.slice(lastIndex, match.index) })
+    }
+    // 添加变量（不带 {{ }}）
+    result.push({ type: 'variable', content: match[1] })
+    lastIndex = match.index + match[0].length
+  }
+
+  // 添加剩余文本
+  if (lastIndex < sql.length) {
+    result.push({ type: 'text', content: sql.slice(lastIndex) })
+  }
+
+  return result
 }
 </script>
 
@@ -369,7 +398,7 @@ const previewSql = (sql: string) => {
               </p>
               <pre
                 class="text-xs text-surface-600 dark:text-surface-400 bg-surface-50 dark:bg-surface-900/50 p-2 rounded overflow-hidden line-clamp-3 font-mono"
-              ><code v-html="previewSql(snippet.sql)" /></pre>
+              ><code><template v-for="(part, idx) in parseSqlPreview(snippet.sql)" :key="idx"><span v-if="part.type === 'variable'" class="text-primary-500 font-medium">{{ '{' + '{' + part.content + '}' + '}' }}</span><template v-else>{{ part.content }}</template></template></code></pre>
               <div v-if="snippet.tags.length > 0" class="flex flex-wrap gap-1 mt-2">
                 <span
                   v-for="tag in snippet.tags.slice(0, 3)"

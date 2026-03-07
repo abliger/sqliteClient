@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import * as crudLogService from '@services/crudLog'
+import { useToastStore } from './toast'
 import type { CrudOperationLog, CrudOperationType } from '@types'
 
 export interface CrudLogFilter {
@@ -11,6 +13,9 @@ export interface CrudLogFilter {
 }
 
 export const useCrudLogStore = defineStore('crudLog', () => {
+    const { t } = useI18n()
+    const toastStore = useToastStore()
+
     // State
     const logs = ref<CrudOperationLog[]>([])
     const isLoading = ref(false)
@@ -61,8 +66,9 @@ export const useCrudLogStore = defineStore('crudLog', () => {
             logs.value = await crudLogService.queryCrudLogs(filter, limit)
             return logs.value
         } catch (err) {
-            error.value = err instanceof Error ? err.message : 'Failed to load logs'
-            console.error('Failed to load CRUD logs:', err)
+            const message = err instanceof Error ? err.message : 'Failed to load logs'
+            error.value = message
+            toastStore.error(t('crudLog.error'), message)
             return []
         } finally {
             isLoading.value = false
@@ -78,8 +84,8 @@ export const useCrudLogStore = defineStore('crudLog', () => {
             selectedTabId.value = tabId
             return logs.value
         } catch (err) {
-            error.value = err instanceof Error ? err.message : 'Failed to load logs'
-            console.error('Failed to load CRUD logs by tab:', err)
+            const message = err instanceof Error ? err.message : 'Failed to load logs'
+            error.value = message
             return []
         } finally {
             isLoading.value = false
@@ -94,8 +100,7 @@ export const useCrudLogStore = defineStore('crudLog', () => {
                 logs.value.unshift(log)
             }
             return true
-        } catch (err) {
-            console.error('Failed to add CRUD log:', err)
+        } catch {
             return false
         }
     }
@@ -109,8 +114,7 @@ export const useCrudLogStore = defineStore('crudLog', () => {
                 selectedTabId.value = null
             }
             return deleted
-        } catch (err) {
-            console.error('Failed to delete CRUD logs by tab:', err)
+        } catch {
             return 0
         }
     }
@@ -119,8 +123,7 @@ export const useCrudLogStore = defineStore('crudLog', () => {
         try {
             tableNames.value = await crudLogService.getCrudLogTableNames()
             return tableNames.value
-        } catch (err) {
-            console.error('Failed to load table names:', err)
+        } catch {
             return []
         }
     }
@@ -129,8 +132,7 @@ export const useCrudLogStore = defineStore('crudLog', () => {
         try {
             stats.value = await crudLogService.getCrudLogStats(connectionId)
             return stats.value
-        } catch (err) {
-            console.error('Failed to load stats:', err)
+        } catch {
             return null
         }
     }

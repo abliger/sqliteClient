@@ -318,10 +318,17 @@ function closeDialog() {
   emit('update:modelValue', false)
 }
 
-function onBackdropClick(e: MouseEvent) {
-  if (e.target === e.currentTarget) {
+let isMouseDownOnBackdrop = false
+
+function onBackdropMouseDown(e: MouseEvent) {
+  isMouseDownOnBackdrop = e.target === e.currentTarget
+}
+
+function onBackdropMouseUp(e: MouseEvent) {
+  if (isMouseDownOnBackdrop && e.target === e.currentTarget) {
     closeDialog()
   }
+  isMouseDownOnBackdrop = false
 }
 </script>
 
@@ -331,7 +338,8 @@ function onBackdropClick(e: MouseEvent) {
       <div
         v-if="modelValue"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-        @click="onBackdropClick"
+        @mousedown="onBackdropMouseDown"
+        @mouseup="onBackdropMouseUp"
       >
         <div class="flex h-[85vh] w-[90vw] max-w-5xl flex-col rounded-xl bg-white shadow-2xl dark:bg-gray-900">
           <!-- 头部 -->
@@ -421,9 +429,10 @@ function onBackdropClick(e: MouseEvent) {
 
             <!-- DDL预览 -->
             <DDLPreview
-              v-else-if="activeTab === 'ddl'"
+              v-show="activeTab === 'ddl'"
               :preview="previewResult"
               :is-loading="isLoading"
+              :active="activeTab === 'ddl'"
               @refresh="previewDDL"
             />
           </div>

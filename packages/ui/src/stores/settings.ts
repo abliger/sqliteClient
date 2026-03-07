@@ -62,8 +62,8 @@ export const useSettingsStore = defineStore('settings', () => {
         // 同步更新菜单语言
         try {
             await invoke('update_menu_locale', { locale: newLocale })
-        } catch (err) {
-            console.error('Failed to update menu locale:', err)
+        } catch {
+            // 菜单语言更新失败不显示错误，仅记录
         }
     }
 

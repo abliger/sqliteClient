@@ -10,6 +10,17 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
     open: vi.fn(),
 }))
 
+// Mock vue-i18n useI18n
+vi.mock('vue-i18n', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('vue-i18n')>()
+    return {
+        ...actual,
+        useI18n: () => ({
+            t: (key: string) => key,
+        }),
+    }
+})
+
 // Global test configuration
 config.global.stubs = {
     // Stub router-link and other common components

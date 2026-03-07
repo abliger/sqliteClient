@@ -1,9 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { importService, createDefaultImportConfig, generateColumnMappings } from '@services/import'
+import { useToastStore } from './toast'
 import type { ImportPreview, ImportConfig, ImportResult, ColumnMapping } from '@services/import'
 
 export const useImportStore = defineStore('import', () => {
+    const { t } = useI18n()
+    const toastStore = useToastStore()
+
     // State
     const isOpen = ref(false)
     const isLoading = ref(false)
@@ -94,8 +99,9 @@ export const useImportStore = defineStore('import', () => {
                 )
             }
         } catch (err) {
-            error.value = err instanceof Error ? err.message : 'Failed to parse file'
-            console.error('Failed to parse import file:', err)
+            const message = err instanceof Error ? err.message : 'Failed to parse file'
+            error.value = message
+            toastStore.error(t('import.error'), message)
         } finally {
             isLoading.value = false
         }
@@ -153,8 +159,9 @@ export const useImportStore = defineStore('import', () => {
             )
             return result.value
         } catch (err) {
-            error.value = err instanceof Error ? err.message : 'Import failed'
-            console.error('Import failed:', err)
+            const message = err instanceof Error ? err.message : 'Import failed'
+            error.value = message
+            toastStore.error(t('import.error'), message)
             return null
         } finally {
             isLoading.value = false

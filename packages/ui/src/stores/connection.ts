@@ -1,9 +1,14 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { connectionService } from '@services/connection'
+import { useToastStore } from './toast'
 import type { ConnectionConfig, ConnectionInfo, DatabaseMetadata } from '@types'
 
 export const useConnectionStore = defineStore('connection', () => {
+    const { t } = useI18n()
+    const toastStore = useToastStore()
+
     // State
     const connections = ref<ConnectionInfo[]>([])
     const activeConnectionId = ref<string | null>(null)
@@ -44,8 +49,9 @@ export const useConnectionStore = defineStore('connection', () => {
             }
             return connections.value
         } catch (err) {
-            error.value = err instanceof Error ? err.message : 'Failed to restore connections'
-            console.error('Failed to restore connections:', err)
+            const message = err instanceof Error ? err.message : 'Failed to restore connections'
+            error.value = message
+            toastStore.error(t('connection.openError'), message)
             return []
         } finally {
             isLoading.value = false
@@ -73,7 +79,9 @@ export const useConnectionStore = defineStore('connection', () => {
             activeConnectionId.value = connection.config.id
             return connection
         } catch (err) {
-            error.value = err instanceof Error ? err.message : 'Failed to create connection'
+            const message = err instanceof Error ? err.message : 'Failed to create connection'
+            error.value = message
+            toastStore.error(t('connection.openError'), message)
             throw err
         } finally {
             isLoading.value = false
@@ -89,7 +97,9 @@ export const useConnectionStore = defineStore('connection', () => {
             activeConnectionId.value = connection.config.id
             return connection
         } catch (err) {
-            error.value = err instanceof Error ? err.message : 'Failed to create database'
+            const message = err instanceof Error ? err.message : 'Failed to create database'
+            error.value = message
+            toastStore.error(t('connection.createError'), message)
             throw err
         } finally {
             isLoading.value = false
@@ -105,7 +115,9 @@ export const useConnectionStore = defineStore('connection', () => {
                 activeConnectionId.value = connections.value[0]?.config.id ?? null
             }
         } catch (err) {
-            error.value = err instanceof Error ? err.message : 'Failed to close connection'
+            const message = err instanceof Error ? err.message : 'Failed to close connection'
+            error.value = message
+            toastStore.error(t('connection.closeError'), message)
             throw err
         }
     }
@@ -115,12 +127,18 @@ export const useConnectionStore = defineStore('connection', () => {
     }
 
     async function refreshMetadata(connectionId: string): Promise<DatabaseMetadata> {
-        const metadata = await connectionService.refreshMetadata(connectionId)
-        const index = connections.value.findIndex(c => c.config.id === connectionId)
-        if (index !== -1) {
-            connections.value[index].metadata = metadata
+        try {
+            const metadata = await connectionService.refreshMetadata(connectionId)
+            const index = connections.value.findIndex(c => c.config.id === connectionId)
+            if (index !== -1) {
+                connections.value[index].metadata = metadata
+            }
+            return metadata
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to refresh metadata'
+            toastStore.error(t('connection.error'), message)
+            throw err
         }
-        return metadata
     }
 
     return {

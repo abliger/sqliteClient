@@ -37,8 +37,8 @@ function loadSavedQueryTabs(): SavedQueryTabs {
         if (saved) {
             return JSON.parse(saved)
         }
-    } catch (err) {
-        console.error('Failed to load saved query tabs:', err)
+    } catch {
+        // 静默处理加载错误
     }
     return {}
 }
@@ -47,8 +47,8 @@ function loadSavedQueryTabs(): SavedQueryTabs {
 function saveQueryTabsToStorage(data: SavedQueryTabs) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-    } catch (err) {
-        console.error('Failed to save query tabs:', err)
+    } catch {
+        // 静默处理保存错误
     }
 }
 

@@ -698,8 +698,8 @@ function loadCustomSnippets(): Snippet[] {
         if (saved) {
             return JSON.parse(saved)
         }
-    } catch (err) {
-        console.error('Failed to load custom snippets:', err)
+    } catch {
+        // 静默处理加载错误，返回空数组
     }
     return []
 }
@@ -708,8 +708,8 @@ function loadCustomSnippets(): Snippet[] {
 function saveCustomSnippets(snippets: Snippet[]) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(snippets))
-    } catch (err) {
-        console.error('Failed to save custom snippets:', err)
+    } catch {
+        // 静默处理保存错误（如存储空间不足）
     }
 }
 
