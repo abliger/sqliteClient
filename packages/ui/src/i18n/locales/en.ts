@@ -24,6 +24,8 @@ export default {
     newDatabaseTip: 'Create a new SQLite database',
     noConnections: 'No connections. Click the folder icon to open a database.',
     closeConnection: 'Close Connection',
+    closeConnectionsToRight: 'Close Connections to Right',
+    closeOtherConnections: 'Close Other Connections',
     databaseInfo: 'Database Info',
     version: 'Version',
     tables: 'Tables',
@@ -106,6 +108,7 @@ export default {
     updateError: 'Failed to update row',
     deleteSuccess: 'Row deleted successfully',
     deleteError: 'Failed to delete row',
+    operationLogs: 'Operation Logs',
   },
 
   // Settings
@@ -117,6 +120,36 @@ export default {
     auto: 'Auto',
     light: 'Light',
     dark: 'Dark',
+  },
+
+  // CRUD Operation Logs
+  crudLog: {
+    title: 'Operation Logs',
+    empty: 'No operation records',
+    emptyHint: 'INSERT, UPDATE, or DELETE operations will appear here',
+    filter: 'Filter',
+    refresh: 'Refresh',
+    clearFilter: 'Clear Filters',
+    allTabs: 'All Tabs',
+    allTables: 'All Tables',
+    allOperations: 'All Operations',
+    insert: 'Insert',
+    update: 'Update',
+    delete: 'Delete',
+    total: 'Total',
+    success: 'Success',
+    failed: 'Failed',
+    rowsAffected: 'Rows Affected',
+    tableName: 'Table Name',
+    executedAt: 'Executed At',
+    status: 'Status',
+    duration: 'Duration',
+    sql: 'SQL Executed',
+    newData: 'New Data',
+    oldData: 'Old Data',
+    error: 'Error Message',
+    today: 'Today',
+    yesterday: 'Yesterday',
   },
 
   // Errors

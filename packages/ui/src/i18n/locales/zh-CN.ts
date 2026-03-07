@@ -24,6 +24,8 @@ export default {
     newDatabaseTip: '创建新的 SQLite 数据库',
     noConnections: '暂无连接。点击文件夹图标打开数据库。',
     closeConnection: '关闭连接',
+    closeConnectionsToRight: '关闭右侧连接',
+    closeOtherConnections: '关闭其他连接',
     databaseInfo: '数据库信息',
     version: '版本',
     tables: '表',
@@ -106,6 +108,7 @@ export default {
     updateError: '更新记录失败',
     deleteSuccess: '记录删除成功',
     deleteError: '删除记录失败',
+    operationLogs: '操作日志',
   },
 
   // Settings
@@ -117,6 +120,36 @@ export default {
     auto: '自动',
     light: '浅色',
     dark: '深色',
+  },
+
+  // CRUD Operation Logs
+  crudLog: {
+    title: '操作日志',
+    empty: '暂无操作记录',
+    emptyHint: '执行 INSERT、UPDATE 或 DELETE 操作后将显示在这里',
+    filter: '筛选',
+    refresh: '刷新',
+    clearFilter: '清空筛选',
+    allTabs: '所有标签页',
+    allTables: '所有表',
+    allOperations: '所有操作',
+    insert: '插入',
+    update: '更新',
+    delete: '删除',
+    total: '总计',
+    success: '成功',
+    failed: '失败',
+    rowsAffected: '影响行数',
+    tableName: '表名',
+    executedAt: '执行时间',
+    status: '状态',
+    duration: '耗时',
+    sql: '执行 SQL',
+    newData: '新数据',
+    oldData: '旧数据',
+    error: '错误信息',
+    today: '今天',
+    yesterday: '昨天',
   },
 
   // Errors

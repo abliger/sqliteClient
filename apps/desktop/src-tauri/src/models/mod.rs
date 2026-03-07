@@ -1,4 +1,5 @@
 pub mod connection;
+pub mod crud_log;
 pub mod erdiagram;
 pub mod history;
 pub mod query;
@@ -6,6 +7,8 @@ pub mod schema;
 
 #[allow(unused_imports)]
 pub use connection::{ConnectionConfig, ConnectionInfo, ConnectionStatus};
+#[allow(unused_imports)]
+pub use crud_log::{CrudLogFilter, CrudOperationLog, CrudOperationType};
 #[allow(unused_imports)]
 pub use erdiagram::{ERDiagram, RelationEdge, TableNode};
 #[allow(unused_imports)]

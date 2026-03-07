@@ -290,6 +290,11 @@ export const useQueryStore = defineStore('query', () => {
     return editorStates.value.get(tabId)
   }
 
+  // 获取指定连接的 tabs
+  function getTabsByConnection(connectionId: string): QueryTab[] {
+    return connectionTabs.value[connectionId] || []
+  }
+
   // 持久化当前连接的 tabs
   function persistCurrentConnectionTabs() {
     if (!currentConnectionId.value) return
@@ -417,6 +422,7 @@ export const useQueryStore = defineStore('query', () => {
     cleanupOrphanedTabs,
     persistConnectionTabs,
     persistAllConnectionTabs,
-    restoreConnectionTabs
+    restoreConnectionTabs,
+    getTabsByConnection
   }
 })

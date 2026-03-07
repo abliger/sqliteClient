@@ -188,6 +188,46 @@ export interface ERDiagram {
   relations: RelationEdge[]
 }
 
+// CRUD 操作日志类型
+export type CrudOperationType = 'INSERT' | 'UPDATE' | 'DELETE'
+
+export interface CrudLogFilter {
+  connection_id?: string
+  tab_id?: string
+  table_name?: string
+  operation_type?: CrudOperationType
+  start_time?: Date
+  end_time?: Date
+}
+
+export interface CrudOperationLog {
+  id: string
+  /** 关联的连接 ID */
+  connection_id: string
+  /** 关联的 Tab ID */
+  tab_id: string
+  /** 操作的表名 */
+  table_name: string
+  /** 操作类型 */
+  operation_type: CrudOperationType
+  /** 执行的 SQL */
+  sql: string
+  /** 操作的数据（JSON 字符串） */
+  row_data?: string
+  /** 操作前数据（UPDATE/DELETE 时记录） */
+  old_data?: string
+  /** 影响行数 */
+  rows_affected: number
+  /** 执行时间 */
+  executed_at: string
+  /** 执行耗时（毫秒） */
+  duration_ms: number
+  /** 是否成功 */
+  is_success: boolean
+  /** 错误信息 */
+  error_message?: string
+}
+
 // 历史记录类型
 export interface QueryHistoryItem {
   id: string

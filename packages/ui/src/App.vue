@@ -1,18 +1,27 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { useConnectionStore } from '@stores/connection'
 import { useSettingsStore } from '@stores/settings'
 import { useQueryStore } from '@stores/query'
+import { useToastStore } from '@stores/toast'
 import { setI18nLanguage } from '@i18n/index'
+import { open } from '@tauri-apps/plugin-dialog'
 import MainLayout from '@components/layout/MainLayout.vue'
 import SettingsPanel from '@components/settings/SettingsPanel.vue'
 import Toast from '@components/ui/Toast.vue'
 
+const { t } = useI18n()
 const connectionStore = useConnectionStore()
 const settingsStore = useSettingsStore()
 const queryStore = useQueryStore()
+const toastStore = useToastStore()
 const isInitializing = ref(true)
+
+// 取消监听器
+let unlisteners: UnlistenFn[] = []
 
 // 页面关闭前保存所有数据
 const handleBeforeUnload = () => {
@@ -48,6 +57,34 @@ const handleMediaChange = () => {
     }
 }
 
+// 处理打开数据库菜单
+const handleOpenDatabase = async () => {
+    try {
+        const selected = await open({
+            multiple: false,
+            filters: [
+                { name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3', 'db3'] },
+                { name: 'All Files', extensions: ['*'] }
+            ]
+        })
+
+        if (selected && typeof selected === 'string') {
+            const fileName = selected.split(/[/\\]/).pop() || 'Untitled'
+            const name = fileName.replace(/\.[^/.]+$/, '')
+            await connectionStore.createConnection(name, selected)
+            toastStore.success(t('connection.openSuccess'), fileName)
+        }
+    } catch (err) {
+        console.error('Failed to open database from menu:', err)
+    }
+}
+
+// 处理创建数据库菜单
+// 处理创建数据库菜单 - 触发 ConnectionTabs 组件中的对话框
+const handleCreateDatabase = () => {
+    window.dispatchEvent(new CustomEvent('app:create-database'))
+}
+
 onMounted(async () => {
     // 添加页面关闭事件监听器
     window.addEventListener('beforeunload', handleBeforeUnload)
@@ -77,6 +114,25 @@ onMounted(async () => {
     // 应用主题
     updateTheme()
 
+    // 监听 Tauri 菜单事件
+    const unlistenOpenDb = await listen('menu-open-db', () => {
+        console.log('[App] Menu: Open Database')
+        handleOpenDatabase()
+    })
+    unlisteners.push(unlistenOpenDb)
+
+    const unlistenCreateDb = await listen('menu-create-db', () => {
+        console.log('[App] Menu: Create Database')
+        handleCreateDatabase()
+    })
+    unlisteners.push(unlistenCreateDb)
+
+    const unlistenSettings = await listen('menu-settings', () => {
+        console.log('[App] Menu: Settings')
+        settingsStore.openSettingsPanel()
+    })
+    unlisteners.push(unlistenSettings)
+
     isInitializing.value = false
 })
 
@@ -84,6 +140,11 @@ onUnmounted(() => {
     // 移除事件监听器并保存数据
     window.removeEventListener('beforeunload', handleBeforeUnload)
     mediaQuery.removeEventListener('change', handleMediaChange)
+
+    // 移除 Tauri 事件监听器
+    unlisteners.forEach((unlisten) => unlisten())
+    unlisteners = []
+
     handleBeforeUnload()
 })
 

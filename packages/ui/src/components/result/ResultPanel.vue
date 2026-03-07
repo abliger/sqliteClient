@@ -7,19 +7,23 @@ import { useSchemaStore } from '@stores/schema'
 import { useToastStore } from '@stores/toast'
 import { exportService } from '@services/export'
 import { crudService } from '@services/crud'
+import * as crudLogService from '@services/crudLog'
+import { useCrudLogStore } from '@stores/crudLog'
 import { save } from '@tauri-apps/plugin-dialog'
 import ResultGrid from './ResultGrid.vue'
 import ResultStatus from './ResultStatus.vue'
+import CrudLogPanel from './CrudLogPanel.vue'
 import EditRowDialog from '@components/dialogs/EditRowDialog.vue'
 import { ArrowDownTrayIcon, TableCellsIcon, CheckCircleIcon } from '@heroicons/vue/24/outline'
-import type { QueryRow, CellValue } from '@types'
+import type { QueryRow, CellValue, CrudOperationType, CrudOperationLog } from '@types'
 
 const { t } = useI18n()
 const queryStore = useQueryStore()
 const connectionStore = useConnectionStore()
 const schemaStore = useSchemaStore()
 const toastStore = useToastStore()
-const activeTab = ref<'results' | 'messages'>('results')
+const crudLogStore = useCrudLogStore()
+const activeTab = ref<'results' | 'messages' | 'logs'>('results')
 const isExporting = ref(false)
 const isEditDialogOpen = ref(false)
 const editingRow = ref<QueryRow | null>(null)
@@ -53,6 +57,45 @@ const currentTableInfo = computed(() => {
 // 表结构已随连接加载，无需额外加载
 // getTableByName 会从已加载的 tables 中查找
 
+// 获取当前 Tab ID
+const currentTabId = computed(() => queryStore.activeTabId)
+
+// 记录 CRUD 操作日志
+const logCrudOperation = async (
+  operationType: CrudOperationType,
+  tableName: string,
+  sql: string,
+  rowData?: Record<string, CellValue>,
+  oldData?: Record<string, CellValue>
+): Promise<CrudOperationLog | null> => {
+  if (!connectionStore.activeConnectionId || !currentTabId.value) return null
+  
+  const log = crudLogService.createCrudLog(
+    connectionStore.activeConnectionId,
+    currentTabId.value,
+    tableName,
+    operationType,
+    sql
+  )
+  
+  if (rowData) {
+    log.row_data = JSON.stringify(rowData)
+  }
+  if (oldData) {
+    log.old_data = JSON.stringify(oldData)
+  }
+  
+  const startTime = Date.now()
+  try {
+    await crudLogStore.addLog(log)
+    log.duration_ms = Date.now() - startTime
+    return log
+  } catch (err) {
+    console.error('Failed to log CRUD operation:', err)
+    return null
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const handleEditRow = (row: QueryRow, _rowIndex: number) => {
     // 检查是否有可编辑的表
@@ -72,6 +115,9 @@ const handleDeleteRowFromGrid = async (row: QueryRow, _rowIndex: number) => {
         return
     }
 
+    const startTime = Date.now()
+    const oldData = { ...row.values }
+
     try {
         // 构建条件
         const conditions: Record<string, CellValue> = {}
@@ -90,11 +136,25 @@ const handleDeleteRowFromGrid = async (row: QueryRow, _rowIndex: number) => {
             })
         }
 
+        // 生成 SQL 用于日志记录
+        const conditionStr = Object.keys(conditions)
+            .map(k => `${k} = ?`)
+            .join(' AND ')
+        const sql = `DELETE FROM ${currentTableName.value} WHERE ${conditionStr}`
+
         await crudService.deleteRow({
             connectionId: connectionStore.activeConnectionId,
             tableName: currentTableName.value,
             conditions
         })
+
+        // 记录日志
+        const duration = Date.now() - startTime
+        const log = await logCrudOperation('DELETE', currentTableName.value, sql, undefined, oldData)
+        if (log) {
+            log.rows_affected = 1
+            log.duration_ms = duration
+        }
 
         toastStore.success(t('results.deleteSuccess'))
 
@@ -108,12 +168,18 @@ const handleDeleteRowFromGrid = async (row: QueryRow, _rowIndex: number) => {
         }
     } catch (err) {
         console.error('Delete failed:', err)
+        // 记录失败日志
+        const sql = `DELETE FROM ${currentTableName.value} WHERE ...`
+        await logCrudOperation('DELETE', currentTableName.value, sql, undefined, oldData)
         toastStore.error(t('results.deleteError'), err instanceof Error ? err.message : String(err))
     }
 }
 
 const handleSaveRow = async (data: Record<string, CellValue>) => {
     if (!connectionStore.activeConnectionId || !currentTableName.value || !editingRow.value) return
+
+    const startTime = Date.now()
+    const oldData = { ...editingRow.value.values }
 
     try {
         // 构建条件（使用主键或所有原始值）
@@ -134,12 +200,29 @@ const handleSaveRow = async (data: Record<string, CellValue>) => {
             })
         }
 
+        // 生成 SQL 用于日志记录
+        const setClause = Object.keys(data)
+            .map(k => `${k} = ?`)
+            .join(', ')
+        const conditionStr = Object.keys(conditions)
+            .map(k => `${k} = ?`)
+            .join(' AND ')
+        const sql = `UPDATE ${currentTableName.value} SET ${setClause} WHERE ${conditionStr}`
+
         await crudService.updateRow({
             connectionId: connectionStore.activeConnectionId,
             tableName: currentTableName.value,
             data,
             conditions
         })
+
+        // 记录日志
+        const duration = Date.now() - startTime
+        const log = await logCrudOperation('UPDATE', currentTableName.value, sql, data, oldData)
+        if (log) {
+            log.rows_affected = 1
+            log.duration_ms = duration
+        }
 
         toastStore.success(t('results.updateSuccess'))
         isEditDialogOpen.value = false
@@ -155,6 +238,9 @@ const handleSaveRow = async (data: Record<string, CellValue>) => {
         }
     } catch (err) {
         console.error('Update failed:', err)
+        // 记录失败日志
+        const sql = `UPDATE ${currentTableName.value} SET ... WHERE ...`
+        await logCrudOperation('UPDATE', currentTableName.value, sql, data, oldData)
         toastStore.error(t('results.updateError'), err instanceof Error ? err.message : String(err))
     }
 }
@@ -285,6 +371,17 @@ const handleExportJSON = async () => {
                 >
                     {{ t('results.messages') }}
                 </button>
+                <button
+                    class="text-sm font-medium pb-2 border-b-2 transition-colors"
+                    :class="
+                        activeTab === 'logs'
+                            ? 'text-primary-600 dark:text-primary-400 border-primary-600 dark:border-primary-400'
+                            : 'text-surface-500 dark:text-surface-400 border-transparent hover:text-surface-700 dark:hover:text-surface-300'
+                    "
+                    @click="activeTab = 'logs'"
+                >
+                    {{ t('results.operationLogs') }}
+                </button>
             </div>
 
             <!-- 导出按钮 -->
@@ -375,6 +472,9 @@ const handleExportJSON = async () => {
                 :execution-time="executionTime"
                 :result="currentResult"
             />
+            
+            <!-- Operation Logs Tab -->
+            <CrudLogPanel v-if="activeTab === 'logs'" />
         </div>
     </div>
 </template>

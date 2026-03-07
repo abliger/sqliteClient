@@ -14,6 +14,7 @@ mod utils;
 use commands::settings::SettingsStore;
 use core::connection_manager::ConnectionManager;
 use core::connection_store::ConnectionStore;
+use core::crud_log_store::CrudLogStore;
 use core::history_store::HistoryStore;
 
 
@@ -127,6 +128,16 @@ fn main() {
             // 初始化连接管理器
             let connection_manager = ConnectionManager::new(connection_store.clone(), history_store.clone());
 
+            // 初始化 CRUD 日志存储
+            let app_data_dir = app_handle
+                .path()
+                .app_data_dir()
+                .expect("Failed to get app data dir");
+            std::fs::create_dir_all(&app_data_dir).expect("Failed to create app data dir");
+            let crud_log_store = Arc::new(
+                CrudLogStore::new(&app_data_dir).expect("Failed to initialize CRUD log store")
+            );
+
             // 初始化设置存储
             let settings_store =
                 SettingsStore::new(app_handle).expect("Failed to initialize settings store");
@@ -139,6 +150,7 @@ fn main() {
             app.manage(connection_manager);
             app.manage(connection_store);
             app.manage(history_store.clone());
+            app.manage(crud_log_store);
             app.manage(settings_store);
 
             Ok(())
@@ -196,6 +208,13 @@ fn main() {
             commands::history::search_history,
             commands::history::delete_history_item,
             commands::history::clear_history,
+            // CRUD 日志
+            commands::crud_log::add_crud_log,
+            commands::crud_log::query_crud_logs,
+            commands::crud_log::count_crud_logs_by_tab,
+            commands::crud_log::delete_crud_logs_by_tab,
+            commands::crud_log::get_crud_log_table_names,
+            commands::crud_log::get_crud_log_stats,
             // 设置
             commands::settings::get_app_settings,
             commands::settings::save_app_settings,
