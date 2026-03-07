@@ -12,7 +12,7 @@ import {
   LinkIcon,
   CircleStackIcon
 } from '@heroicons/vue/24/outline'
-import type { TableInfo, ColumnInfo } from '@types'
+import type { TableInfo } from '@types'
 
 const { t } = useI18n()
 const connectionStore = useConnectionStore()
@@ -42,11 +42,11 @@ const handleGenerateInsert = (table: TableInfo) => {
   queryStore.addTab(sql)
 }
 
-const _getColumnIcon = (column: ColumnInfo) => {
-  if (column.is_primary_key) return KeyIcon
-  if (column.is_foreign_key) return LinkIcon
-  return null
-}
+// const _unusedGetColumnIcon = (column: ColumnInfo) => {
+//   if (column.is_primary_key) return KeyIcon
+//   if (column.is_foreign_key) return LinkIcon
+//   return null
+// }
 
 const tabs = computed(() => [
   { id: 'tables' as const, label: t('databaseTree.tables'), icon: TableCellsIcon },

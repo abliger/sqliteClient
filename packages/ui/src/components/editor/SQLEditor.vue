@@ -15,8 +15,14 @@ import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 
 // 配置 Monaco Worker - 使用全局变量避免重复配置
-if (!(window as any).MonacoEnvironment) {
-  (window as any).MonacoEnvironment = {
+interface WindowWithMonaco extends Window {
+    MonacoEnvironment?: {
+        getWorker: (_workerId: string, label: string) => Worker;
+    }
+}
+
+if (!(window as WindowWithMonaco).MonacoEnvironment) {
+  (window as WindowWithMonaco).MonacoEnvironment = {
     getWorker(_workerId: string, label: string) {
       if (label === 'json') {
         return new jsonWorker()
