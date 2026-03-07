@@ -171,12 +171,12 @@ onUnmounted(() => {
         v-if="isVisible"
         :data-tooltip-id="tooltipId"
         :style="tooltipStyle"
-        class="fixed z-[9999] px-2 py-1 text-xs font-medium text-white bg-surface-800 rounded shadow-lg whitespace-nowrap pointer-events-none"
+        class="fixed z-[9999] px-2 py-1 text-xs font-medium text-white bg-surface-800 dark:bg-surface-700 rounded shadow-lg whitespace-nowrap pointer-events-none"
       >
         {{ content }}
         <!-- Arrow -->
         <div
-          class="absolute w-2 h-2 bg-surface-800"
+          class="absolute w-2 h-2 bg-surface-800 dark:bg-surface-700"
           :style="arrowStyle"
         />
       </div>
