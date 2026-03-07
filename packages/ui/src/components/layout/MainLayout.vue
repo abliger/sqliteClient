@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { watch, onMounted } from 'vue'
 import { useConnectionStore } from '@stores/connection'
 import { useSchemaStore } from '@stores/schema'
+import { useQueryStore } from '@stores/query'
 import Sidebar from './Sidebar.vue'
 import ConnectionTabs from './ConnectionTabs.vue'
 import SQLEditor from '@components/editor/SQLEditor.vue'
@@ -10,19 +11,39 @@ import DatabaseTree from '@components/explorer/DatabaseTree.vue'
 
 const connectionStore = useConnectionStore()
 const schemaStore = useSchemaStore()
+const queryStore = useQueryStore()
 
-// 当活动连接变化时，加载表结构
+// 当活动连接变化时，加载表结构和切换 query tabs
 watch(
   () => connectionStore.activeConnectionId,
   async (connectionId) => {
     if (connectionId) {
       await schemaStore.loadTables(connectionId)
+      // 设置当前连接，切换对应的 query tabs
+      queryStore.setCurrentConnection(connectionId)
     } else {
       schemaStore.clearSchema()
+      queryStore.setCurrentConnection('')
     }
   },
   { immediate: true }
 )
+
+// 监听连接变化，清理已关闭连接的 tabs
+watch(
+  () => connectionStore.connections.map(c => c.config.id),
+  (connectionIds) => {
+    queryStore.cleanupOrphanedTabs(connectionIds)
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  // 如果有活动连接，设置当前连接
+  if (connectionStore.activeConnectionId) {
+    queryStore.setCurrentConnection(connectionStore.activeConnectionId)
+  }
+})
 </script>
 
 <template>

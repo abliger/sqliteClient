@@ -46,11 +46,20 @@ const handleCloseTab = (tabId: string, event: Event) => {
           <XMarkIcon class="w-3.5 h-3.5" />
         </button>
       </div>
+      
+      <!-- 没有连接时的提示 -->
+      <div
+        v-if="queryStore.tabs.length === 0"
+        class="px-4 py-2 text-sm text-surface-400"
+      >
+        {{ t('editor.noConnection') || '请先打开数据库连接' }}
+      </div>
     </div>
 
     <button
-      class="p-2 hover:bg-surface-200 text-surface-600"
+      class="p-2 hover:bg-surface-200 text-surface-600 disabled:opacity-50 disabled:cursor-not-allowed"
       :title="t('editor.newQueryTab')"
+      :disabled="!queryStore.currentConnectionId"
       @click="handleAddTab"
     >
       <PlusIcon class="w-4 h-4" />

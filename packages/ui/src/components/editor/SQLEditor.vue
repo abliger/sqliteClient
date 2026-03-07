@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, watch, onUnmounted, nextTick, computed } from 'vue'
 import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
+import { useSchemaStore } from '@stores/schema'
+import { useSQLCompletion } from '@composables/useSQLCompletion'
 import EditorToolbar from './EditorToolbar.vue'
 import QueryTabs from './QueryTabs.vue'
 import * as monaco from 'monaco-editor'
@@ -35,9 +37,34 @@ if (!(window as any).MonacoEnvironment) {
 
 const connectionStore = useConnectionStore()
 const queryStore = useQueryStore()
+const schemaStore = useSchemaStore()
 const editorContainer = ref<HTMLDivElement>()
 let editor: MonacoEditor.IStandaloneCodeEditor | null = null
 let disposeContentListener: (() => void) | null = null
+
+// 获取表信息的 getter
+const getTableByName = computed(() => {
+  return (name: string) => schemaStore.getTableByName(name)
+})
+
+// 注册 SQL 智能提示
+const { dispose: disposeCompletion } = useSQLCompletion({
+  tables: schemaStore.tables,
+  getTableByName: (name: string) => getTableByName.value(name)
+})
+
+// 当活动连接变化时，加载 schema 数据
+watch(
+  () => connectionStore.activeConnectionId,
+  async (connectionId) => {
+    if (connectionId) {
+      await schemaStore.loadTables(connectionId)
+    } else {
+      schemaStore.clearSchema()
+    }
+  },
+  { immediate: true }
+)
 
 // 初始化 Monaco 编辑器
 onMounted(() => {
@@ -141,6 +168,8 @@ onUnmounted(() => {
     editor.dispose()
     editor = null
   }
+  // 清理 SQL 补全
+  disposeCompletion()
 })
 
 const handleExecuteQuery = async () => {

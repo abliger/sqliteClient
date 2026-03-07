@@ -33,7 +33,7 @@ export const useConnectionStore = defineStore('connection', () => {
   /**
    * 应用启动时恢复保存的连接
    */
-  async function restoreSavedConnections() {
+  async function restoreSavedConnections(): Promise<ConnectionInfo[]> {
     isLoading.value = true
     error.value = null
     try {
@@ -42,9 +42,11 @@ export const useConnectionStore = defineStore('connection', () => {
       if (connections.value.length > 0 && !activeConnectionId.value) {
         activeConnectionId.value = connections.value[0].config.id
       }
+      return connections.value
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to restore connections'
       console.error('Failed to restore connections:', err)
+      return []
     } finally {
       isLoading.value = false
     }

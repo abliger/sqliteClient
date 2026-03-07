@@ -74,6 +74,7 @@ export default {
     newQueryTab: '新建查询标签',
     shortcutHint: 'Ctrl+Enter 运行',
     commentShortcut: 'Ctrl+/ 注释',
+    noConnection: '请先打开数据库连接',
   },
 
   // Results

@@ -74,6 +74,7 @@ export default {
     newQueryTab: 'New Query Tab',
     shortcutHint: 'Ctrl+Enter to run',
     commentShortcut: 'Ctrl+/ to comment',
+    noConnection: 'Please open a database connection',
   },
 
   // Results

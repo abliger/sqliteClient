@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon, XMarkIcon, FolderOpenIcon, DocumentPlusIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 import { useConnectionStore } from '@stores/connection'
+import { useQueryStore } from '@stores/query'
 import { useSettingsStore } from '@stores/settings'
 import { useToastStore } from '@stores/toast'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -11,6 +12,7 @@ import CreateDatabaseDialog from '@components/dialogs/CreateDatabaseDialog.vue'
 
 const { t } = useI18n()
 const connectionStore = useConnectionStore()
+const queryStore = useQueryStore()
 const settingsStore = useSettingsStore()
 const toastStore = useToastStore()
 const isCreating = ref(false)
@@ -90,6 +92,8 @@ const handleCloseConnection = async (connectionId: string, event: Event) => {
   try {
     const conn = connectionStore.connections.find(c => c.config.id === connectionId)
     await connectionStore.closeConnection(connectionId)
+    // 删除对应的 query tabs
+    queryStore.removeConnectionTabs(connectionId)
     if (conn) {
       toastStore.info(
         t('connection.closeSuccess'),

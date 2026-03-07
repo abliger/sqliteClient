@@ -161,6 +161,22 @@ export interface QueryTab {
   executionTime?: number
 }
 
+// 可序列化的 QueryTab（用于存储）
+export interface SavedQueryTab {
+  id: string
+  name: string
+  sql: string
+}
+
+// 每个连接的 Query Tabs 状态
+export interface ConnectionQueryState {
+  tabs: SavedQueryTab[]
+  activeTabId: string
+}
+
+// 所有连接的 Query Tabs 存储
+export type SavedQueryTabs = Record<string, ConnectionQueryState>
+
 export interface EditorState {
   content: string
   cursorPosition?: { line: number; column: number }
