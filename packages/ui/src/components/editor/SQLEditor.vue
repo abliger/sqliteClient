@@ -4,7 +4,6 @@ import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
 import { useSchemaStore } from '@stores/schema'
 import { useSettingsStore } from '@stores/settings'
-import { useTemplateStore } from '@stores/template'
 import { useSQLCompletion, FullFeaturedStrategyFactory } from '@composables/sql-completion'
 import { sqlFormatter } from '@services/formatter'
 import EditorToolbar from './EditorToolbar.vue'
@@ -50,8 +49,7 @@ const connectionStore = useConnectionStore()
 const queryStore = useQueryStore()
 const schemaStore = useSchemaStore()
 const settingsStore = useSettingsStore()
-// Template store is imported but only used through TemplatePanel component
-void useTemplateStore
+// Template store is used by TemplatePanel component, no direct usage here
 const editorContainer = ref<HTMLDivElement>()
 let editor: MonacoEditor.IStandaloneCodeEditor | null = null
 let disposeContentListener: (() => void) | null = null

@@ -4,13 +4,22 @@
     "pipeline": {
         "build": {
             "dependsOn": ["^build"],
-            "outputs": ["dist/**", "src-tauri/target/release/**"]
+            "outputs": [".next/**", "!.next/cache/**", "dist/**"]
         },
         "dev": {
             "cache": false,
             "persistent": true
         },
         "lint": {
+            "cache": false
+        },
+        "lint:fix": {
+            "cache": false
+        },
+        "typecheck": {
+            "cache": false
+        },
+        "test": {
             "cache": false
         }
     }

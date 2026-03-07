@@ -5,7 +5,7 @@
     "identifier": "com.sqliteclient.app",
     "build": {
         "beforeDevCommand": "cd ../../packages/ui && pnpm dev",
-        "beforeBuildCommand": "cd ../../../packages/ui && pnpm build",
+        "beforeBuildCommand": "cd ../../packages/ui && pnpm build",
         "frontendDist": "../../../packages/ui/dist",
         "devUrl": "http://localhost:5173"
     },

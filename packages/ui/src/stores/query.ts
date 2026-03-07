@@ -540,7 +540,7 @@ export const useQueryStore = defineStore('query', () => {
     // 删除快照
     function deleteSnapshot(snapshotId: string): boolean {
         console.log('[QueryStore] deleteSnapshot called:', snapshotId)
-        
+
         if (!currentConnectionId.value || !activeTabId.value) {
             console.log('[QueryStore] deleteSnapshot: no connection or tab')
             return false

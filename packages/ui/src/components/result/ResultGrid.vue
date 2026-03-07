@@ -65,6 +65,9 @@ const formatCellValue = (value: CellValue): string => {
 const getCellClass = (value: CellValue): string => {
     const baseClass =
         'px-3 py-2 text-sm border-b border-r border-surface-200 dark:border-surface-700 truncate max-w-[300px]'
+    if (!value || !value.type) {
+        return `${baseClass} text-surface-700 dark:text-surface-300`
+    }
     switch (value.type) {
         case 'Null':
             return `${baseClass} text-surface-400 dark:text-surface-500 italic`
@@ -168,9 +171,9 @@ const goToNextPage = () => {
                         <td
                             v-for="col in columns"
                             :key="col"
-                            :class="getCellClass(row.values[col] || { type: 'Null' })"
+                            :class="getCellClass(row.values[col] ?? { type: 'Null' })"
                         >
-                            {{ formatCellValue(row.values[col] || { type: 'Null' }) }}
+                            {{ formatCellValue(row.values[col] ?? { type: 'Null' }) }}
                         </td>
                         <!-- 操作按钮列 -->
                         <td

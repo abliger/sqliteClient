@@ -263,9 +263,8 @@ impl ConnectionManager {
     }
 }
 
-// 线程安全的共享类型
-unsafe impl Send for ConnectionManager {}
-unsafe impl Sync for ConnectionManager {}
+// ConnectionManager is thread-safe via Arc<RwLock<...>>
+// Send and Sync are automatically implemented because all fields are Send + Sync
 
 #[cfg(test)]
 mod tests {

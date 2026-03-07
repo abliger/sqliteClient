@@ -1,0 +1,94 @@
+{
+    "name": "sqlite-client",
+    "displayName": "SQLite Client",
+    "description": "A powerful SQLite client for VSCode",
+    "version": "0.1.0",
+    "publisher": "sqlite-client",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "categories": [
+        "Database",
+        "Visualization"
+    ],
+    "keywords": [
+        "sqlite",
+        "database",
+        "sql",
+        "client"
+    ],
+    "activationEvents": [
+        "onCommand:sqliteClient.open",
+        "onCommand:sqliteClient.openDatabase"
+    ],
+    "main": "./dist/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "sqliteClient.open",
+                "title": "Open SQLite Client",
+                "category": "SQLite Client"
+            },
+            {
+                "command": "sqliteClient.openDatabase",
+                "title": "Open SQLite Database",
+                "category": "SQLite Client",
+                "icon": "$(database)"
+            },
+            {
+                "command": "sqliteClient.closeConnection",
+                "title": "Close Connection",
+                "category": "SQLite Client",
+                "icon": "$(close)"
+            }
+        ],
+        "menus": {
+            "commandPalette": [
+                {
+                    "command": "sqliteClient.open"
+                },
+                {
+                    "command": "sqliteClient.openDatabase"
+                }
+            ],
+            "editor/title": [
+                {
+                    "command": "sqliteClient.openDatabase",
+                    "group": "navigation",
+                    "when": "resourceExtname == .db || resourceExtname == .sqlite || resourceExtname == .sqlite3"
+                }
+            ],
+            "explorer/context": [
+                {
+                    "command": "sqliteClient.openDatabase",
+                    "group": "2_open@10",
+                    "when": "resourceExtname == .db || resourceExtname == .sqlite || resourceExtname == .sqlite3"
+                }
+            ]
+        }
+    },
+    "scripts": {
+        "build": "pnpm build:extension && pnpm build:webview",
+        "build:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --external:better-sqlite3 --format=cjs --platform=node",
+        "build:webview": "vite build",
+        "dev": "vite build --watch",
+        "package": "pnpm build && vsce package --no-dependencies",
+        "lint": "eslint src --fix",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "better-sqlite3": "^9.4.0",
+        "pinia": "^2.1.7",
+        "vue": "^3.4.0"
+    },
+    "devDependencies": {
+        "@types/better-sqlite3": "^7.6.8",
+        "@types/node": "^20.10.0",
+        "@types/vscode": "^1.85.0",
+        "@vitejs/plugin-vue": "^4.5.0",
+        "@vitejs/plugin-vue-jsx": "^3.1.0",
+        "esbuild": "^0.19.0",
+        "typescript": "^5.3.0",
+        "vite": "^5.0.0"
+    }
+}

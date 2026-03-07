@@ -253,10 +253,14 @@ impl QueryEngine {
     fn convert_value(value_ref: ValueRef) -> CellValue {
         match value_ref {
             ValueRef::Null => CellValue::Null,
-            ValueRef::Integer(i) => CellValue::Integer(i),
+            ValueRef::Integer(i) => {
+                // SQLite 没有单独的布尔类型，通常用 0/1 表示
+                // 这里保持 Integer 类型
+                CellValue::Integer(i)
+            }
             ValueRef::Real(f) => CellValue::Real(f),
             ValueRef::Text(t) => CellValue::Text(String::from_utf8_lossy(t).to_string()),
-            ValueRef::Blob(b) => CellValue::Blob(base64::encode(b)),
+            ValueRef::Blob(b) => CellValue::Blob(hex::encode(b)),
         }
     }
 
@@ -442,8 +446,8 @@ impl StreamManager {
     }
 }
 
-// Base64 encoding helper
-mod base64 {
+// Hex encoding helper for BLOB data
+mod hex {
     pub fn encode(input: &[u8]) -> String {
         use std::fmt::Write;
         let mut result = String::new();

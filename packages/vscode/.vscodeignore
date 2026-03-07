@@ -1,0 +1,9 @@
+src/
+node_modules/
+dist/webview/**/*.map
+*.md
+.vscode/
+.gitignore
+vite.config.ts
+tsconfig.json
+pnpm-lock.yaml

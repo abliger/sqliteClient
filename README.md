@@ -1,6 +1,6 @@
 # SQLite Client
 
-A modern, cross-platform SQLite client built with Tauri and Vue3.
+A modern, cross-platform SQLite client built with Tauri and Vue3. Available as both a desktop application and a VSCode extension.
 
 ## Features
 
@@ -13,11 +13,17 @@ A modern, cross-platform SQLite client built with Tauri and Vue3.
 - **Export Capabilities**: Export query results to CSV and JSON formats
 - **Stream Processing**: Handle large datasets with streaming query results
 
+## Platforms
+
+- **Desktop App**: Cross-platform desktop application built with Tauri
+- **VSCode Extension**: Use SQLite Client directly within VSCode
+
 ## Tech Stack
 
 ### Backend
 
-- **Tauri v2** - Cross-platform desktop framework
+- **Tauri v2** - Cross-platform desktop framework (Desktop app)
+- **better-sqlite3** - SQLite driver for Node.js (VSCode extension)
 - **Rust** - Systems programming language
 - **rusqlite** - SQLite driver for Rust
 - **r2d2** - Connection pooling
@@ -40,14 +46,19 @@ sqlite-client/
 │   └── desktop/              # Tauri desktop application
 │       └── src-tauri/        # Rust backend code
 ├── packages/
-│   ├── ui/                   # Vue3 frontend application
+│   ├── ui/                   # Vue3 frontend application (shared)
 │   │   ├── src/
 │   │   │   ├── components/   # Vue components
 │   │   │   ├── stores/       # Pinia stores
 │   │   │   ├── services/     # Tauri API wrappers
 │   │   │   └── types/        # TypeScript types
 │   │   └── package.json
-│   └── shared/               # Shared types (Rust)
+│   └── vscode/               # VSCode extension
+│       ├── src/
+│       │   ├── extension.ts  # Extension entry
+│       │   ├── database.ts   # SQLite backend
+│       │   └── webview-ui/   # Webview frontend
+│       └── package.json
 ├── Cargo.toml                # Rust workspace configuration
 ├── package.json              # Node.js workspace configuration
 └── turbo.json                # Turborepo configuration
@@ -57,7 +68,7 @@ sqlite-client/
 
 ### Prerequisites
 
-- [Rust](https://rustup.rs/) (1.75+)
+- [Rust](https://rustup.rs/) (1.75+) - For desktop app
 - [Node.js](https://nodejs.org/) (18+)
 - [pnpm](https://pnpm.io/) (8+)
 
@@ -71,39 +82,106 @@ cd sqlite-client
 # Install dependencies
 pnpm install
 
-# Install Tauri CLI
+# Install Tauri CLI (for desktop app)
 cargo install tauri-cli
 ```
 
-### Development Mode
+### Desktop App
 
 ```bash
 # Run the desktop app in development mode
 pnpm desktop:dev
-```
 
-### Build
-
-```bash
 # Build for production
 pnpm desktop:build
 ```
 
+### VSCode Extension
+
+```bash
+# Build the extension
+cd packages/vscode
+pnpm build
+
+# Package the extension
+pnpm package
+
+# Install in VSCode
+# 1. Open VSCode
+# 2. Go to Extensions view (Ctrl+Shift+X)
+# 3. Click "..." menu and select "Install from VSIX"
+# 4. Select packages/vscode/sqlite-client-0.1.0.vsix
+```
+
+## Usage
+
+### Desktop App
+
+Launch the app and use the "Open Database" button to connect to a SQLite database.
+
+### VSCode Extension
+
+1. Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+2. Run `SQLite Client: Open SQLite Database`
+3. Select a `.db`, `.sqlite`, or `.sqlite3` file
+
+Or right-click on a database file in the Explorer and select `Open SQLite Database`.
+
 ## Architecture
 
-### Backend (Rust)
+### Desktop App
 
-- **Connection Manager**: Manages multiple database connections with connection pooling
-- **Query Engine**: Executes SQL queries with streaming support for large datasets
-- **Schema Analyzer**: Extracts database metadata and generates ER diagrams
-- **History Store**: Persists query history using SQLite with FTS5 for search
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Tauri Application                      │
+│  ┌─────────────────┐      ┌─────────────────────────┐  │
+│  │  Rust Backend   │──────│  SQLite (rusqlite)      │  │
+│  │  (Tauri)        │      │  Connection Pool        │  │
+│  └─────────────────┘      └─────────────────────────┘  │
+│           │                                              │
+│           │ Tauri Commands                               │
+│           ▼                                              │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │              WebView (WebKit/Edge)                │   │
+│  │  ┌─────────────────────────────────────────────┐ │   │
+│  │  │  Vue3 Frontend                              │ │   │
+│  │  │  ┌─────────┐  ┌─────────┐  ┌───────────┐   │ │   │
+│  │  │  │ Stores  │  │Components│  │ Composables│   │ │   │
+│  │  │  └─────────┘  └─────────┘  └───────────┘   │ │   │
+│  │  └─────────────────────────────────────────────┘ │   │
+│  └──────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+```
 
-### Frontend (Vue3)
+### VSCode Extension
 
-- **Connection Store**: Manages active connections and their state
-- **Query Store**: Manages query tabs, execution state, and results
-- **Schema Store**: Caches and manages database schema information
-- **History Store**: Manages query history and search
+```
+┌─────────────────────────────────────────────────────────┐
+│                    VSCode Extension                      │
+│  ┌─────────────────┐      ┌─────────────────────────┐  │
+│  │  Extension Host │──────│  DatabaseManager        │  │
+│  │  (Node.js)      │      │  (better-sqlite3)       │  │
+│  └─────────────────┘      └─────────────────────────┘  │
+│           │                                              │
+│           │ VSCode Message API                           │
+│           ▼                                              │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │              Webview Panel                        │   │
+│  │  ┌─────────────────────────────────────────────┐ │   │
+│  │  │  Vue3 App (same UI as desktop)              │ │   │
+│  │  │  ┌─────────┐  ┌─────────┐  ┌───────────┐   │ │   │
+│  │  │  │ Stores  │  │Components│  │ Composables│   │ │   │
+│  │  │  └─────────┘  └─────────┘  └───────────┘   │ │   │
+│  │  └─────────────────────────────────────────────┘ │   │
+│  └──────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+```
+
+The VSCode extension reuses the same UI components from `packages/ui` by:
+
+1. Mocking Tauri API calls to use VSCode's message passing instead
+2. Implementing a SQLite backend using `better-sqlite3` instead of Rust/Tauri
+3. Rendering the UI in a VSCode Webview panel
 
 ## Keyboard Shortcuts
 
