@@ -1,5 +1,5 @@
 import { config } from '@vue/test-utils'
-import { vi } from 'vitest'
+import { expect, vi } from 'vitest'
 
 // Mock Tauri API
 vi.mock('@tauri-apps/api/core', () => ({
