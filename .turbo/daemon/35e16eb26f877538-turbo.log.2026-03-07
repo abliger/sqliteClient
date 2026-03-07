@@ -1,0 +1,52 @@
+2026-03-07T10:50:51.342537Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo/cookies/.turbo-cookie")}
+2026-03-07T10:50:51.342545Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2026-03-07T10:50:51.443034Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo/cookies/1.cookie")}
+2026-03-07T10:50:51.443044Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2026-03-07T10:50:52.142396Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/vite.config.ts.timestamp-1772880652079-c0e9da75f2bec.mjs")}
+2026-03-07T10:50:52.142407Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:50:52.442823Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/vite.config.ts.timestamp-1772880652079-c0e9da75f2bec.mjs")}
+2026-03-07T10:50:52.442832Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:50:52.743731Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/vite.config.ts.timestamp-1772880652674-f942ff60b26f6.mjs")}
+2026-03-07T10:50:52.743743Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:50:52.943650Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/vite.config.ts.timestamp-1772880652674-f942ff60b26f6.mjs")}
+2026-03-07T10:50:52.943659Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:51:29.841616Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo/cookies/2.cookie")}
+2026-03-07T10:51:29.841628Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2026-03-07T10:51:30.841516Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/vite.config.ts.timestamp-1772880690793-85f221c6a4a53.mjs")}
+2026-03-07T10:51:30.841526Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:51:31.041235Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/vite.config.ts.timestamp-1772880690793-85f221c6a4a53.mjs")}
+2026-03-07T10:51:31.041245Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:56:16.333159Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/App.vue")}
+2026-03-07T10:56:16.333170Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:56:23.533692Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/layout/MainLayout.vue")}
+2026-03-07T10:56:23.533701Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:56:31.033003Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/layout/Sidebar.vue")}
+2026-03-07T10:56:31.033016Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:56:51.332872Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/layout/ConnectionTabs.vue")}
+2026-03-07T10:56:51.332884Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:57:01.231755Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/editor/QueryTabs.vue")}
+2026-03-07T10:57:01.231765Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:57:10.331406Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/editor/EditorToolbar.vue")}
+2026-03-07T10:57:10.331423Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:57:32.730989Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/editor/SQLEditor.vue")}
+2026-03-07T10:57:32.730999Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:58:03.030167Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/explorer/DatabaseTree.vue")}
+2026-03-07T10:58:03.030179Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:58:24.930246Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/result/ResultStatus.vue")}
+2026-03-07T10:58:24.930265Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:58:54.628610Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/result/ResultGrid.vue")}
+2026-03-07T10:58:54.628630Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:59:19.529579Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/result/ResultPanel.vue")}
+2026-03-07T10:59:19.529588Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:59:29.132452Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/main.ts")}
+2026-03-07T10:59:29.132463Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:59:31.232934Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/editor/EditorToolbar.tsx"), AnchoredSystemPathBuf("packages/ui/src/components/result/ResultGrid.tsx"), AnchoredSystemPathBuf("packages/ui/src/components/layout/Sidebar.tsx"), AnchoredSystemPathBuf("packages/ui/src/components/editor/QueryTabs.tsx"), AnchoredSystemPathBuf("packages/ui/src/components/result/ResultStatus.tsx"), AnchoredSystemPathBuf("packages/ui/src/components/editor/SQLEditor.tsx"), AnchoredSystemPathBuf("packages/ui/src/components/result/ResultPanel.tsx"), AnchoredSystemPathBuf("packages/ui/src/App.tsx"), AnchoredSystemPathBuf("packages/ui/src/components/explorer/DatabaseTree.tsx"), AnchoredSystemPathBuf("packages/ui/src/components/layout/ConnectionTabs.tsx"), AnchoredSystemPathBuf("packages/ui/src/components/layout/MainLayout.tsx")}
+2026-03-07T10:59:31.232944Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:59:42.433639Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/vite.config.ts.timestamp-1772881182390-89021c09980a3.mjs")}
+2026-03-07T10:59:42.433648Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T10:59:42.633846Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/vite.config.ts.timestamp-1772881182390-89021c09980a3.mjs")}
+2026-03-07T10:59:42.633856Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T11:01:50.131105Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/editor/SQLEditor.vue")}
+2026-03-07T11:01:50.131122Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))
+2026-03-07T11:01:51.731907Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("packages/ui/src/components/editor/SQLEditor.vue")}
+2026-03-07T11:01:51.731920Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@sqlite-client/ui"), path: AnchoredSystemPathBuf("packages/ui") }}))

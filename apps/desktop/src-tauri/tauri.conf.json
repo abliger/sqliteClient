@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.sqliteclient.app",
   "build": {
-    "beforeDevCommand": "cd /Users/lvming/Desktop/sqliteClient/sqlite-client/packages/ui && pnpm dev",
+    "beforeDevCommand": "cd ../../packages/ui && pnpm dev",
     "beforeBuildCommand": "cd ../../../packages/ui && pnpm build",
     "frontendDist": "../../../packages/ui/dist",
     "devUrl": "http://localhost:5173"
