@@ -75,6 +75,9 @@ export default {
     shortcutHint: 'Ctrl+Enter to run',
     commentShortcut: 'Ctrl+/ to comment',
     noConnection: 'Please open a database connection',
+    closeTab: 'Close Tab',
+    closeTabsToRight: 'Close Tabs to Right',
+    closeOtherTabs: 'Close Other Tabs',
   },
 
   // Results

@@ -75,6 +75,9 @@ export default {
     shortcutHint: 'Ctrl+Enter 运行',
     commentShortcut: 'Ctrl+/ 注释',
     noConnection: '请先打开数据库连接',
+    closeTab: '关闭标签',
+    closeTabsToRight: '关闭右侧标签',
+    closeOtherTabs: '关闭其他标签',
   },
 
   // Results
