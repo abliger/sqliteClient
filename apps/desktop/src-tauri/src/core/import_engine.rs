@@ -1,14 +1,12 @@
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
 
-use calamine::{open_workbook_auto, Data, Reader, Range};
+use calamine::{open_workbook_auto, Data, Range, Reader};
 use csv::StringRecord;
 use serde::Serialize;
-use tauri::State;
 
 use crate::core::connection_manager::ConnectionManager;
-use crate::models::import::{ColumnMapping, ColumnStats, ImportConfig, PreviewRow};
+use crate::models::import::{ColumnStats, ImportConfig, PreviewRow};
 use crate::utils::error::{AppError, AppResult};
 
 /// 导入预览结果
@@ -67,11 +65,7 @@ impl ImportEngine {
             .from_reader(file);
 
         // 获取列名
-        let headers: Vec<String> = reader
-            .headers()?
-            .iter()
-            .map(|h| h.to_string())
-            .collect();
+        let headers: Vec<String> = reader.headers()?.iter().map(|h| h.to_string()).collect();
 
         // 读取前 100 行作为预览
         let mut rows: Vec<PreviewRow> = Vec::new();
@@ -102,11 +96,9 @@ impl ImportEngine {
             .map_err(|e| AppError::InvalidParameter(format!("Failed to open Excel: {}", e)))?;
 
         // 获取第一个工作表
-        let sheet_name = workbook
-            .sheet_names()
-            .first()
-            .cloned()
-            .ok_or_else(|| AppError::InvalidParameter("No sheets found in Excel file".to_string()))?;
+        let sheet_name = workbook.sheet_names().first().cloned().ok_or_else(|| {
+            AppError::InvalidParameter("No sheets found in Excel file".to_string())
+        })?;
 
         let range: Range<Data> = workbook
             .worksheet_range(&sheet_name)
@@ -154,10 +146,8 @@ impl ImportEngine {
         let mut stats_map: HashMap<String, ColumnStats> = HashMap::new();
 
         // 收集所有列名
-        let all_columns: std::collections::HashSet<String> = rows
-            .iter()
-            .flat_map(|row| row.keys().cloned())
-            .collect();
+        let all_columns: std::collections::HashSet<String> =
+            rows.iter().flat_map(|row| row.keys().cloned()).collect();
 
         for col in &all_columns {
             stats_map.insert(col.clone(), ColumnStats::default());
@@ -233,10 +223,7 @@ impl ImportEngine {
 
         // 如果表存在且需要覆盖，则删除
         if config.overwrite_existing {
-            tx.execute(
-                &format!("DROP TABLE IF EXISTS {}", config.table_name),
-                [],
-            )?;
+            tx.execute(&format!("DROP TABLE IF EXISTS {}", config.table_name), [])?;
         }
 
         // 创建表

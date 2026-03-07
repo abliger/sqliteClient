@@ -14,7 +14,7 @@ import {
     CircleStackIcon,
     PlusIcon,
     PencilIcon,
-    TrashIcon,
+
 } from '@heroicons/vue/24/outline'
 import type { TableInfo } from '@types'
 import TableDesignerDialog from '@components/designer/TableDesignerDialog.vue'

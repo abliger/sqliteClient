@@ -39,7 +39,7 @@ impl DdlEngine {
 
         // 检查是否需要重建表
         let needs_recreate = Self::needs_table_recreation(changes);
-        
+
         let sql = if needs_recreate {
             Self::generate_recreate_table_sql(pool, table_name, changes)?
         } else {
@@ -123,7 +123,7 @@ impl DdlEngine {
         let start = std::time::Instant::now();
 
         let needs_recreate = Self::needs_table_recreation(changes);
-        
+
         if needs_recreate {
             Self::execute_recreate_table(pool, table_name, changes)?;
         } else {
@@ -190,10 +190,10 @@ impl DdlEngine {
         if let Some(ref pk) = table.primary_key {
             if pk.len() > 1 {
                 let pk_cols: Vec<String> = pk.iter().map(|c| format!("\"{}\"", c)).collect();
-                constraints.push(format!("PRIMARY KEY ({})" , pk_cols.join(", ")));
+                constraints.push(format!("PRIMARY KEY ({})", pk_cols.join(", ")));
             }
         } else if pk_columns.len() > 1 {
-            constraints.push(format!("PRIMARY KEY ({})" , pk_columns.join(", ")));
+            constraints.push(format!("PRIMARY KEY ({})", pk_columns.join(", ")));
         }
 
         // 添加外键约束
@@ -260,11 +260,7 @@ impl DdlEngine {
     /// 生成创建索引的SQL
     fn generate_create_index_sql(table_name: &str, index: &DesignerIndex) -> AppResult<String> {
         let unique_str = if index.unique { "UNIQUE " } else { "" };
-        let cols: Vec<String> = index
-            .columns
-            .iter()
-            .map(|c| format!("\"{}\"", c))
-            .collect();
+        let cols: Vec<String> = index.columns.iter().map(|c| format!("\"{}\"", c)).collect();
 
         let where_clause = index
             .where_clause
@@ -353,9 +349,9 @@ impl DdlEngine {
 
         // 生成重建SQL
         let temp_name = format!("{}_temp_{}", table_name, uuid::Uuid::new_v4().simple());
-        
+
         let mut result = Vec::new();
-        
+
         // 1. 创建临时表
         let create_sql = Self::generate_create_table_sql(&DesignerTable {
             name: temp_name.clone(),
@@ -385,7 +381,10 @@ impl DdlEngine {
         result.push(format!("DROP TABLE \"{}\"", table_name));
 
         // 4. 重命名临时表
-        let final_name = if let Some(TableChange::RenameTable { new_name }) = changes.iter().find(|c| matches!(c, TableChange::RenameTable { .. })) {
+        let final_name = if let Some(TableChange::RenameTable { new_name }) = changes
+            .iter()
+            .find(|c| matches!(c, TableChange::RenameTable { .. }))
+        {
             new_name.clone()
         } else {
             table_name.to_string()
@@ -411,12 +410,12 @@ impl DdlEngine {
         changes: &[TableChange],
     ) -> AppResult<()> {
         let sql = Self::generate_recreate_table_sql(pool, table_name, changes)?;
-        
+
         let conn = pool
             .get()
             .map_err(|e| AppError::ConnectionError(e.to_string()))?;
         conn.execute_batch(&sql)?;
-        
+
         Ok(())
     }
 
@@ -435,10 +434,7 @@ impl DdlEngine {
     }
 
     /// 应用变更到表结构
-    fn apply_changes_to_table(
-        table: &mut DesignerTable,
-        changes: &[TableChange],
-    ) -> AppResult<()> {
+    fn apply_changes_to_table(table: &mut DesignerTable, changes: &[TableChange]) -> AppResult<()> {
         for change in changes {
             match change {
                 TableChange::AddColumn { column } => {
@@ -454,7 +450,10 @@ impl DdlEngine {
                         }
                     }
                 }
-                TableChange::AlterColumn { column_name, new_column } => {
+                TableChange::AlterColumn {
+                    column_name,
+                    new_column,
+                } => {
                     if let Some(idx) = table.columns.iter().position(|c| c.name == *column_name) {
                         table.columns[idx] = new_column.clone();
                     }
@@ -538,10 +537,7 @@ impl DdlEngine {
                     if !current_columns.contains(column_name) {
                         warnings.push(format!("列 '{}' 不存在", column_name));
                     } else {
-                        warnings.push(format!(
-                            "列 '{}' 将被删除，数据将丢失",
-                            column_name
-                        ));
+                        warnings.push(format!("列 '{}' 将被删除，数据将丢失", column_name));
                     }
                 }
                 TableChange::RenameColumn { old_name, .. } => {
@@ -559,10 +555,7 @@ impl DdlEngine {
                             column_name
                         )));
                     }
-                    warnings.push(format!(
-                        "修改列 '{}' 可能需要重建表",
-                        column_name
-                    ));
+                    warnings.push(format!("修改列 '{}' 可能需要重建表", column_name));
                 }
                 _ => {}
             }

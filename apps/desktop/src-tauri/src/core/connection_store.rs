@@ -51,14 +51,14 @@ impl ConnectionStore {
     /// 添加或更新单个连接配置
     pub fn save_connection(&self, config: &ConnectionConfig) -> AppResult<()> {
         let mut connections = self.load_connections()?;
-        
+
         // 更新或添加
         if let Some(index) = connections.iter().position(|c| c.id == config.id) {
             connections[index] = config.clone();
         } else {
             connections.push(config.clone());
         }
-        
+
         self.save_connections(&connections)
     }
 
@@ -93,7 +93,7 @@ mod tests {
 
         let json = serde_json::to_string_pretty(&vec![config.clone()]).unwrap();
         let loaded: Vec<ConnectionConfig> = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].id, config.id);
         assert_eq!(loaded[0].name, config.name);

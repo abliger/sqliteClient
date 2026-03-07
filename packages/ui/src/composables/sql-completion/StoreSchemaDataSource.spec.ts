@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ref } from 'vue'
 import { StoreSchemaDataSource, StaticSchemaDataSource } from './StoreSchemaDataSource'
-import type { TableInfo, ColumnInfo } from '@types'
+import type { TableInfo } from '@types'
 
 // Mock table data
 const mockTables: TableInfo[] = [
@@ -9,21 +9,70 @@ const mockTables: TableInfo[] = [
         name: 'users',
         column_count: 3,
         columns: [
-            { name: 'id', data_type: 'INTEGER', nullable: false, is_primary_key: true, is_foreign_key: false },
-            { name: 'name', data_type: 'TEXT', nullable: true, is_primary_key: false, is_foreign_key: false },
-            { name: 'email', data_type: 'TEXT', nullable: false, is_primary_key: false, is_foreign_key: false }
-        ]
+            {
+                name: 'id',
+                data_type: 'INTEGER',
+                nullable: false,
+                is_primary_key: true,
+                is_foreign_key: false,
+            },
+            {
+                name: 'name',
+                data_type: 'TEXT',
+                nullable: true,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+            {
+                name: 'email',
+                data_type: 'TEXT',
+                nullable: false,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+        ],
     },
     {
         name: 'orders',
         column_count: 4,
         columns: [
-            { name: 'id', data_type: 'INTEGER', nullable: false, is_primary_key: true, is_foreign_key: false },
-            { name: 'user_id', data_type: 'INTEGER', nullable: false, is_primary_key: false, is_foreign_key: true, foreign_key: { from_column: 'user_id', to_table: 'users', to_column: 'id', on_update: 'CASCADE', on_delete: 'CASCADE' } },
-            { name: 'total', data_type: 'REAL', nullable: true, is_primary_key: false, is_foreign_key: false },
-            { name: 'status', data_type: 'TEXT', nullable: true, is_primary_key: false, is_foreign_key: false }
-        ]
-    }
+            {
+                name: 'id',
+                data_type: 'INTEGER',
+                nullable: false,
+                is_primary_key: true,
+                is_foreign_key: false,
+            },
+            {
+                name: 'user_id',
+                data_type: 'INTEGER',
+                nullable: false,
+                is_primary_key: false,
+                is_foreign_key: true,
+                foreign_key: {
+                    from_column: 'user_id',
+                    to_table: 'users',
+                    to_column: 'id',
+                    on_update: 'CASCADE',
+                    on_delete: 'CASCADE',
+                },
+            },
+            {
+                name: 'total',
+                data_type: 'REAL',
+                nullable: true,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+            {
+                name: 'status',
+                data_type: 'TEXT',
+                nullable: true,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+        ],
+    },
 ]
 
 describe('StoreSchemaDataSource', () => {
@@ -51,14 +100,29 @@ describe('StoreSchemaDataSource', () => {
             expect(dataSource.getTables()).toHaveLength(2)
 
             // Add a new table
-            tablesRef.value = [...tablesRef.value, {
-                name: 'products',
-                column_count: 2,
-                columns: [
-                    { name: 'id', data_type: 'INTEGER', nullable: false, is_primary_key: true, is_foreign_key: false },
-                    { name: 'name', data_type: 'TEXT', nullable: true, is_primary_key: false, is_foreign_key: false }
-                ]
-            }]
+            tablesRef.value = [
+                ...tablesRef.value,
+                {
+                    name: 'products',
+                    column_count: 2,
+                    columns: [
+                        {
+                            name: 'id',
+                            data_type: 'INTEGER',
+                            nullable: false,
+                            is_primary_key: true,
+                            is_foreign_key: false,
+                        },
+                        {
+                            name: 'name',
+                            data_type: 'TEXT',
+                            nullable: true,
+                            is_primary_key: false,
+                            is_foreign_key: false,
+                        },
+                    ],
+                },
+            ]
 
             expect(dataSource.getTables()).toHaveLength(3)
         })
@@ -171,20 +235,56 @@ const createMockTables = (): TableInfo[] => [
         name: 'users',
         column_count: 3,
         columns: [
-            { name: 'id', data_type: 'INTEGER', nullable: false, is_primary_key: true, is_foreign_key: false },
-            { name: 'name', data_type: 'TEXT', nullable: true, is_primary_key: false, is_foreign_key: false },
-            { name: 'email', data_type: 'TEXT', nullable: false, is_primary_key: false, is_foreign_key: false }
-        ]
+            {
+                name: 'id',
+                data_type: 'INTEGER',
+                nullable: false,
+                is_primary_key: true,
+                is_foreign_key: false,
+            },
+            {
+                name: 'name',
+                data_type: 'TEXT',
+                nullable: true,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+            {
+                name: 'email',
+                data_type: 'TEXT',
+                nullable: false,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+        ],
     },
     {
         name: 'orders',
         column_count: 3,
         columns: [
-            { name: 'id', data_type: 'INTEGER', nullable: false, is_primary_key: true, is_foreign_key: false },
-            { name: 'user_id', data_type: 'INTEGER', nullable: false, is_primary_key: false, is_foreign_key: false },
-            { name: 'total', data_type: 'REAL', nullable: true, is_primary_key: false, is_foreign_key: false }
-        ]
-    }
+            {
+                name: 'id',
+                data_type: 'INTEGER',
+                nullable: false,
+                is_primary_key: true,
+                is_foreign_key: false,
+            },
+            {
+                name: 'user_id',
+                data_type: 'INTEGER',
+                nullable: false,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+            {
+                name: 'total',
+                data_type: 'REAL',
+                nullable: true,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+        ],
+    },
 ]
 
 describe('StaticSchemaDataSource', () => {
@@ -252,9 +352,21 @@ describe('StaticSchemaDataSource', () => {
                 name: 'products',
                 column_count: 2,
                 columns: [
-                    { name: 'id', data_type: 'INTEGER', nullable: false, is_primary_key: true, is_foreign_key: false },
-                    { name: 'name', data_type: 'TEXT', nullable: true, is_primary_key: false, is_foreign_key: false }
-                ]
+                    {
+                        name: 'id',
+                        data_type: 'INTEGER',
+                        nullable: false,
+                        is_primary_key: true,
+                        is_foreign_key: false,
+                    },
+                    {
+                        name: 'name',
+                        data_type: 'TEXT',
+                        nullable: true,
+                        is_primary_key: false,
+                        is_foreign_key: false,
+                    },
+                ],
             }
 
             dataSource.addTable(newTable)
@@ -269,8 +381,14 @@ describe('StaticSchemaDataSource', () => {
                 column_count: 4,
                 columns: [
                     ...createMockTables()[0].columns,
-                    { name: 'created_at', data_type: 'TIMESTAMP', nullable: true, is_primary_key: false, is_foreign_key: false }
-                ]
+                    {
+                        name: 'created_at',
+                        data_type: 'TIMESTAMP',
+                        nullable: true,
+                        is_primary_key: false,
+                        is_foreign_key: false,
+                    },
+                ],
             }
 
             dataSource.addTable(updatedTable)

@@ -18,7 +18,7 @@ const indexes = computed({
   set: (val) => emit('update:modelValue', val),
 })
 
-function updateIndex(index: number, field: keyof DesignerIndex, value: any) {
+function updateIndex(index: number, field: keyof DesignerIndex, value: unknown) {
   const newIndexes = [...indexes.value]
   newIndexes[index] = { ...newIndexes[index], [field]: value }
   indexes.value = newIndexes

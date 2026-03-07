@@ -5,7 +5,7 @@ import type { QueryResult, CellValue } from '@types'
 
 // Mock Tauri API
 vi.mock('@tauri-apps/api/core', () => ({
-    invoke: vi.fn()
+    invoke: vi.fn(),
 }))
 
 describe('crudService', () => {
@@ -21,7 +21,12 @@ describe('crudService', () => {
                 type: 'rows',
                 columns: ['id', 'name'],
                 rows: [
-                    { values: { id: { type: 'Integer', value: 1 }, name: { type: 'Text', value: 'Test' } } }
+                    {
+                        values: {
+                            id: { type: 'Integer', value: 1 },
+                            name: { type: 'Text', value: 'Test' },
+                        },
+                    },
                 ],
                 has_more: false,
                 execution_info: {
@@ -30,14 +35,14 @@ describe('crudService', () => {
                     indexes_used: [],
                     query_plan: [],
                     warnings: [],
-                    suggestions: []
-                }
+                    suggestions: [],
+                },
             }
             mockInvoke.mockResolvedValue(mockResult)
 
             const result = await crudService.getTableData({
                 connectionId: 'conn-1',
-                tableName: 'users'
+                tableName: 'users',
             })
 
             expect(mockInvoke).toHaveBeenCalledWith('get_table_data', {
@@ -46,7 +51,7 @@ describe('crudService', () => {
                 limit: undefined,
                 offset: undefined,
                 orderBy: undefined,
-                orderDir: undefined
+                orderDir: undefined,
             })
             expect(result).toEqual(mockResult)
         })
@@ -63,8 +68,8 @@ describe('crudService', () => {
                     indexes_used: [],
                     query_plan: [],
                     warnings: [],
-                    suggestions: []
-                }
+                    suggestions: [],
+                },
             }
             mockInvoke.mockResolvedValue(mockResult)
 
@@ -74,7 +79,7 @@ describe('crudService', () => {
                 limit: 50,
                 offset: 100,
                 orderBy: 'id',
-                orderDir: 'DESC'
+                orderDir: 'DESC',
             })
 
             expect(mockInvoke).toHaveBeenCalledWith('get_table_data', {
@@ -83,7 +88,7 @@ describe('crudService', () => {
                 limit: 50,
                 offset: 100,
                 orderBy: 'id',
-                orderDir: 'DESC'
+                orderDir: 'DESC',
             })
         })
     })
@@ -101,26 +106,26 @@ describe('crudService', () => {
                     indexes_used: [],
                     query_plan: [],
                     warnings: [],
-                    suggestions: []
-                }
+                    suggestions: [],
+                },
             }
             mockInvoke.mockResolvedValue(mockResult)
 
             const data: Record<string, CellValue> = {
                 name: { type: 'Text', value: 'John' },
-                age: { type: 'Integer', value: 30 }
+                age: { type: 'Integer', value: 30 },
             }
 
             const result = await crudService.insertRow({
                 connectionId: 'conn-1',
                 tableName: 'users',
-                data
+                data,
             })
 
             expect(mockInvoke).toHaveBeenCalledWith('insert_row', {
                 connectionId: 'conn-1',
                 tableName: 'users',
-                data
+                data,
             })
             expect(result).toEqual(mockResult)
             expect(result.type).toBe('execution')
@@ -140,26 +145,26 @@ describe('crudService', () => {
                     indexes_used: [],
                     query_plan: [],
                     warnings: [],
-                    suggestions: []
-                }
+                    suggestions: [],
+                },
             }
             mockInvoke.mockResolvedValue(mockResult)
 
             const data: Record<string, CellValue> = {
                 name: { type: 'Text', value: 'Test' },
-                description: { type: 'Null' }
+                description: { type: 'Null' },
             }
 
             await crudService.insertRow({
                 connectionId: 'conn-1',
                 tableName: 'products',
-                data
+                data,
             })
 
             expect(mockInvoke).toHaveBeenCalledWith('insert_row', {
                 connectionId: 'conn-1',
                 tableName: 'products',
-                data
+                data,
             })
         })
     })
@@ -176,30 +181,30 @@ describe('crudService', () => {
                     indexes_used: ['idx_users_status'],
                     query_plan: [],
                     warnings: [],
-                    suggestions: []
-                }
+                    suggestions: [],
+                },
             }
             mockInvoke.mockResolvedValue(mockResult)
 
             const data: Record<string, CellValue> = {
-                status: { type: 'Text', value: 'active' }
+                status: { type: 'Text', value: 'active' },
             }
             const conditions: Record<string, CellValue> = {
-                id: { type: 'Integer', value: 1 }
+                id: { type: 'Integer', value: 1 },
             }
 
             const result = await crudService.updateRow({
                 connectionId: 'conn-1',
                 tableName: 'users',
                 data,
-                conditions
+                conditions,
             })
 
             expect(mockInvoke).toHaveBeenCalledWith('update_row', {
                 connectionId: 'conn-1',
                 tableName: 'users',
                 data,
-                conditions
+                conditions,
             })
             expect(result.type).toBe('execution')
             if (result.type === 'execution') {
@@ -218,31 +223,31 @@ describe('crudService', () => {
                     indexes_used: [],
                     query_plan: [],
                     warnings: [],
-                    suggestions: []
-                }
+                    suggestions: [],
+                },
             }
             mockInvoke.mockResolvedValue(mockResult)
 
             const data: Record<string, CellValue> = {
-                price: { type: 'Real', value: 99.99 }
+                price: { type: 'Real', value: 99.99 },
             }
             const conditions: Record<string, CellValue> = {
                 category: { type: 'Text', value: 'electronics' },
-                status: { type: 'Text', value: 'available' }
+                status: { type: 'Text', value: 'available' },
             }
 
             await crudService.updateRow({
                 connectionId: 'conn-1',
                 tableName: 'products',
                 data,
-                conditions
+                conditions,
             })
 
             expect(mockInvoke).toHaveBeenCalledWith('update_row', {
                 connectionId: 'conn-1',
                 tableName: 'products',
                 data,
-                conditions
+                conditions,
             })
         })
     })
@@ -259,25 +264,25 @@ describe('crudService', () => {
                     indexes_used: ['PRIMARY'],
                     query_plan: [],
                     warnings: [],
-                    suggestions: []
-                }
+                    suggestions: [],
+                },
             }
             mockInvoke.mockResolvedValue(mockResult)
 
             const conditions: Record<string, CellValue> = {
-                id: { type: 'Integer', value: 5 }
+                id: { type: 'Integer', value: 5 },
             }
 
             const result = await crudService.deleteRow({
                 connectionId: 'conn-1',
                 tableName: 'users',
-                conditions
+                conditions,
             })
 
             expect(mockInvoke).toHaveBeenCalledWith('delete_row', {
                 connectionId: 'conn-1',
                 tableName: 'users',
-                conditions
+                conditions,
             })
             expect(result.type).toBe('execution')
             if (result.type === 'execution') {
@@ -296,19 +301,19 @@ describe('crudService', () => {
                     indexes_used: [],
                     query_plan: [],
                     warnings: [],
-                    suggestions: []
-                }
+                    suggestions: [],
+                },
             }
             mockInvoke.mockResolvedValue(mockResult)
 
             const conditions: Record<string, CellValue> = {
-                id: { type: 'Integer', value: 9999 }
+                id: { type: 'Integer', value: 9999 },
             }
 
             const result = await crudService.deleteRow({
                 connectionId: 'conn-1',
                 tableName: 'users',
-                conditions
+                conditions,
             })
 
             expect(result.type).toBe('execution')
@@ -323,10 +328,12 @@ describe('crudService', () => {
             const error = new Error('Database connection failed')
             mockInvoke.mockRejectedValue(error)
 
-            await expect(crudService.getTableData({
-                connectionId: 'invalid',
-                tableName: 'users'
-            })).rejects.toThrow('Database connection failed')
+            await expect(
+                crudService.getTableData({
+                    connectionId: 'invalid',
+                    tableName: 'users',
+                }),
+            ).rejects.toThrow('Database connection failed')
         })
 
         it('should handle constraint violation errors', async () => {
@@ -334,14 +341,16 @@ describe('crudService', () => {
             mockInvoke.mockRejectedValue(error)
 
             const data: Record<string, CellValue> = {
-                email: { type: 'Text', value: 'duplicate@example.com' }
+                email: { type: 'Text', value: 'duplicate@example.com' },
             }
 
-            await expect(crudService.insertRow({
-                connectionId: 'conn-1',
-                tableName: 'users',
-                data
-            })).rejects.toThrow('UNIQUE constraint failed')
+            await expect(
+                crudService.insertRow({
+                    connectionId: 'conn-1',
+                    tableName: 'users',
+                    data,
+                }),
+            ).rejects.toThrow('UNIQUE constraint failed')
         })
     })
 })

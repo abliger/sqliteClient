@@ -9,7 +9,9 @@ use crate::utils::error::{AppError, AppResult};
 /// 验证表名/列名是否合法（防止标识符注入）
 fn validate_identifier(name: &str) -> AppResult<()> {
     if name.is_empty() {
-        return Err(AppError::InvalidParameter("Identifier cannot be empty".to_string()));
+        return Err(AppError::InvalidParameter(
+            "Identifier cannot be empty".to_string(),
+        ));
     }
     // 只允许字母、数字、下划线，且不能以数字开头
     let valid = name.chars().enumerate().all(|(i, c)| {
@@ -54,7 +56,9 @@ pub async fn get_table_data(
     validate_identifier(&table_name)?;
 
     let pool = connection_manager.get_pool(&connection_id)?;
-    let conn = pool.get().map_err(|e| AppError::ConnectionError(e.to_string()))?;
+    let conn = pool
+        .get()
+        .map_err(|e| AppError::ConnectionError(e.to_string()))?;
 
     let limit = limit.unwrap_or(100);
     let offset = offset.unwrap_or(0);
@@ -75,10 +79,7 @@ pub async fn get_table_data(
             table_name, col, dir
         )
     } else {
-        format!(
-            "SELECT * FROM \"{}\" LIMIT ?1 OFFSET ?2",
-            table_name
-        )
+        format!("SELECT * FROM \"{}\" LIMIT ?1 OFFSET ?2", table_name)
     };
 
     // 执行参数化查询
@@ -89,26 +90,23 @@ pub async fn get_table_data(
         .map(|s| s.to_string())
         .collect();
 
-    let rows_iter = stmt.query_map(
-        rusqlite::params![limit as i64, offset as i64],
-        |row| {
-            let mut values = std::collections::HashMap::new();
-            for (i, col_name) in column_names.iter().enumerate() {
-                let value: rusqlite::types::Value = row.get(i)?;
-                let cell_value = match value {
-                    rusqlite::types::Value::Null => CellValue::Null,
-                    rusqlite::types::Value::Integer(i) => CellValue::Integer(i),
-                    rusqlite::types::Value::Real(f) => CellValue::Real(f),
-                    rusqlite::types::Value::Text(s) => CellValue::Text(s),
-                    rusqlite::types::Value::Blob(b) => {
-                        CellValue::Blob(b.iter().map(|b| format!("{:02x}", b)).collect())
-                    }
-                };
-                values.insert(col_name.clone(), cell_value);
-            }
-            Ok(crate::models::query::QueryRow { values })
-        },
-    )?;
+    let rows_iter = stmt.query_map(rusqlite::params![limit as i64, offset as i64], |row| {
+        let mut values = std::collections::HashMap::new();
+        for (i, col_name) in column_names.iter().enumerate() {
+            let value: rusqlite::types::Value = row.get(i)?;
+            let cell_value = match value {
+                rusqlite::types::Value::Null => CellValue::Null,
+                rusqlite::types::Value::Integer(i) => CellValue::Integer(i),
+                rusqlite::types::Value::Real(f) => CellValue::Real(f),
+                rusqlite::types::Value::Text(s) => CellValue::Text(s),
+                rusqlite::types::Value::Blob(b) => {
+                    CellValue::Blob(b.iter().map(|b| format!("{:02x}", b)).collect())
+                }
+            };
+            values.insert(col_name.clone(), cell_value);
+        }
+        Ok(crate::models::query::QueryRow { values })
+    })?;
 
     let rows: Result<Vec<_>, _> = rows_iter.collect();
     let rows = rows?;
@@ -135,7 +133,9 @@ pub async fn insert_row(
     validate_identifier(&table_name)?;
 
     let pool = connection_manager.get_pool(&connection_id)?;
-    let conn = pool.get().map_err(|e| AppError::ConnectionError(e.to_string()))?;
+    let conn = pool
+        .get()
+        .map_err(|e| AppError::ConnectionError(e.to_string()))?;
 
     if data.is_empty() {
         return Err(AppError::InvalidParameter("No data provided".to_string()));
@@ -153,9 +153,7 @@ pub async fn insert_row(
         .collect();
 
     // 构建参数化 SQL
-    let placeholders: Vec<String> = (1..=columns.len())
-        .map(|i| format!("?{}", i))
-        .collect();
+    let placeholders: Vec<String> = (1..=columns.len()).map(|i| format!("?{}", i)).collect();
 
     let sql = format!(
         "INSERT INTO \"{}\" ({}) VALUES ({})",
@@ -190,7 +188,9 @@ pub async fn update_row(
     validate_identifier(&table_name)?;
 
     let pool = connection_manager.get_pool(&connection_id)?;
-    let conn = pool.get().map_err(|e| AppError::ConnectionError(e.to_string()))?;
+    let conn = pool
+        .get()
+        .map_err(|e| AppError::ConnectionError(e.to_string()))?;
 
     if data.is_empty() {
         return Err(AppError::InvalidParameter("No data provided".to_string()));
@@ -255,7 +255,9 @@ pub async fn delete_row(
     validate_identifier(&table_name)?;
 
     let pool = connection_manager.get_pool(&connection_id)?;
-    let conn = pool.get().map_err(|e| AppError::ConnectionError(e.to_string()))?;
+    let conn = pool
+        .get()
+        .map_err(|e| AppError::ConnectionError(e.to_string()))?;
 
     if conditions.is_empty() {
         return Err(AppError::InvalidParameter(

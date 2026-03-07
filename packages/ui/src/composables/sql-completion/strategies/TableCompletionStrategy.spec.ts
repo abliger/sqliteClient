@@ -9,10 +9,18 @@ class MockSchemaDataSource implements SchemaDataSource {
         this.tables = tables
     }
 
-    getTables() { return this.tables }
-    getTableByName(name: string) { return this.tables.find(t => t.name === name) }
-    getAllColumns() { return [] }
-    getTableColumns() { return [] }
+    getTables() {
+        return this.tables
+    }
+    getTableByName(name: string) {
+        return this.tables.find(t => t.name === name)
+    }
+    getAllColumns() {
+        return []
+    }
+    getTableColumns() {
+        return []
+    }
 }
 
 const mockTables: TableInfo[] = [
@@ -20,28 +28,76 @@ const mockTables: TableInfo[] = [
         name: 'users',
         column_count: 3,
         columns: [
-            { name: 'id', data_type: 'INTEGER', nullable: false, is_primary_key: true, is_foreign_key: false },
-            { name: 'name', data_type: 'TEXT', nullable: true, is_primary_key: false, is_foreign_key: false },
-            { name: 'email', data_type: 'TEXT', nullable: false, is_primary_key: false, is_foreign_key: false }
-        ]
+            {
+                name: 'id',
+                data_type: 'INTEGER',
+                nullable: false,
+                is_primary_key: true,
+                is_foreign_key: false,
+            },
+            {
+                name: 'name',
+                data_type: 'TEXT',
+                nullable: true,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+            {
+                name: 'email',
+                data_type: 'TEXT',
+                nullable: false,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+        ],
     },
     {
         name: 'orders',
         column_count: 3,
         columns: [
-            { name: 'id', data_type: 'INTEGER', nullable: false, is_primary_key: true, is_foreign_key: false },
-            { name: 'user_id', data_type: 'INTEGER', nullable: false, is_primary_key: false, is_foreign_key: false },
-            { name: 'total', data_type: 'REAL', nullable: true, is_primary_key: false, is_foreign_key: false }
-        ]
+            {
+                name: 'id',
+                data_type: 'INTEGER',
+                nullable: false,
+                is_primary_key: true,
+                is_foreign_key: false,
+            },
+            {
+                name: 'user_id',
+                data_type: 'INTEGER',
+                nullable: false,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+            {
+                name: 'total',
+                data_type: 'REAL',
+                nullable: true,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+        ],
     },
     {
         name: 'order_items',
         column_count: 2,
         columns: [
-            { name: 'id', data_type: 'INTEGER', nullable: false, is_primary_key: true, is_foreign_key: false },
-            { name: 'order_id', data_type: 'INTEGER', nullable: false, is_primary_key: false, is_foreign_key: false }
-        ]
-    }
+            {
+                name: 'id',
+                data_type: 'INTEGER',
+                nullable: false,
+                is_primary_key: true,
+                is_foreign_key: false,
+            },
+            {
+                name: 'order_id',
+                data_type: 'INTEGER',
+                nullable: false,
+                is_primary_key: false,
+                is_foreign_key: false,
+            },
+        ],
+    },
 ]
 
 describe('TableCompletionStrategy', () => {
@@ -64,7 +120,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM ',
                 textBeforeCursor: 'SELECT * FROM ',
                 textBeforeCursorOnLine: 'FROM ',
-                position: { line: 1, column: 15 }
+                position: { line: 1, column: 15 },
             }
             expect(strategy.canProvide(context)).toBe(true)
         })
@@ -74,7 +130,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM users JOIN ',
                 textBeforeCursor: 'SELECT * FROM users JOIN ',
                 textBeforeCursorOnLine: 'JOIN ',
-                position: { line: 1, column: 26 }
+                position: { line: 1, column: 26 },
             }
             expect(strategy.canProvide(context)).toBe(true)
         })
@@ -84,7 +140,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'INSERT INTO ',
                 textBeforeCursor: 'INSERT INTO ',
                 textBeforeCursorOnLine: 'INTO ',
-                position: { line: 1, column: 13 }
+                position: { line: 1, column: 13 },
             }
             expect(strategy.canProvide(context)).toBe(true)
         })
@@ -94,7 +150,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'UPDATE ',
                 textBeforeCursor: 'UPDATE ',
                 textBeforeCursorOnLine: 'UPDATE ',
-                position: { line: 1, column: 8 }
+                position: { line: 1, column: 8 },
             }
             expect(strategy.canProvide(context)).toBe(true)
         })
@@ -104,7 +160,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM or',
                 textBeforeCursor: 'SELECT * FROM or',
                 textBeforeCursorOnLine: 'or',
-                position: { line: 1, column: 17 }
+                position: { line: 1, column: 17 },
             }
             expect(strategy.canProvide(context)).toBe(true)
         })
@@ -114,7 +170,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT id, na',
                 textBeforeCursor: 'SELECT id, na',
                 textBeforeCursorOnLine: 'na',
-                position: { line: 1, column: 14 }
+                position: { line: 1, column: 14 },
             }
             expect(strategy.canProvide(context)).toBe(false)
         })
@@ -124,7 +180,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM users WHERE id = 1',
                 textBeforeCursor: 'SELECT * FROM users WHERE id = 1',
                 textBeforeCursorOnLine: 'id = 1',
-                position: { line: 1, column: 33 }
+                position: { line: 1, column: 33 },
             }
             expect(strategy.canProvide(context)).toBe(false)
         })
@@ -136,7 +192,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM ',
                 textBeforeCursor: 'SELECT * FROM ',
                 textBeforeCursorOnLine: 'FROM ',
-                position: { line: 1, column: 15 }
+                position: { line: 1, column: 15 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -153,7 +209,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM ord',
                 textBeforeCursor: 'SELECT * FROM ord',
                 textBeforeCursorOnLine: 'ord',
-                position: { line: 1, column: 18 }
+                position: { line: 1, column: 18 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -171,7 +227,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM ',
                 textBeforeCursor: 'SELECT * FROM ',
                 textBeforeCursorOnLine: 'FROM ',
-                position: { line: 1, column: 15 }
+                position: { line: 1, column: 15 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -186,7 +242,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM ',
                 textBeforeCursor: 'SELECT * FROM ',
                 textBeforeCursorOnLine: 'FROM ',
-                position: { line: 1, column: 15 }
+                position: { line: 1, column: 15 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -201,7 +257,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM ',
                 textBeforeCursor: 'SELECT * FROM ',
                 textBeforeCursorOnLine: 'FROM ',
-                position: { line: 1, column: 15 }
+                position: { line: 1, column: 15 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -219,7 +275,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM xyz',
                 textBeforeCursor: 'SELECT * FROM xyz',
                 textBeforeCursorOnLine: 'xyz',
-                position: { line: 1, column: 18 }
+                position: { line: 1, column: 18 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -234,7 +290,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM ',
                 textBeforeCursor: 'SELECT * FROM ',
                 textBeforeCursorOnLine: 'FROM ',
-                position: { line: 1, column: 15 }
+                position: { line: 1, column: 15 },
             }
 
             const result = await strategy.provideCompletionItems(context, emptySchema)
@@ -247,7 +303,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM ',
                 textBeforeCursor: 'SELECT * FROM ',
                 textBeforeCursorOnLine: 'FROM ',
-                position: { line: 1, column: 15 }
+                position: { line: 1, column: 15 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -264,7 +320,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'select * from US',
                 textBeforeCursor: 'select * from US',
                 textBeforeCursorOnLine: 'US',
-                position: { line: 1, column: 17 }
+                position: { line: 1, column: 17 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -277,7 +333,7 @@ describe('TableCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM us',
                 textBeforeCursor: 'SELECT * FROM us',
                 textBeforeCursorOnLine: 'us',
-                position: { line: 1, column: 17 }
+                position: { line: 1, column: 17 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)

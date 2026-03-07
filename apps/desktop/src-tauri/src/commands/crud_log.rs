@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tauri::State;
 
 use crate::core::crud_log_store::CrudLogStore;
-use crate::models::crud_log::{CrudLogFilter, CrudOperationLog, CrudOperationType};
+use crate::models::crud_log::{CrudLogFilter, CrudOperationLog};
 use crate::utils::error::AppResult;
 
 /// 添加 CRUD 操作日志

@@ -3,10 +3,18 @@ import { KeywordCompletionStrategy } from './KeywordCompletionStrategy'
 import type { CompletionContext, SchemaDataSource } from '../types'
 
 class MockSchemaDataSource implements SchemaDataSource {
-    getTables() { return [] }
-    getTableByName() { return undefined }
-    getAllColumns() { return [] }
-    getTableColumns() { return [] }
+    getTables() {
+        return []
+    }
+    getTableByName() {
+        return undefined
+    }
+    getAllColumns() {
+        return []
+    }
+    getTableColumns() {
+        return []
+    }
 }
 
 describe('KeywordCompletionStrategy', () => {
@@ -29,7 +37,7 @@ describe('KeywordCompletionStrategy', () => {
                 lineContent: '',
                 textBeforeCursor: '',
                 textBeforeCursorOnLine: '',
-                position: { line: 1, column: 1 }
+                position: { line: 1, column: 1 },
             }
             expect(strategy.canProvide(context)).toBe(true)
         })
@@ -39,7 +47,7 @@ describe('KeywordCompletionStrategy', () => {
                 lineContent: 'SEL',
                 textBeforeCursor: 'SEL',
                 textBeforeCursorOnLine: 'SEL',
-                position: { line: 1, column: 4 }
+                position: { line: 1, column: 4 },
             }
             expect(strategy.canProvide(context)).toBe(true)
         })
@@ -49,7 +57,7 @@ describe('KeywordCompletionStrategy', () => {
                 lineContent: 'SELECT * FROM ',
                 textBeforeCursor: 'SELECT * FROM ',
                 textBeforeCursorOnLine: 'FROM ',
-                position: { line: 1, column: 15 }
+                position: { line: 1, column: 15 },
             }
             expect(strategy.canProvide(context)).toBe(true)
         })
@@ -59,7 +67,7 @@ describe('KeywordCompletionStrategy', () => {
                 lineContent: 'WHERE sta',
                 textBeforeCursor: 'WHERE sta',
                 textBeforeCursorOnLine: 'sta',
-                position: { line: 1, column: 10 }
+                position: { line: 1, column: 10 },
             }
             expect(strategy.canProvide(context)).toBe(true)
         })
@@ -71,7 +79,7 @@ describe('KeywordCompletionStrategy', () => {
                 lineContent: '',
                 textBeforeCursor: '',
                 textBeforeCursorOnLine: '',
-                position: { line: 1, column: 1 }
+                position: { line: 1, column: 1 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -92,7 +100,7 @@ describe('KeywordCompletionStrategy', () => {
                 lineContent: 'SEL',
                 textBeforeCursor: 'SEL',
                 textBeforeCursorOnLine: 'SEL',
-                position: { line: 1, column: 4 }
+                position: { line: 1, column: 4 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -108,7 +116,7 @@ describe('KeywordCompletionStrategy', () => {
                 lineContent: '',
                 textBeforeCursor: '',
                 textBeforeCursorOnLine: '',
-                position: { line: 1, column: 1 }
+                position: { line: 1, column: 1 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -127,7 +135,7 @@ describe('KeywordCompletionStrategy', () => {
                 lineContent: '',
                 textBeforeCursor: '',
                 textBeforeCursorOnLine: '',
-                position: { line: 1, column: 1 }
+                position: { line: 1, column: 1 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -141,7 +149,7 @@ describe('KeywordCompletionStrategy', () => {
                 lineContent: '',
                 textBeforeCursor: '',
                 textBeforeCursorOnLine: '',
-                position: { line: 1, column: 1 }
+                position: { line: 1, column: 1 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)
@@ -158,7 +166,7 @@ describe('KeywordCompletionStrategy', () => {
                 lineContent: '',
                 textBeforeCursor: '',
                 textBeforeCursorOnLine: '',
-                position: { line: 1, column: 1 }
+                position: { line: 1, column: 1 },
             }
 
             const result = await strategy.provideCompletionItems(context, mockSchema)

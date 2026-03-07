@@ -4,29 +4,29 @@ export type { UseSQLCompletionOptions, SQLCompletionInstance } from './useSQLCom
 
 // 类型导出
 export type {
-  SQLCompletionStrategy,
-  CompletionItem,
-  CompletionContext,
-  CompletionResult,
-  SchemaDataSource,
-  CompletionProviderConfig,
-  CompletionStrategyFactory
+    SQLCompletionStrategy,
+    CompletionItem,
+    CompletionContext,
+    CompletionResult,
+    SchemaDataSource,
+    CompletionProviderConfig,
+    CompletionStrategyFactory,
 } from './types'
 export { CompletionItemKind } from './types'
 
 // 策略导出
 export {
-  KeywordCompletionStrategy,
-  FunctionCompletionStrategy,
-  TableCompletionStrategy,
-  ColumnCompletionStrategy
+    KeywordCompletionStrategy,
+    FunctionCompletionStrategy,
+    TableCompletionStrategy,
+    ColumnCompletionStrategy,
 } from './strategies'
 
 // 工厂导出
 export {
-  DefaultStrategyFactory,
-  KeywordOnlyStrategyFactory,
-  FullFeaturedStrategyFactory
+    DefaultStrategyFactory,
+    KeywordOnlyStrategyFactory,
+    FullFeaturedStrategyFactory,
 } from './DefaultStrategyFactory'
 
 // 适配器导出

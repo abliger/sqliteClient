@@ -1,13 +1,16 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use tauri::{State, AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, State};
 
 use crate::core::connection_manager::ConnectionManager;
 use crate::core::history_store::HistoryStore;
 use crate::models::history::QueryHistoryItem;
-use crate::models::query::{QueryResult, StreamStatus, SqlFileExecutionProgress, SqlFileExecutionResult, StatementExecutionResult};
-use crate::utils::error::{AppResult, AppError};
+use crate::models::query::{
+    QueryResult, SqlFileExecutionProgress, SqlFileExecutionResult, StatementExecutionResult,
+    StreamStatus,
+};
+use crate::utils::error::{AppError, AppResult};
 
 #[tauri::command]
 pub async fn execute_query(
@@ -136,7 +139,7 @@ fn parse_sql_statements(sql_content: &str) -> Vec<String> {
 }
 
 /// 执行 SQL 文件
-/// 
+///
 /// 通过事件发射进度更新：sql-file-execution-progress
 /// 事件数据：SqlFileExecutionProgress
 #[tauri::command]
@@ -148,35 +151,37 @@ pub async fn execute_sql_file(
     file_path: String,
 ) -> AppResult<SqlFileExecutionResult> {
     let start_time = Instant::now();
-    
+
     // 读取文件内容
     let sql_content = std::fs::read_to_string(&file_path)
         .map_err(|e| AppError::FileError(format!("Failed to read SQL file: {}", e)))?;
-    
+
     // 解析 SQL 语句
     let statements = parse_sql_statements(&sql_content);
     let total_statements = statements.len();
-    
+
     if total_statements == 0 {
-        return Err(AppError::QueryError("No valid SQL statements found in file".to_string()));
+        return Err(AppError::QueryError(
+            "No valid SQL statements found in file".to_string(),
+        ));
     }
-    
+
     let pool = connection_manager.get_pool(&connection_id)?;
     let mut execution_results = Vec::new();
     let mut success_count = 0;
     let mut error_count = 0;
-    
+
     // 执行每条语句
     for (index, sql) in statements.iter().enumerate() {
         let stmt_start = Instant::now();
-        
+
         // 截断 SQL 用于显示（限制 100 字符）
         let display_sql = if sql.len() > 100 {
             format!("{}...", &sql[..100])
         } else {
             sql.clone()
         };
-        
+
         // 发射进度事件
         let progress = SqlFileExecutionProgress {
             current_statement: index + 1,
@@ -186,13 +191,13 @@ pub async fn execute_sql_file(
             error_count,
             is_complete: false,
         };
-        
+
         let _ = app_handle.emit("sql-file-execution-progress", &progress);
-        
+
         // 执行语句
         let result = crate::core::query_engine::QueryEngine::execute_query(&pool, sql, None);
         let duration_ms = stmt_start.elapsed().as_millis() as u64;
-        
+
         let statement_result = match result {
             Ok(QueryResult::Rows { rows, .. }) => {
                 success_count += 1;
@@ -205,7 +210,11 @@ pub async fn execute_sql_file(
                     rows_affected: Some(rows.len()),
                 }
             }
-            Ok(QueryResult::Execution { rows_affected, execution_info: _, .. }) => {
+            Ok(QueryResult::Execution {
+                rows_affected,
+                execution_info: _,
+                ..
+            }) => {
                 success_count += 1;
                 StatementExecutionResult {
                     index: index + 1,
@@ -228,7 +237,7 @@ pub async fn execute_sql_file(
                 }
             }
         };
-        
+
         // 记录到历史
         let history_item = QueryHistoryItem {
             id: uuid::Uuid::new_v4().to_string(),
@@ -242,10 +251,10 @@ pub async fn execute_sql_file(
             row_count: statement_result.rows_affected,
         };
         let _ = history_store.add_history_item(&history_item);
-        
+
         execution_results.push(statement_result);
     }
-    
+
     // 发射完成事件
     let final_progress = SqlFileExecutionProgress {
         current_statement: total_statements,
@@ -256,9 +265,9 @@ pub async fn execute_sql_file(
         is_complete: true,
     };
     let _ = app_handle.emit("sql-file-execution-progress", &final_progress);
-    
+
     let total_duration_ms = start_time.elapsed().as_millis() as u64;
-    
+
     Ok(SqlFileExecutionResult {
         file_path,
         total_statements,

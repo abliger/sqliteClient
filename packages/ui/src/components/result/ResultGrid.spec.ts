@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
+
 import ResultGrid from './ResultGrid.vue'
 import type { QueryRow } from '@types'
 
@@ -11,23 +11,23 @@ const mockRows: QueryRow[] = [
         values: {
             id: { type: 'Integer', value: 1 },
             name: { type: 'Text', value: 'John Doe' },
-            email: { type: 'Text', value: 'john@example.com' }
-        }
+            email: { type: 'Text', value: 'john@example.com' },
+        },
     },
     {
         values: {
             id: { type: 'Integer', value: 2 },
             name: { type: 'Text', value: 'Jane Smith' },
-            email: { type: 'Text', value: 'jane@example.com' }
-        }
+            email: { type: 'Text', value: 'jane@example.com' },
+        },
     },
     {
         values: {
             id: { type: 'Integer', value: 3 },
             name: { type: 'Text', value: 'Bob Wilson' },
-            email: { type: 'Null' }
-        }
-    }
+            email: { type: 'Null' },
+        },
+    },
 ]
 
 describe('ResultGrid', () => {
@@ -36,8 +36,8 @@ describe('ResultGrid', () => {
             props: {
                 columns: mockColumns,
                 rows: mockRows,
-                ...props
-            }
+                ...props,
+            },
         })
     }
 
@@ -101,9 +101,10 @@ describe('ResultGrid', () => {
 
             // id column should have text-right class
             const cells = wrapper.findAll('td')
-            const idCells = cells.filter(cell =>
-                cell.classes().includes('text-right') &&
-                (cell.text() === '1' || cell.text() === '2' || cell.text() === '3')
+            const idCells = cells.filter(
+                cell =>
+                    cell.classes().includes('text-right') &&
+                    (cell.text() === '1' || cell.text() === '2' || cell.text() === '3'),
             )
             expect(idCells.length).toBeGreaterThan(0)
         })
@@ -141,8 +142,6 @@ describe('ResultGrid', () => {
         it('should disable prev button on first page', () => {
             const wrapper = createWrapper()
 
-            const buttons = wrapper.findAll('button')
-            const prevButton = buttons.find(btn => btn.find('svg').exists() && btn.attributes('disabled') !== undefined)
             // First page should have disabled prev button
             expect(wrapper.vm.currentPage).toBe(1)
         })
@@ -172,9 +171,9 @@ describe('ResultGrid', () => {
             const wrapper = createWrapper()
 
             // Find edit button by its title or icon
-            const editButton = wrapper.findAll('button').find(btn =>
-                btn.attributes('title') === '编辑'
-            )
+            const editButton = wrapper
+                .findAll('button')
+                .find(btn => btn.attributes('title') === '编辑')
 
             if (editButton) {
                 await editButton.trigger('click')
@@ -187,9 +186,9 @@ describe('ResultGrid', () => {
             // Mock confirm to return true
             global.confirm = vi.fn(() => true)
 
-            const deleteButton = wrapper.findAll('button').find(btn =>
-                btn.attributes('title') === '删除'
-            )
+            const deleteButton = wrapper
+                .findAll('button')
+                .find(btn => btn.attributes('title') === '删除')
 
             if (deleteButton) {
                 await deleteButton.trigger('click')
@@ -202,9 +201,9 @@ describe('ResultGrid', () => {
             // Mock confirm to return false
             global.confirm = vi.fn(() => false)
 
-            const deleteButton = wrapper.findAll('button').find(btn =>
-                btn.attributes('title') === '删除'
-            )
+            const deleteButton = wrapper
+                .findAll('button')
+                .find(btn => btn.attributes('title') === '删除')
 
             if (deleteButton) {
                 await deleteButton.trigger('click')
@@ -254,13 +253,13 @@ describe('ResultGrid', () => {
                 {
                     values: {
                         id: { type: 'Integer', value: 1 },
-                        active: { type: 'Boolean', value: true }
-                    }
-                }
+                        active: { type: 'Boolean', value: true },
+                    },
+                },
             ]
             const wrapper = createWrapper({
                 columns: ['id', 'active'],
-                rows: rowsWithBoolean
+                rows: rowsWithBoolean,
             })
 
             expect(wrapper.text()).toContain('true')
@@ -271,13 +270,13 @@ describe('ResultGrid', () => {
                 {
                     values: {
                         id: { type: 'Integer', value: 1 },
-                        price: { type: 'Real', value: 99.99 }
-                    }
-                }
+                        price: { type: 'Real', value: 99.99 },
+                    },
+                },
             ]
             const wrapper = createWrapper({
                 columns: ['id', 'price'],
-                rows: rowsWithReal
+                rows: rowsWithReal,
             })
 
             expect(wrapper.text()).toContain('99.99')
@@ -296,13 +295,13 @@ describe('ResultGrid', () => {
             const manyRows: QueryRow[] = Array.from({ length: 250 }, (_, i) => ({
                 values: {
                     id: { type: 'Integer', value: i + 1 },
-                    name: { type: 'Text', value: `User ${i + 1}` }
-                }
+                    name: { type: 'Text', value: `User ${i + 1}` },
+                },
             }))
 
             const wrapper = createWrapper({
                 columns: ['id', 'name'],
-                rows: manyRows
+                rows: manyRows,
             })
 
             expect(wrapper.text()).toContain('250 rows')

@@ -16,12 +16,14 @@ A modern, cross-platform SQLite client built with Tauri and Vue3.
 ## Tech Stack
 
 ### Backend
+
 - **Tauri v2** - Cross-platform desktop framework
 - **Rust** - Systems programming language
 - **rusqlite** - SQLite driver for Rust
 - **r2d2** - Connection pooling
 
 ### Frontend
+
 - **Vue 3** - Progressive JavaScript framework
 - **TypeScript** - Type-safe JavaScript
 - **TSX** - TypeScript XML for components
@@ -105,13 +107,13 @@ pnpm desktop:build
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Enter` | Execute query |
-| `Ctrl+/` | Toggle comment |
-| `Ctrl+N` | New query tab |
-| `Ctrl+W` | Close query tab |
-| `Ctrl+O` | Open database |
+| Shortcut     | Action          |
+| ------------ | --------------- |
+| `Ctrl+Enter` | Execute query   |
+| `Ctrl+/`     | Toggle comment  |
+| `Ctrl+N`     | New query tab   |
+| `Ctrl+W`     | Close query tab |
+| `Ctrl+O`     | Open database   |
 
 ## License
 

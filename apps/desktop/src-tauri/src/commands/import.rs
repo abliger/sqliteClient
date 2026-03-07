@@ -5,15 +5,12 @@ use tauri::State;
 
 use crate::core::connection_manager::ConnectionManager;
 use crate::core::import_engine::{ImportEngine, ImportPreview, ImportResult};
-use crate::models::import::{ColumnMapping, ImportConfig, ImportFileInfo};
+use crate::models::import::{ImportConfig, ImportFileInfo};
 use crate::utils::error::AppResult;
 
 /// 解析导入文件，获取预览数据
 #[tauri::command]
-pub async fn parse_import_file(
-    file_path: String,
-    file_type: String,
-) -> AppResult<ImportPreview> {
+pub async fn parse_import_file(file_path: String, file_type: String) -> AppResult<ImportPreview> {
     let engine = ImportEngine::new()?;
     engine.parse_file(&file_path, &file_type).await
 }
@@ -71,5 +68,7 @@ pub async fn validate_table_name(
     table_name: String,
 ) -> AppResult<bool> {
     let engine = ImportEngine::new()?;
-    engine.validate_table_name(&connection_manager, &connection_id, &table_name).await
+    engine
+        .validate_table_name(&connection_manager, &connection_id, &table_name)
+        .await
 }

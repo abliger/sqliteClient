@@ -87,7 +87,8 @@ describe('sqlFormatter', () => {
         })
 
         it('should format complex nested query', () => {
-            const sql = 'select * from (select id from users) as u where id in (select user_id from orders)'
+            const sql =
+                'select * from (select id from users) as u where id in (select user_id from orders)'
             const result = sqlFormatter.format(sql)
 
             expect(result).toContain('SELECT')
@@ -111,9 +112,9 @@ describe('sqlFormatter', () => {
             // Test that options don't break formatting
             const result = sqlFormatter.format(sql, {
                 keywordCase: 'lower',
-                tabWidth: 2
+                tabWidth: 2,
             })
-            
+
             expect(result).toContain('select')
             expect(result).toContain('from')
         })
@@ -140,7 +141,7 @@ describe('sqlFormatter', () => {
             const invalidSql = 'SELECT FROM WHERE'
             // Formatter should handle gracefully and return original or formatted version
             const result = sqlFormatter.format(invalidSql)
-            
+
             // Should not throw, should return something
             expect(typeof result).toBe('string')
         })
@@ -148,7 +149,7 @@ describe('sqlFormatter', () => {
         it('should handle SQL with special characters', () => {
             const sql = "SELECT * FROM users WHERE name = 'O''Brien'"
             const result = sqlFormatter.format(sql)
-            
+
             // Should format without error
             expect(typeof result).toBe('string')
             expect(result.length).toBeGreaterThan(0)
@@ -158,7 +159,7 @@ describe('sqlFormatter', () => {
             const sql = `SELECT id FROM users -- get users
                          WHERE status = 1 /* active */`
             const result = sqlFormatter.format(sql)
-            
+
             expect(result).toContain('SELECT')
             expect(result).toContain('WHERE')
         })

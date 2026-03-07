@@ -14,10 +14,10 @@ pub use connection_store::ConnectionStore;
 #[allow(unused_imports)]
 pub use crud_log_store::CrudLogStore;
 #[allow(unused_imports)]
+pub use ddl_engine::DdlEngine;
+#[allow(unused_imports)]
 pub use history_store::HistoryStore;
 #[allow(unused_imports)]
 pub use query_engine::QueryEngine;
-#[allow(unused_imports)]
-pub use ddl_engine::DdlEngine;
 #[allow(unused_imports)]
 pub use schema_analyzer::SchemaAnalyzer;

@@ -4,7 +4,7 @@ import {
     extractPrimaryTableName,
     isSelectQuery,
     isEditableQuery,
-    generateWhereClause
+    generateWhereClause,
 } from './sqlParser'
 
 describe('sqlParser', () => {
@@ -112,11 +112,15 @@ describe('sqlParser', () => {
         })
 
         it('should return false for JOIN', () => {
-            expect(isEditableQuery('SELECT * FROM users JOIN orders ON users.id = orders.user_id')).toBe(false)
+            expect(
+                isEditableQuery('SELECT * FROM users JOIN orders ON users.id = orders.user_id'),
+            ).toBe(false)
         })
 
         it('should return false for GROUP BY', () => {
-            expect(isEditableQuery('SELECT status, COUNT(*) FROM users GROUP BY status')).toBe(false)
+            expect(isEditableQuery('SELECT status, COUNT(*) FROM users GROUP BY status')).toBe(
+                false,
+            )
         })
 
         it('should return false for aggregate functions', () => {

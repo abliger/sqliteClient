@@ -110,7 +110,18 @@ export function isEditableQuery(sql: string): boolean {
     if (!upperClean.startsWith('SELECT')) return false
 
     // 不支持 GROUP BY, HAVING, DISTINCT, UNION 等
-    const forbiddenKeywords = ['GROUP BY', 'HAVING', 'DISTINCT', 'UNION', 'AGGREGATE', 'COUNT(', 'SUM(', 'AVG(', 'MAX(', 'MIN(']
+    const forbiddenKeywords = [
+        'GROUP BY',
+        'HAVING',
+        'DISTINCT',
+        'UNION',
+        'AGGREGATE',
+        'COUNT(',
+        'SUM(',
+        'AVG(',
+        'MAX(',
+        'MIN(',
+    ]
     for (const kw of forbiddenKeywords) {
         if (upperClean.includes(kw)) return false
     }
@@ -128,7 +139,7 @@ export function isEditableQuery(sql: string): boolean {
  */
 export function generateWhereClause(
     columns: Record<string, unknown>,
-    primaryKeyColumn?: string
+    primaryKeyColumn?: string,
 ): { clause: string; params: unknown[] } {
     const params: unknown[] = []
 
@@ -137,7 +148,7 @@ export function generateWhereClause(
         params.push(columns[primaryKeyColumn])
         return {
             clause: `"${primaryKeyColumn}" = ?`,
-            params
+            params,
         }
     }
 
@@ -152,6 +163,6 @@ export function generateWhereClause(
 
     return {
         clause: conditions.join(' AND '),
-        params
+        params,
     }
 }

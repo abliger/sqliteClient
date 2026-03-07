@@ -22,7 +22,7 @@ const columns = computed({
   set: (val) => emit('update:modelValue', val),
 })
 
-function updateColumn(index: number, field: keyof DesignerColumn, value: any) {
+function updateColumn(index: number, field: keyof DesignerColumn, value: unknown) {
   const newColumns = [...columns.value]
   newColumns[index] = { ...newColumns[index], [field]: value }
   columns.value = newColumns

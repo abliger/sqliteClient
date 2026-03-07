@@ -1,36 +1,37 @@
 {
-  "name": "sqlite-client",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Cross-platform SQLite client built with Tauri and Vue3",
-  "type": "module",
-  "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "lint": "eslint . && pnpm -r lint",
-    "lint:fix": "eslint . --fix && pnpm -r lint:fix",
-    "format": "prettier --write \"**/*.{ts,tsx,js,json,css,md}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,css,md}\"",
-    "tauri": "tauri",
-    "desktop:dev": "turbo run dev --filter=@sqlite-client/desktop",
-    "desktop:build": "turbo run build --filter=@sqlite-client/desktop"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.23.0",
-    "@types/node": "^20.10.0",
-    "eslint": "^9.23.0",
-    "eslint-config-prettier": "^10.1.1",
-    "globals": "^16.0.0",
-    "prettier": "^3.1.0",
-    "turbo": "^1.11.0",
-    "typescript": "^5.3.0"
-  },
-  "packageManager": "pnpm@8.12.0",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+    "name": "sqlite-client",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Cross-platform SQLite client built with Tauri and Vue3",
+    "type": "module",
+    "scripts": {
+        "dev": "turbo run dev",
+        "build": "turbo run build",
+        "lint": "eslint . && pnpm -r lint",
+        "lint:fix": "eslint . --fix && pnpm -r lint:fix",
+        "format": "prettier --write \"**/*.{ts,tsx,js,json,css,md}\"",
+        "format:check": "prettier --check \"**/*.{ts,tsx,js,json,css,md}\"",
+        "tauri": "tauri",
+        "desktop:dev": "turbo run dev --filter=@sqlite-client/desktop",
+        "desktop:build": "turbo run build --filter=@sqlite-client/desktop"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.23.0",
+        "@types/node": "^20.10.0",
+        "eslint": "^9.23.0",
+        "eslint-config-prettier": "^10.1.1",
+        "globals": "^16.0.0",
+        "prettier": "^3.1.0",
+        "prettier-plugin-tailwindcss": "^0.7.2",
+        "turbo": "^1.11.0",
+        "typescript": "^5.3.0"
+    },
+    "packageManager": "pnpm@8.12.0",
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ]
 }

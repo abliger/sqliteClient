@@ -101,9 +101,9 @@ async function startImport() {
     result.value = executionResult
     toastStore.success(t('sqlImport.success'))
     emit('completed', executionResult)
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('SQL import failed:', err)
-    error.value = err?.message || String(err) || t('sqlImport.error')
+    error.value = (err as Error)?.message || String(err) || t('sqlImport.error')
     toastStore.error(t('sqlImport.error'))
   } finally {
     isExecuting.value = false

@@ -2,7 +2,7 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection};
 
 use crate::models::crud_log::{CrudLogFilter, CrudOperationLog, CrudOperationType};
 use crate::utils::error::{AppError, AppResult};
@@ -18,16 +18,21 @@ impl CrudLogStore {
     pub fn new(data_dir: &Path) -> AppResult<Self> {
         let db_path = data_dir.join("crud_logs.db");
         let conn = Connection::open(&db_path)?;
-        
-        let store = Self { conn: Mutex::new(conn) };
+
+        let store = Self {
+            conn: Mutex::new(conn),
+        };
         store.init_table()?;
-        
+
         Ok(store)
     }
 
     /// 初始化数据库表
     fn init_table(&self) -> AppResult<()> {
-        let conn = self.conn.lock().map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
         conn.execute(
             "CREATE TABLE IF NOT EXISTS crud_logs (
                 id TEXT PRIMARY KEY,
@@ -52,17 +57,17 @@ impl CrudLogStore {
             "CREATE INDEX IF NOT EXISTS idx_crud_logs_connection ON crud_logs(connection_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_crud_logs_tab ON crud_logs(tab_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_crud_logs_table ON crud_logs(table_name)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_crud_logs_executed_at ON crud_logs(executed_at DESC)",
             [],
@@ -73,7 +78,10 @@ impl CrudLogStore {
 
     /// 添加日志记录
     pub fn add_log(&self, log: &CrudOperationLog) -> AppResult<()> {
-        let conn = self.conn.lock().map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
         conn.execute(
             "INSERT INTO crud_logs (
                 id, connection_id, tab_id, table_name, operation_type,
@@ -101,13 +109,17 @@ impl CrudLogStore {
     }
 
     /// 查询日志列表
-    pub fn query_logs(&self, filter: &CrudLogFilter, limit: usize) -> AppResult<Vec<CrudOperationLog>> {
+    pub fn query_logs(
+        &self,
+        filter: &CrudLogFilter,
+        limit: usize,
+    ) -> AppResult<Vec<CrudOperationLog>> {
         let mut sql = String::from(
             "SELECT 
                 id, connection_id, tab_id, table_name, operation_type,
                 sql, row_data, old_data, rows_affected, executed_at,
                 duration_ms, is_success, error_message
-             FROM crud_logs WHERE 1=1"
+             FROM crud_logs WHERE 1=1",
         );
         let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
@@ -146,7 +158,10 @@ impl CrudLogStore {
 
         let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
 
-        let mut conn = self.conn.lock().map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
         let mut stmt = conn.prepare(&sql)?;
         let logs = stmt.query_map(&param_refs[..], |row| {
             Ok(CrudOperationLog {
@@ -174,7 +189,10 @@ impl CrudLogStore {
 
     /// 获取指定 Tab 的日志数量
     pub fn count_logs_by_tab(&self, tab_id: &str) -> AppResult<usize> {
-        let conn = self.conn.lock().map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
         let count: i64 = conn.query_row(
             "SELECT COUNT(*) FROM crud_logs WHERE tab_id = ?",
             [tab_id],
@@ -185,17 +203,20 @@ impl CrudLogStore {
 
     /// 删除指定 Tab 的日志（当 Tab 关闭时调用）
     pub fn delete_logs_by_tab(&self, tab_id: &str) -> AppResult<usize> {
-        let mut conn = self.conn.lock().map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
-        let deleted = conn.execute(
-            "DELETE FROM crud_logs WHERE tab_id = ?",
-            [tab_id],
-        )?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let deleted = conn.execute("DELETE FROM crud_logs WHERE tab_id = ?", [tab_id])?;
         Ok(deleted)
     }
 
     /// 删除指定连接的日志（当连接关闭时调用）
     pub fn delete_logs_by_connection(&self, connection_id: &str) -> AppResult<usize> {
-        let mut conn = self.conn.lock().map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
         let deleted = conn.execute(
             "DELETE FROM crud_logs WHERE connection_id = ?",
             [connection_id],
@@ -205,16 +226,16 @@ impl CrudLogStore {
 
     /// 清理旧日志（保留最近 N 条）
     pub fn cleanup_old_logs(&self, keep_count: usize) -> AppResult<usize> {
-        let mut conn = self.conn.lock().map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
-        
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+
         // 获取需要删除的日志 ID
         let ids_to_delete: Vec<String> = {
-            let mut stmt = conn.prepare(
-                "SELECT id FROM crud_logs ORDER BY executed_at DESC LIMIT -1 OFFSET ?"
-            )?;
-            let ids = stmt.query_map([keep_count as i64], |row| {
-                row.get::<_, String>(0)
-            })?;
+            let mut stmt = conn
+                .prepare("SELECT id FROM crud_logs ORDER BY executed_at DESC LIMIT -1 OFFSET ?")?;
+            let ids = stmt.query_map([keep_count as i64], |row| row.get::<_, String>(0))?;
             ids.collect::<Result<Vec<_>, _>>()?
         };
 
@@ -235,12 +256,15 @@ impl CrudLogStore {
 
     /// 获取所有表名（用于筛选）
     pub fn get_table_names(&self) -> AppResult<Vec<String>> {
-        let mut conn = self.conn.lock().map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
-        let mut stmt = conn.prepare(
-            "SELECT DISTINCT table_name FROM crud_logs ORDER BY table_name"
-        )?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let mut stmt =
+            conn.prepare("SELECT DISTINCT table_name FROM crud_logs ORDER BY table_name")?;
         let names = stmt.query_map([], |row| row.get::<_, String>(0))?;
-        names.collect::<Result<Vec<_>, _>>()
+        names
+            .collect::<Result<Vec<_>, _>>()
             .map_err(|e| AppError::DatabaseError(e.to_string()))
     }
 
@@ -253,9 +277,9 @@ impl CrudLogStore {
                 COUNT(CASE WHEN operation_type = 'INSERT' THEN 1 END),
                 COUNT(CASE WHEN operation_type = 'UPDATE' THEN 1 END),
                 COUNT(CASE WHEN operation_type = 'DELETE' THEN 1 END)
-             FROM crud_logs WHERE 1=1"
+             FROM crud_logs WHERE 1=1",
         );
-        
+
         let params: Vec<Box<dyn rusqlite::ToSql>> = if let Some(conn_id) = connection_id {
             sql.push_str(" AND connection_id = ?");
             vec![Box::new(conn_id.to_string())]
@@ -265,7 +289,10 @@ impl CrudLogStore {
 
         let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
 
-        let conn = self.conn.lock().map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
         let stats = conn.query_row(&sql, &param_refs[..], |row| {
             Ok(CrudLogStats {
                 total: row.get::<_, i64>(0)? as usize,
@@ -324,15 +351,15 @@ mod tests {
     fn test_add_and_query_log() {
         let store = create_test_store();
         let log = create_test_log("tab-1");
-        
+
         store.add_log(&log).unwrap();
-        
+
         let filter = CrudLogFilter {
             tab_id: Some("tab-1".to_string()),
             ..Default::default()
         };
         let logs = store.query_logs(&filter, 10).unwrap();
-        
+
         assert_eq!(logs.len(), 1);
         assert_eq!(logs[0].table_name, "users");
         assert_eq!(logs[0].operation_type, CrudOperationType::Insert);
@@ -341,20 +368,20 @@ mod tests {
     #[test]
     fn test_filter_by_operation_type() {
         let store = create_test_store();
-        
+
         let insert_log = create_test_log("tab-1");
         store.add_log(&insert_log).unwrap();
-        
+
         let mut update_log = create_test_log("tab-1");
         update_log.operation_type = CrudOperationType::Update;
         store.add_log(&update_log).unwrap();
-        
+
         let filter = CrudLogFilter {
             operation_type: Some(CrudOperationType::Update),
             ..Default::default()
         };
         let logs = store.query_logs(&filter, 10).unwrap();
-        
+
         assert_eq!(logs.len(), 1);
         assert_eq!(logs[0].operation_type, CrudOperationType::Update);
     }
@@ -362,15 +389,15 @@ mod tests {
     #[test]
     fn test_delete_logs_by_tab() {
         let store = create_test_store();
-        
+
         let log1 = create_test_log("tab-1");
         let log2 = create_test_log("tab-2");
         store.add_log(&log1).unwrap();
         store.add_log(&log2).unwrap();
-        
+
         let deleted = store.delete_logs_by_tab("tab-1").unwrap();
         assert_eq!(deleted, 1);
-        
+
         let remaining = store.query_logs(&CrudLogFilter::default(), 10).unwrap();
         assert_eq!(remaining.len(), 1);
         assert_eq!(remaining[0].tab_id, "tab-2");

@@ -3,8 +3,8 @@
 
 use std::sync::Arc;
 
-use tauri::{Manager, Emitter};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::{Emitter, Manager};
 
 mod commands;
 mod core;
@@ -16,7 +16,6 @@ use core::connection_manager::ConnectionManager;
 use core::connection_store::ConnectionStore;
 use core::crud_log_store::CrudLogStore;
 use core::history_store::HistoryStore;
-
 
 /// 菜单文本定义
 struct MenuLabels {
@@ -51,9 +50,12 @@ fn get_menu_labels(locale: &str) -> MenuLabels {
 }
 
 /// 创建应用菜单
-fn create_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>, locale: &str) -> Result<Menu<R>, tauri::Error> {
+fn create_menu<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    locale: &str,
+) -> Result<Menu<R>, tauri::Error> {
     let labels = get_menu_labels(locale);
-    
+
     let open_db = MenuItem::with_id(app, "open_db", labels.open_db, true, None::<&str>)?;
     let create_db = MenuItem::with_id(app, "create_db", labels.create_db, true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", labels.settings, true, None::<&str>)?;
@@ -61,32 +63,12 @@ fn create_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>, locale: &str) -> Re
     let quit = MenuItem::with_id(app, "quit", labels.quit, true, None::<&str>)?;
 
     // 应用菜单（作为第一个菜单）- 包含设置和退出
-    let app_menu = Submenu::with_items(
-        app,
-        labels.app,
-        true,
-        &[
-            &settings,
-            &separator,
-            &quit,
-        ],
-    )?;
+    let app_menu = Submenu::with_items(app, labels.app, true, &[&settings, &separator, &quit])?;
 
     // 文件菜单
-    let file_menu = Submenu::with_items(
-        app,
-        labels.file,
-        true,
-        &[
-            &open_db,
-            &create_db,
-        ],
-    )?;
+    let file_menu = Submenu::with_items(app, labels.file, true, &[&open_db, &create_db])?;
 
-    let menu = Menu::with_items(app, &[
-        &app_menu,
-        &file_menu,
-    ])?;
+    let menu = Menu::with_items(app, &[&app_menu, &file_menu])?;
 
     Ok(menu)
 }
@@ -96,15 +78,13 @@ fn create_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>, locale: &str) -> Re
 fn update_menu_locale(app_handle: tauri::AppHandle, locale: String) -> Result<(), String> {
     // 移除旧菜单
     app_handle.remove_menu().map_err(|e| e.to_string())?;
-    
+
     // 创建新菜单
     let menu = create_menu(&app_handle, &locale).map_err(|e| e.to_string())?;
     app_handle.set_menu(menu).map_err(|e| e.to_string())?;
-    
+
     Ok(())
 }
-
-
 
 fn main() {
     tauri::Builder::default()
@@ -122,11 +102,12 @@ fn main() {
 
             // 初始化连接配置存储
             let connection_store = Arc::new(
-                ConnectionStore::new(app_handle).expect("Failed to initialize connection store")
+                ConnectionStore::new(app_handle).expect("Failed to initialize connection store"),
             );
 
             // 初始化连接管理器
-            let connection_manager = ConnectionManager::new(connection_store.clone(), history_store.clone());
+            let connection_manager =
+                ConnectionManager::new(connection_store.clone(), history_store.clone());
 
             // 初始化 CRUD 日志存储
             let app_data_dir = app_handle
@@ -135,7 +116,7 @@ fn main() {
                 .expect("Failed to get app data dir");
             std::fs::create_dir_all(&app_data_dir).expect("Failed to create app data dir");
             let crud_log_store = Arc::new(
-                CrudLogStore::new(&app_data_dir).expect("Failed to initialize CRUD log store")
+                CrudLogStore::new(&app_data_dir).expect("Failed to initialize CRUD log store"),
             );
 
             // 初始化设置存储
@@ -143,8 +124,10 @@ fn main() {
                 SettingsStore::new(app_handle).expect("Failed to initialize settings store");
 
             // 创建菜单（使用当前语言设置，默认为英文）
-            let current_locale = settings_store.get_locale().unwrap_or_else(|_| "en".to_string());
-            let menu = create_menu(&app_handle, &current_locale)?;
+            let current_locale = settings_store
+                .get_locale()
+                .unwrap_or_else(|_| "en".to_string());
+            let menu = create_menu(app_handle, &current_locale)?;
             app_handle.set_menu(menu)?;
 
             app.manage(connection_manager);
@@ -155,22 +138,20 @@ fn main() {
 
             Ok(())
         })
-        .on_menu_event(|app, event| {
-            match event.id().as_ref() {
-                "open_db" => {
-                    let _ = app.emit("menu-open-db", ());
-                }
-                "create_db" => {
-                    let _ = app.emit("menu-create-db", ());
-                }
-                "settings" => {
-                    let _ = app.emit("menu-settings", ());
-                }
-                "quit" => {
-                    app.exit(0);
-                }
-                _ => {}
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "open_db" => {
+                let _ = app.emit("menu-open-db", ());
             }
+            "create_db" => {
+                let _ = app.emit("menu-create-db", ());
+            }
+            "settings" => {
+                let _ = app.emit("menu-settings", ());
+            }
+            "quit" => {
+                app.exit(0);
+            }
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             // 连接管理

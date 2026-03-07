@@ -75,13 +75,11 @@ impl QueryExecutionInfo {
         if self.execution_time_ms > threshold_ms {
             self.warnings.push(QueryWarning {
                 level: WarningLevel::Warning,
-                message: format!(
-                    "查询执行时间较长 ({} ms)，建议优化",
-                    self.execution_time_ms
-                ),
+                message: format!("查询执行时间较长 ({} ms)，建议优化", self.execution_time_ms),
                 code: Some("SLOW_QUERY".to_string()),
             });
-            self.suggestions.push("考虑添加索引或优化查询条件".to_string());
+            self.suggestions
+                .push("考虑添加索引或优化查询条件".to_string());
         }
     }
 
@@ -94,7 +92,8 @@ impl QueryExecutionInfo {
                     message: "未使用索引，可能导致全表扫描".to_string(),
                     code: Some("NO_INDEX_USED".to_string()),
                 });
-                self.suggestions.push("为 WHERE、JOIN、ORDER BY 子句中的列添加索引".to_string());
+                self.suggestions
+                    .push("为 WHERE、JOIN、ORDER BY 子句中的列添加索引".to_string());
             }
         }
     }

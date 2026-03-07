@@ -131,13 +131,29 @@ pub struct DesignerTable {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum TableChange {
-    AddColumn { column: DesignerColumn },
-    DropColumn { column_name: String },
-    RenameColumn { old_name: String, new_name: String },
-    AlterColumn { column_name: String, new_column: DesignerColumn },
-    AddIndex { index: DesignerIndex },
-    DropIndex { index_name: String },
-    RenameTable { new_name: String },
+    AddColumn {
+        column: DesignerColumn,
+    },
+    DropColumn {
+        column_name: String,
+    },
+    RenameColumn {
+        old_name: String,
+        new_name: String,
+    },
+    AlterColumn {
+        column_name: String,
+        new_column: DesignerColumn,
+    },
+    AddIndex {
+        index: DesignerIndex,
+    },
+    DropIndex {
+        index_name: String,
+    },
+    RenameTable {
+        new_name: String,
+    },
 }
 
 /// 创建表的请求

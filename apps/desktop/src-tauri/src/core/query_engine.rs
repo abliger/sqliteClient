@@ -21,7 +21,9 @@ impl QueryEngine {
         limit: Option<usize>,
     ) -> AppResult<QueryResult> {
         let start = Instant::now();
-        let mut conn = pool.get().map_err(|e| AppError::ConnectionError(e.to_string()))?;
+        let mut conn = pool
+            .get()
+            .map_err(|e| AppError::ConnectionError(e.to_string()))?;
 
         // 检查 SQL 类型
         let sql_trimmed = sql.trim().to_uppercase();
@@ -48,8 +50,7 @@ impl QueryEngine {
         let plan_time = plan_start.elapsed();
 
         // 分析查询计划提取信息
-        let (used_index, indexes_used, is_full_table_scan) =
-            Self::extract_plan_info(&query_plan);
+        let (used_index, indexes_used, is_full_table_scan) = Self::extract_plan_info(&query_plan);
 
         // 2. 执行实际查询（在内部作用域中，确保 stmt 被及时释放）
         let query_start = Instant::now();
@@ -129,8 +130,7 @@ impl QueryEngine {
     ) -> AppResult<QueryResult> {
         // 分析查询计划（如果适用）
         let query_plan = Self::analyze_query_plan(conn, sql).unwrap_or_default();
-        let (used_index, indexes_used, is_full_table_scan) =
-            Self::extract_plan_info(&query_plan);
+        let (used_index, indexes_used, is_full_table_scan) = Self::extract_plan_info(&query_plan);
 
         let changes_before = conn.changes();
 
@@ -328,11 +328,11 @@ impl QueryEngine {
                         for col in &columns {
                             let value = match row.values.get(col) {
                                 Some(CellValue::Null) => serde_json::Value::Null,
-                                Some(CellValue::Integer(i)) => serde_json::Value::Number((*i).into()),
-                                Some(CellValue::Real(f)) => {
-                                    serde_json::Number::from_f64(*f)
-                                        .map_or(serde_json::Value::Null, serde_json::Value::Number)
+                                Some(CellValue::Integer(i)) => {
+                                    serde_json::Value::Number((*i).into())
                                 }
+                                Some(CellValue::Real(f)) => serde_json::Number::from_f64(*f)
+                                    .map_or(serde_json::Value::Null, serde_json::Value::Number),
                                 Some(CellValue::Text(s)) => serde_json::Value::String(s.clone()),
                                 Some(CellValue::Blob(b)) => serde_json::Value::String(b.clone()),
                                 Some(CellValue::Boolean(b)) => serde_json::Value::Bool(*b),
@@ -358,6 +358,12 @@ impl QueryEngine {
 // Stream Manager for handling large result sets
 pub struct StreamManager {
     streams: Arc<Mutex<HashMap<String, StreamState>>>,
+}
+
+impl Default for StreamManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl StreamManager {

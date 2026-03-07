@@ -5,7 +5,7 @@ import type { Directive } from 'vue'
  * 用法: <input v-focus />
  */
 export const vFocus: Directive = {
-  mounted(el: HTMLElement) {
-    el.focus()
-  }
+    mounted(el: HTMLElement) {
+        el.focus()
+    },
 }

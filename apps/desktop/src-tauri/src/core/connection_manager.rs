@@ -27,10 +27,7 @@ pub struct ConnectionManager {
 }
 
 impl ConnectionManager {
-    pub fn new(
-        connection_store: Arc<ConnectionStore>,
-        history_store: Arc<HistoryStore>,
-    ) -> Self {
+    pub fn new(connection_store: Arc<ConnectionStore>, history_store: Arc<HistoryStore>) -> Self {
         Self {
             connections: Arc::new(RwLock::new(HashMap::new())),
             connection_store,
@@ -71,10 +68,10 @@ impl ConnectionManager {
     pub fn create_connection(&self, name: String, db_path: String) -> AppResult<ConnectionInfo> {
         let config = ConnectionConfig::new(name, db_path);
         let info = self.do_create_connection(config)?;
-        
+
         // 保存到持久化存储
         self.connection_store.save_connection(&info.config)?;
-        
+
         Ok(info)
     }
 
@@ -147,7 +144,7 @@ impl ConnectionManager {
         };
 
         self.connections.write().insert(config.id.clone(), handle);
-        
+
         // 保存到持久化存储
         self.connection_store.save_connection(&config)?;
 
@@ -156,10 +153,10 @@ impl ConnectionManager {
 
     pub fn close_connection(&self, connection_id: &str) -> AppResult<()> {
         self.connections.write().remove(connection_id);
-        
+
         // 从持久化存储中删除
         self.connection_store.delete_connection(connection_id)?;
-        
+
         Ok(())
     }
 

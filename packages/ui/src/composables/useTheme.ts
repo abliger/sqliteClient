@@ -45,6 +45,6 @@ export function useTheme(currentTheme: () => Theme) {
 
     return {
         systemDark,
-        updateTheme
+        updateTheme,
     }
 }

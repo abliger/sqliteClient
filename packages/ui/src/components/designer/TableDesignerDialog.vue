@@ -2,8 +2,6 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import type {
   DesignerTable,
-  DesignerColumn,
-  DesignerIndex,
   TableChange,
   PreviewDDLResult,
   DDLExecutionResult,
@@ -106,8 +104,8 @@ function loadExistingTable(table: TableInfo) {
       foreign_key: col.foreign_key ? {
         ref_table: col.foreign_key.to_table,
         ref_column: col.foreign_key.to_column,
-        on_update: col.foreign_key.on_update as any,
-        on_delete: col.foreign_key.on_delete as any,
+        on_update: col.foreign_key.on_update as string,
+        on_delete: col.foreign_key.on_delete as string,
       } : undefined,
     })),
     indexes: [], // 需要单独加载
@@ -116,7 +114,7 @@ function loadExistingTable(table: TableInfo) {
   }
 }
 
-function normalizeDataType(type: string): any {
+function normalizeDataType(type: string): string {
   const upper = type.toUpperCase()
   const validTypes = ['INTEGER', 'REAL', 'TEXT', 'BLOB', 'NUMERIC', 'BOOLEAN', 
     'DATETIME', 'DATE', 'TIME', 'VARCHAR', 'CHAR', 'DECIMAL', 'FLOAT', 

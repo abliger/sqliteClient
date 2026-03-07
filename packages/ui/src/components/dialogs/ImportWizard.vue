@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useImportStore } from '@stores/import'
 import { useConnectionStore } from '@stores/connection'
@@ -8,7 +8,6 @@ import { importService, SQLITE_DATA_TYPES } from '@services/import'
 import { 
   DocumentArrowUpIcon,
   TableCellsIcon,
-  CogIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
   ArrowRightIcon,
@@ -102,14 +101,7 @@ const getDataTypeLabel = (type: string) => {
   return found?.label || type
 }
 
-// 列映射表格列
-const mappingColumns = [
-  { key: 'source_column', label: t('import.sourceColumn') },
-  { key: 'target_column', label: t('import.targetColumn') },
-  { key: 'data_type', label: t('import.dataType') },
-  { key: 'is_primary_key', label: t('import.primaryKey') },
-  { key: 'nullable', label: t('import.nullable') }
-]
+
 </script>
 
 <template>
