@@ -287,6 +287,9 @@ function downloadSQL() {
               <span class="text-xs font-medium text-gray-500 dark:text-gray-400">生成的 SQL</span>
               <span class="text-xs text-gray-400">{{ preview.sql?.length || 0 }} 字符</span>
             </div>
+            <!-- 调试：显示原始 SQL 内容 -->
+            <pre v-if="preview.sql?.includes('<')" class="p-4 text-xs text-red-500 bg-red-50 dark:bg-red-900/20 overflow-auto max-h-32">警告：SQL 包含 HTML 标签！
+{{ preview.sql }}</pre>
             <div ref="editorContainer" class="h-64 w-full" />
           </div>
         </div>
