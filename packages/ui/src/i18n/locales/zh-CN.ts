@@ -95,6 +95,17 @@ export default {
     shortcutHint: '按 Ctrl+Enter 运行',
     executionSuccess: '查询执行成功',
     lastInsertId: '最后插入 ID',
+    // Row editing
+    editRow: '编辑记录',
+    table: '表',
+    default: '默认值',
+    confirmDelete: '确定要删除这条记录吗？',
+    delete: '删除',
+    noTableName: '无法从查询中确定表名',
+    updateSuccess: '记录更新成功',
+    updateError: '更新记录失败',
+    deleteSuccess: '记录删除成功',
+    deleteError: '删除记录失败',
   },
 
   // Settings

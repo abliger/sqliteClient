@@ -95,6 +95,17 @@ export default {
     shortcutHint: 'Press Ctrl+Enter to run',
     executionSuccess: 'Query executed successfully',
     lastInsertId: 'Last insert ID',
+    // Row editing
+    editRow: 'Edit Row',
+    table: 'Table',
+    default: 'Default',
+    confirmDelete: 'Are you sure you want to delete this row?',
+    delete: 'Delete',
+    noTableName: 'Cannot determine table name from query',
+    updateSuccess: 'Row updated successfully',
+    updateError: 'Failed to update row',
+    deleteSuccess: 'Row deleted successfully',
+    deleteError: 'Failed to delete row',
   },
 
   // Settings

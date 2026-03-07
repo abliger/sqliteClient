@@ -3,23 +3,205 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQueryStore } from '@stores/query'
 import { useConnectionStore } from '@stores/connection'
+import { useSchemaStore } from '@stores/schema'
 import { useToastStore } from '@stores/toast'
 import { exportService } from '@services/export'
+import { crudService } from '@services/crud'
 import { save } from '@tauri-apps/plugin-dialog'
 import ResultGrid from './ResultGrid.vue'
 import ResultStatus from './ResultStatus.vue'
+import EditRowDialog from '@components/dialogs/EditRowDialog.vue'
 import { ArrowDownTrayIcon, TableCellsIcon, CheckCircleIcon } from '@heroicons/vue/24/outline'
+import type { QueryRow, CellValue } from '@types'
 
 const { t } = useI18n()
 const queryStore = useQueryStore()
 const connectionStore = useConnectionStore()
+const schemaStore = useSchemaStore()
 const toastStore = useToastStore()
 const activeTab = ref<'results' | 'messages'>('results')
 const isExporting = ref(false)
+const isEditDialogOpen = ref(false)
+const editingRow = ref<QueryRow | null>(null)
 
 const currentResult = computed(() => queryStore.activeTab?.result)
 const isExecuting = computed(() => queryStore.activeTab?.isExecuting || false)
 const executionTime = computed(() => queryStore.activeTab?.executionTime)
+
+// 从 SQL 中尝试解析表名
+const currentTableName = computed(() => {
+    const sql = queryStore.activeTab?.sql || ''
+    if (!sql) return null
+
+    // 简单的正则匹配：SELECT ... FROM table_name 或 SELECT ... FROM "table_name"
+    const fromMatch = sql.match(/\bFROM\s+["']?(\w+)["']?/i)
+    if (fromMatch) return fromMatch[1]
+
+    // 匹配 UPDATE table_name
+    const updateMatch = sql.match(/\bUPDATE\s+["']?(\w+)["']?/i)
+    if (updateMatch) return updateMatch[1]
+
+    return null
+})
+
+// 获取当前表的表结构信息
+const currentTableInfo = computed(() => {
+    if (!currentTableName.value) return null
+    return schemaStore.getTableByName(currentTableName.value)
+})
+
+// 表结构已随连接加载，无需额外加载
+// getTableByName 会从已加载的 tables 中查找
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const handleEditRow = (row: QueryRow, _rowIndex: number) => {
+    // 检查是否有可编辑的表
+    if (!currentTableName.value) {
+        toastStore.error(t('results.noTableName'))
+        return
+    }
+    editingRow.value = row
+    isEditDialogOpen.value = true
+}
+
+// 处理直接从表格删除行
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const handleDeleteRowFromGrid = async (row: QueryRow, _rowIndex: number) => {
+    if (!connectionStore.activeConnectionId || !currentTableName.value) {
+        toastStore.error(t('results.noTableName'))
+        return
+    }
+
+    try {
+        // 构建条件
+        const conditions: Record<string, CellValue> = {}
+        const columns = currentTableInfo.value?.columns || []
+        const primaryKeyColumn = columns.find(c => c.is_primary_key)
+
+        if (primaryKeyColumn) {
+            const pkValue = row.values[primaryKeyColumn.name]
+            if (pkValue) {
+                conditions[primaryKeyColumn.name] = pkValue
+            }
+        } else {
+            // 没有主键，使用所有值作为条件
+            Object.entries(row.values).forEach(([key, value]) => {
+                conditions[key] = value
+            })
+        }
+
+        await crudService.deleteRow({
+            connectionId: connectionStore.activeConnectionId,
+            tableName: currentTableName.value,
+            conditions
+        })
+
+        toastStore.success(t('results.deleteSuccess'))
+
+        // 刷新查询结果
+        if (queryStore.activeTab?.sql) {
+            await queryStore.executeQuery(
+                connectionStore.activeConnectionId,
+                queryStore.activeTab.sql,
+                1000
+            )
+        }
+    } catch (err) {
+        console.error('Delete failed:', err)
+        toastStore.error(t('results.deleteError'), err instanceof Error ? err.message : String(err))
+    }
+}
+
+const handleSaveRow = async (data: Record<string, CellValue>) => {
+    if (!connectionStore.activeConnectionId || !currentTableName.value || !editingRow.value) return
+
+    try {
+        // 构建条件（使用主键或所有原始值）
+        const conditions: Record<string, CellValue> = {}
+        const columns = currentTableInfo.value?.columns || []
+        const primaryKeyColumn = columns.find(c => c.is_primary_key)
+
+        if (primaryKeyColumn) {
+            // 使用主键作为条件
+            const pkValue = editingRow.value.values[primaryKeyColumn.name]
+            if (pkValue) {
+                conditions[primaryKeyColumn.name] = pkValue
+            }
+        } else {
+            // 没有主键，使用所有原始值作为条件
+            Object.entries(editingRow.value.values).forEach(([key, value]) => {
+                conditions[key] = value
+            })
+        }
+
+        await crudService.updateRow({
+            connectionId: connectionStore.activeConnectionId,
+            tableName: currentTableName.value,
+            data,
+            conditions
+        })
+
+        toastStore.success(t('results.updateSuccess'))
+        isEditDialogOpen.value = false
+        editingRow.value = null
+
+        // 刷新查询结果
+        if (queryStore.activeTab?.sql) {
+            await queryStore.executeQuery(
+                connectionStore.activeConnectionId,
+                queryStore.activeTab.sql,
+                1000
+            )
+        }
+    } catch (err) {
+        console.error('Update failed:', err)
+        toastStore.error(t('results.updateError'), err instanceof Error ? err.message : String(err))
+    }
+}
+
+const handleDeleteRow = async () => {
+    if (!connectionStore.activeConnectionId || !currentTableName.value || !editingRow.value) return
+
+    try {
+        // 构建条件
+        const conditions: Record<string, CellValue> = {}
+        const columns = currentTableInfo.value?.columns || []
+        const primaryKeyColumn = columns.find(c => c.is_primary_key)
+
+        if (primaryKeyColumn) {
+            const pkValue = editingRow.value.values[primaryKeyColumn.name]
+            if (pkValue) {
+                conditions[primaryKeyColumn.name] = pkValue
+            }
+        } else {
+            Object.entries(editingRow.value.values).forEach(([key, value]) => {
+                conditions[key] = value
+            })
+        }
+
+        await crudService.deleteRow({
+            connectionId: connectionStore.activeConnectionId,
+            tableName: currentTableName.value,
+            conditions
+        })
+
+        toastStore.success(t('results.deleteSuccess'))
+        isEditDialogOpen.value = false
+        editingRow.value = null
+
+        // 刷新查询结果
+        if (queryStore.activeTab?.sql) {
+            await queryStore.executeQuery(
+                connectionStore.activeConnectionId,
+                queryStore.activeTab.sql,
+                1000
+            )
+        }
+    } catch (err) {
+        console.error('Delete failed:', err)
+        toastStore.error(t('results.deleteError'), err instanceof Error ? err.message : String(err))
+    }
+}
 
 const handleExportCSV = async () => {
     if (!currentResult.value || currentResult.value.type !== 'rows') return
@@ -146,11 +328,27 @@ const handleExportJSON = async () => {
                     :columns="currentResult.columns"
                     :rows="currentResult.rows"
                     :has-more="currentResult.has_more"
+                    :table-name="currentTableName"
+                    :allow-edit="!!currentTableName"
+                    @edit-row="handleEditRow"
+                    @delete-row="handleDeleteRowFromGrid"
+                />
+
+                <!-- Edit Row Dialog -->
+                <EditRowDialog
+                    :is-open="isEditDialogOpen"
+                    :columns="currentResult?.type === 'rows' ? currentResult.columns : []"
+                    :row="editingRow"
+                    :table-name="currentTableName"
+                    :table-info="currentTableInfo"
+                    @close="isEditDialogOpen = false"
+                    @save="handleSaveRow"
+                    @delete="handleDeleteRow"
                 />
 
                 <!-- Execution Result -->
                 <div
-                    v-else-if="currentResult.type === 'execution'"
+                    v-if="currentResult && currentResult.type === 'execution'"
                     class="flex flex-col items-center justify-center h-full"
                 >
                     <CheckCircleIcon class="w-12 h-12 text-green-500 mb-3" />

@@ -1,22 +1,36 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { QueryRow, CellValue } from '@types'
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
+import { 
+  ChevronLeftIcon, 
+  ChevronRightIcon,
+  TrashIcon,
+  PencilIcon
+} from '@heroicons/vue/24/outline'
 
 interface Props {
     columns: string[]
     rows: QueryRow[]
     hasMore?: boolean
+    tableName?: string | null
+    /** 是否允许编辑/删除操作 */
+    allowEdit?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-    hasMore: false
+    hasMore: false,
+    tableName: null,
+    allowEdit: true
 })
+
+const emit = defineEmits<{
+    'edit-row': [row: QueryRow, rowIndex: number]
+    'delete-row': [row: QueryRow, rowIndex: number]
+}>()
 
 const pageSize = ref(100)
 const currentPage = ref(1)
-const editingCell = ref<{ row: number; col: string } | null>(null)
-const editValue = ref('')
+const deletingRow = ref<number | null>(null)
 
 const totalPages = computed(() => Math.ceil(props.rows.length / pageSize.value))
 
@@ -25,6 +39,11 @@ const paginatedRows = computed(() => {
     const end = start + pageSize.value
     return props.rows.slice(start, end)
 })
+
+// 计算原始行索引
+const getOriginalRowIndex = (paginatedIndex: number) => {
+    return (currentPage.value - 1) * pageSize.value + paginatedIndex
+}
 
 const formatCellValue = (value: CellValue): string => {
     switch (value.type) {
@@ -59,19 +78,32 @@ const getCellClass = (value: CellValue): string => {
     }
 }
 
-const handleCellDoubleClick = (rowIndex: number, col: string, value: CellValue) => {
-    editingCell.value = { row: rowIndex, col }
-    editValue.value = formatCellValue(value)
+const handleRowDoubleClick = (row: QueryRow, rowIndex: number) => {
+    if (props.allowEdit) {
+        emit('edit-row', row, getOriginalRowIndex(rowIndex))
+    }
 }
 
-const handleSaveEdit = () => {
-    // TODO: 实现保存逻辑
-    editingCell.value = null
+const handleEdit = (row: QueryRow, rowIndex: number, event: Event) => {
+    event.stopPropagation()
+    emit('edit-row', row, getOriginalRowIndex(rowIndex))
 }
 
-const handleCancelEdit = () => {
-    editingCell.value = null
-    editValue.value = ''
+const handleDelete = async (row: QueryRow, rowIndex: number, event: Event) => {
+    event.stopPropagation()
+    const originalIndex = getOriginalRowIndex(rowIndex)
+    
+    // 确认删除
+    if (!confirm('确定要删除这条记录吗？此操作不可撤销。')) {
+        return
+    }
+    
+    deletingRow.value = rowIndex
+    try {
+        emit('delete-row', row, originalIndex)
+    } finally {
+        deletingRow.value = null
+    }
 }
 
 const handlePageSizeChange = () => {
@@ -111,13 +143,22 @@ const goToNextPage = () => {
                         >
                             {{ col }}
                         </th>
+                        <!-- 操作列 -->
+                        <th
+                            v-if="allowEdit"
+                            class="px-3 py-2 text-center text-xs font-semibold text-surface-600 dark:text-surface-400 border-b border-surface-200 dark:border-surface-700 whitespace-nowrap w-24 sticky right-0 bg-surface-100 dark:bg-surface-800 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]"
+                        >
+                            操作
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr
                         v-for="(row, rowIndex) in paginatedRows"
                         :key="rowIndex"
-                        class="hover:bg-surface-50 dark:hover:bg-surface-800"
+                        class="hover:bg-surface-50 dark:hover:bg-surface-800/50 cursor-pointer group"
+                        :class="{ 'opacity-50': deletingRow === rowIndex }"
+                        @dblclick="handleRowDoubleClick(row, rowIndex)"
                     >
                         <td
                             class="px-2 py-2 text-xs text-surface-400 dark:text-surface-500 border-b border-r border-surface-200 dark:border-surface-700 text-center"
@@ -128,30 +169,50 @@ const goToNextPage = () => {
                             v-for="col in columns"
                             :key="col"
                             :class="getCellClass(row.values[col] || { type: 'Null' })"
-                            @dblclick="
-                                handleCellDoubleClick(
-                                    rowIndex,
-                                    col,
-                                    row.values[col] || { type: 'Null' }
-                                )
-                            "
                         >
-                            <template
-                                v-if="editingCell?.row === rowIndex && editingCell?.col === col"
-                            >
-                                <input
-                                    v-model="editValue"
-                                    v-focus
-                                    type="text"
-                                    class="w-full px-1 py-0.5 text-sm border border-primary-500 rounded dark:bg-surface-800 dark:text-surface-100"
-                                    @blur="handleSaveEdit"
-                                    @keyup.enter="handleSaveEdit"
-                                    @keyup.esc="handleCancelEdit"
-                                />
-                            </template>
-                            <template v-else>
-                                {{ formatCellValue(row.values[col] || { type: 'Null' }) }}
-                            </template>
+                            {{ formatCellValue(row.values[col] || { type: 'Null' }) }}
+                        </td>
+                        <!-- 操作按钮列 -->
+                        <td
+                            v-if="allowEdit"
+                            class="px-2 py-2 text-center border-b border-surface-200 dark:border-surface-700 sticky right-0 bg-white dark:bg-surface-900 group-hover:bg-surface-50 dark:group-hover:bg-surface-800/50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors"
+                        >
+                            <div class="flex items-center justify-center space-x-1">
+                                <!-- 编辑按钮 -->
+                                <button
+                                    type="button"
+                                    class="p-1.5 rounded-md transition-colors duration-150"
+                                    :class="[
+                                        'text-surface-500 dark:text-surface-400',
+                                        'hover:text-primary-600 dark:hover:text-primary-400',
+                                        'hover:bg-primary-50 dark:hover:bg-primary-900/30',
+                                        'focus:outline-none focus:ring-2 focus:ring-primary-500/50'
+                                    ]"
+                                    title="编辑"
+                                    @click="handleEdit(row, rowIndex, $event)"
+                                >
+                                    <PencilIcon class="w-4 h-4" />
+                                </button>
+                                <!-- 删除按钮 -->
+                                <button
+                                    type="button"
+                                    class="p-1.5 rounded-md transition-colors duration-150"
+                                    :class="[
+                                        'text-surface-500 dark:text-surface-400',
+                                        'hover:text-red-600 dark:hover:text-red-400',
+                                        'hover:bg-red-50 dark:hover:bg-red-900/30',
+                                        'focus:outline-none focus:ring-2 focus:ring-red-500/50'
+                                    ]"
+                                    :disabled="deletingRow === rowIndex"
+                                    title="删除"
+                                    @click="handleDelete(row, rowIndex, $event)"
+                                >
+                                    <TrashIcon 
+                                        class="w-4 h-4" 
+                                        :class="{ 'animate-pulse': deletingRow === rowIndex }" 
+                                    />
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 </tbody>

@@ -25,10 +25,23 @@ const handleTableClick = (table: TableInfo) => {
     schemaStore.selectedTable = table.name
 }
 
-const handleTableDoubleClick = (table: TableInfo) => {
+// 双击表生成并执行查询
+const handleTableDoubleClick = async (table: TableInfo) => {
     const columns = table.columns.map((c) => `"${c.name}"`).join(', ')
     const sql = `SELECT ${columns}\nFROM "${table.name}"\nLIMIT 100;`
-    queryStore.addTab(sql)
+
+    // 添加新 tab
+    const tab = queryStore.addTab(sql)
+
+    // 如果有活动连接，自动执行查询
+    const connectionId = connectionStore.activeConnectionId
+    if (connectionId && tab) {
+        try {
+            await queryStore.executeQuery(connectionId, sql, 1000)
+        } catch (err) {
+            console.error('Failed to execute query:', err)
+        }
+    }
 }
 
 const handleGenerateSelect = (tableName: string) => {
