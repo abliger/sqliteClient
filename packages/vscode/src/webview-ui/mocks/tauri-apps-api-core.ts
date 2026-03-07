@@ -1,1 +1,1 @@
-export { invoke } from './tauri'
+export { invoke, cleanupMessageHandlers } from './tauri'

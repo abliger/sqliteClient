@@ -9,6 +9,12 @@ use crate::core::connection_manager::ConnectionManager;
 use crate::models::import::{ColumnStats, ImportConfig, PreviewRow};
 use crate::utils::error::{AppError, AppResult};
 
+/// 转义 SQL 标识符中的双引号
+/// 在 SQLite 中，标识符使用双引号包裹，内部的双引号需要转义为两个双引号
+fn escape_identifier(ident: &str) -> String {
+    ident.replace('"', "\"\"")
+}
+
 /// 导入预览结果
 #[derive(Debug, Clone, Serialize)]
 pub struct ImportPreview {
@@ -223,7 +229,7 @@ impl ImportEngine {
 
         // 如果表存在且需要覆盖，则删除
         if config.overwrite_existing {
-            tx.execute(&format!("DROP TABLE IF EXISTS {}", config.table_name), [])?;
+            tx.execute(&format!("DROP TABLE IF EXISTS \"{}\"", escape_identifier(&config.table_name)), [])?;
         }
 
         // 创建表
@@ -236,10 +242,13 @@ impl ImportEngine {
             .map(|m| m.target_column.as_str())
             .collect();
         let placeholders: Vec<String> = (0..columns.len()).map(|_| "?".to_string()).collect();
+        let column_names: Vec<String> = columns.iter()
+            .map(|c| format!("\"{}\"", escape_identifier(c)))
+            .collect();
         let insert_sql = format!(
-            "INSERT INTO {} ({}) VALUES ({})",
-            config.table_name,
-            columns.join(", "),
+            "INSERT INTO \"{}\" ({}) VALUES ({})",
+            escape_identifier(&config.table_name),
+            column_names.join(", "),
             placeholders.join(", ")
         );
         let mut stmt = tx.prepare(&insert_sql)?;
@@ -287,7 +296,7 @@ impl ImportEngine {
             .column_mappings
             .iter()
             .map(|m| {
-                let mut def = format!("{} {}", m.target_column, m.data_type);
+                let mut def = format!("\"{}\" {}", escape_identifier(&m.target_column), m.data_type);
                 if m.is_primary_key {
                     def.push_str(" PRIMARY KEY");
                 }
@@ -302,8 +311,8 @@ impl ImportEngine {
             .collect();
 
         let create_sql = format!(
-            "CREATE TABLE IF NOT EXISTS {} ({})",
-            config.table_name,
+            "CREATE TABLE IF NOT EXISTS \"{}\" ({})",
+            escape_identifier(&config.table_name),
             columns_def.join(", ")
         );
 

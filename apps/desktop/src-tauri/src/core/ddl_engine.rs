@@ -6,6 +6,12 @@ use r2d2_sqlite::SqliteConnectionManager;
 use crate::models::ddl::*;
 use crate::utils::error::{AppError, AppResult};
 
+/// 转义 SQL 标识符中的双引号
+/// 在 SQLite 中，标识符使用双引号包裹，内部的双引号需要转义为两个双引号
+fn escape_identifier(ident: &str) -> String {
+    ident.replace('"', "\"\"")
+}
+
 pub struct DdlEngine;
 
 impl DdlEngine {
@@ -31,10 +37,10 @@ impl DdlEngine {
             .get()
             .map_err(|e| AppError::ConnectionError(e.to_string()))?;
 
-        // 获取当前表信息
+        // 获取当前表信息（使用参数化查询防止注入）
         let current_columns: Vec<String> = conn
-            .prepare(&format!("PRAGMA table_info('{}')", table_name))?
-            .query_map([], |row| row.get::<_, String>(1))?
+            .prepare("PRAGMA table_info(?1)")?
+            .query_map([table_name], |row| row.get::<_, String>(1))?
             .collect::<Result<_, _>>()?;
 
         // 检查是否需要重建表
@@ -49,11 +55,9 @@ impl DdlEngine {
         let warnings = Self::validate_changes(table_name, changes, &current_columns)?;
 
         let impact = if needs_recreate {
-            let row_count: i64 = conn.query_row(
-                &format!("SELECT COUNT(*) FROM \"{}\"", table_name),
-                [],
-                |r| r.get(0),
-            )?;
+            // 使用参数化查询获取行数
+            let sql = format!("SELECT COUNT(*) FROM \"{}\"", escape_identifier(table_name));
+            let row_count: i64 = conn.query_row(&sql, [], |r| r.get(0))?;
             Some(DdlImpact {
                 will_recreate_table: true,
                 data_loss_risk: false, // SQLite 数据迁移通常是安全的
@@ -72,7 +76,7 @@ impl DdlEngine {
 
     /// 预览删除表的DDL
     pub fn preview_drop_table(table_name: &str) -> AppResult<PreviewDdlResult> {
-        let sql = format!("DROP TABLE IF EXISTS \"{}\"", table_name);
+        let sql = format!("DROP TABLE IF EXISTS \"{}\"", escape_identifier(table_name));
         Ok(PreviewDdlResult {
             sql,
             warnings: vec![format!(
@@ -148,7 +152,7 @@ impl DdlEngine {
         table_name: &str,
     ) -> AppResult<DdlExecutionResult> {
         let start = std::time::Instant::now();
-        let sql = format!("DROP TABLE IF EXISTS \"{}\"", table_name);
+        let sql = format!("DROP TABLE IF EXISTS \"{}\"", escape_identifier(table_name));
 
         let conn = pool
             .get()
@@ -176,7 +180,7 @@ impl DdlEngine {
         // 收集主键列
         for col in &table.columns {
             if col.is_primary_key {
-                pk_columns.push(format!("\"{}\"", col.name));
+                pk_columns.push(format!("\"{}\"", escape_identifier(&col.name)));
             }
         }
 
@@ -189,7 +193,7 @@ impl DdlEngine {
         // 添加复合主键约束（如果有多个主键列且列本身没有标记为主键）
         if let Some(ref pk) = table.primary_key {
             if pk.len() > 1 {
-                let pk_cols: Vec<String> = pk.iter().map(|c| format!("\"{}\"", c)).collect();
+                let pk_cols: Vec<String> = pk.iter().map(|c| format!("\"{}\"", escape_identifier(c))).collect();
                 constraints.push(format!("PRIMARY KEY ({})", pk_cols.join(", ")));
             }
         } else if pk_columns.len() > 1 {
@@ -202,7 +206,11 @@ impl DdlEngine {
                 if let Some(ref fk) = col.foreign_key {
                     let fk_constraint = format!(
                         "FOREIGN KEY (\"{}\") REFERENCES \"{}\"(\"{}\") ON UPDATE {} ON DELETE {}",
-                        col.name, fk.ref_table, fk.ref_column, fk.on_update, fk.on_delete
+                        escape_identifier(&col.name),
+                        escape_identifier(&fk.ref_table),
+                        escape_identifier(&fk.ref_column),
+                        fk.on_update,
+                        fk.on_delete
                     );
                     constraints.push(fk_constraint);
                 }
@@ -219,7 +227,7 @@ impl DdlEngine {
 
         Ok(format!(
             "CREATE TABLE \"{}\" (\n  {}\n){}",
-            table.name,
+            escape_identifier(&table.name),
             parts.join(",\n  "),
             strict_clause
         ))
@@ -227,7 +235,7 @@ impl DdlEngine {
 
     /// 生成列定义
     fn generate_column_def(col: &DesignerColumn) -> AppResult<String> {
-        let mut parts = vec![format!("\"{}\" {}", col.name, col.data_type)];
+        let mut parts = vec![format!("\"{}\" {}", escape_identifier(&col.name), col.data_type)];
 
         // 主键（单列）
         if col.is_primary_key && col.foreign_key.is_none() {
@@ -260,7 +268,7 @@ impl DdlEngine {
     /// 生成创建索引的SQL
     fn generate_create_index_sql(table_name: &str, index: &DesignerIndex) -> AppResult<String> {
         let unique_str = if index.unique { "UNIQUE " } else { "" };
-        let cols: Vec<String> = index.columns.iter().map(|c| format!("\"{}\"", c)).collect();
+        let cols: Vec<String> = index.columns.iter().map(|c| format!("\"{}\"", escape_identifier(c))).collect();
 
         let where_clause = index
             .where_clause
@@ -271,8 +279,8 @@ impl DdlEngine {
         Ok(format!(
             "CREATE {0}INDEX \"{1}\" ON \"{2}\" ({3}){4}",
             unique_str,
-            index.name,
-            table_name,
+            escape_identifier(&index.name),
+            escape_identifier(table_name),
             cols.join(", "),
             where_clause
         ))
@@ -302,7 +310,7 @@ impl DdlEngine {
                     let col_def = Self::generate_column_def(column)?;
                     sql_parts.push(format!(
                         "ALTER TABLE \"{}\" ADD COLUMN {}",
-                        table_name, col_def
+                        escape_identifier(table_name), col_def
                     ));
                 }
                 TableChange::AddIndex { index } => {
@@ -310,12 +318,13 @@ impl DdlEngine {
                     sql_parts.push(index_sql);
                 }
                 TableChange::DropIndex { index_name } => {
-                    sql_parts.push(format!("DROP INDEX IF EXISTS \"{}\"", index_name));
+                    sql_parts.push(format!("DROP INDEX IF EXISTS \"{}\"", escape_identifier(index_name)));
                 }
                 TableChange::RenameTable { new_name } => {
                     sql_parts.push(format!(
                         "ALTER TABLE \"{}\" RENAME TO \"{}\"",
-                        table_name, new_name
+                        escape_identifier(table_name),
+                        escape_identifier(new_name)
                     ));
                 }
                 _ => {} // 其他操作需要重建表
@@ -337,7 +346,7 @@ impl DdlEngine {
 
         // 获取当前表结构
         let sql: String = conn.query_row(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
             [table_name],
             |r| r.get(0),
         )?;
@@ -367,18 +376,18 @@ impl DdlEngine {
         let remaining_columns: Vec<String> = temp_table
             .columns
             .iter()
-            .map(|c| format!("\"{}\"", c.name))
+            .map(|c| format!("\"{}\"", escape_identifier(&c.name)))
             .collect();
         result.push(format!(
             "INSERT INTO \"{}\" ({}) SELECT {} FROM \"{}\"",
-            temp_name,
+            escape_identifier(&temp_name),
             remaining_columns.join(", "),
             remaining_columns.join(", "),
-            table_name
+            escape_identifier(table_name)
         ));
 
         // 3. 删除旧表
-        result.push(format!("DROP TABLE \"{}\"", table_name));
+        result.push(format!("DROP TABLE \"{}\"", escape_identifier(table_name)));
 
         // 4. 重命名临时表
         let final_name = if let Some(TableChange::RenameTable { new_name }) = changes
@@ -391,7 +400,8 @@ impl DdlEngine {
         };
         result.push(format!(
             "ALTER TABLE \"{}\" RENAME TO \"{}\"",
-            temp_name, final_name
+            escape_identifier(&temp_name),
+            escape_identifier(&final_name)
         ));
 
         // 5. 重建索引

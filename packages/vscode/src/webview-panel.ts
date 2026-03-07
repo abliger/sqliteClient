@@ -2,6 +2,16 @@ import * as vscode from 'vscode'
 import * as path from 'path'
 import * as fs from 'fs'
 import { DatabaseManager } from './database'
+import { generateShortId } from './utils/id'
+import { formatError } from './utils/errors'
+
+// 命令参数验证器类型
+type ParamValidator = (params: any) => boolean
+
+interface CommandDefinition {
+    handler: (params: any) => Promise<any>
+    validator?: ParamValidator
+}
 
 export class SQLitePanel {
     public static currentPanel: SQLitePanel | undefined
@@ -11,6 +21,7 @@ export class SQLitePanel {
     private readonly extensionUri: vscode.Uri
     private readonly databaseManager: DatabaseManager
     private disposables: vscode.Disposable[] = []
+    private commandHandlers: Map<string, CommandDefinition> = new Map()
 
     public static createOrShow(extensionUri: vscode.Uri, databaseManager: DatabaseManager): SQLitePanel {
         const column = vscode.window.activeTextEditor?.viewColumn || vscode.ViewColumn.One
@@ -47,6 +58,7 @@ export class SQLitePanel {
         this.extensionUri = extensionUri
         this.databaseManager = databaseManager
 
+        this.registerCommandHandlers()
         this.update()
 
         this.panel.onDidDispose(() => this.dispose(), null, this.disposables)
@@ -56,9 +68,10 @@ export class SQLitePanel {
                 try {
                     await this.handleMessage(message)
                 } catch (error) {
+                    console.error('Message handler error:', error)
                     this.panel.webview.postMessage({
                         id: message.id,
-                        error: String(error),
+                        error: formatError(error),
                     })
                 }
             },
@@ -67,163 +80,222 @@ export class SQLitePanel {
         )
     }
 
-    public openDatabase(dbPath: string) {
+    private registerCommandHandlers(): void {
+        // 参数验证器
+        const requireString = (field: string) => (params: any) => 
+            typeof params?.[field] === 'string' && params[field].length > 0
+        
+        const requireConnectionId = requireString('connectionId')
+        
+        // 注册所有命令
+        this.commandHandlers.set('create_connection', {
+            validator: (p) => requireString('name')(p) && requireString('dbPath')(p),
+            handler: (p) => this.databaseManager.createConnection(p.name, p.dbPath),
+        })
+
+        this.commandHandlers.set('create_new_database', {
+            validator: (p) => requireString('name')(p) && requireString('dbPath')(p),
+            handler: (p) => this.databaseManager.createNewDatabase(p.name, p.dbPath),
+        })
+
+        this.commandHandlers.set('close_connection', {
+            validator: requireConnectionId,
+            handler: (p) => this.databaseManager.closeConnection(p.connectionId),
+        })
+
+        this.commandHandlers.set('list_connections', {
+            handler: () => this.databaseManager.listConnections(),
+        })
+
+        this.commandHandlers.set('get_connection_info', {
+            validator: requireConnectionId,
+            handler: (p) => this.databaseManager.getConnectionInfo(p.connectionId),
+        })
+
+        this.commandHandlers.set('test_connection', {
+            validator: requireString('dbPath'),
+            handler: (p) => this.databaseManager.testConnection(p.dbPath),
+        })
+
+        this.commandHandlers.set('execute_query', {
+            validator: (p) => requireConnectionId(p) && requireString('sql')(p),
+            handler: (p) => this.databaseManager.executeQuery(p.connectionId, p.sql, p.limit),
+        })
+
+        this.commandHandlers.set('list_tables', {
+            validator: requireConnectionId,
+            handler: (p) => this.databaseManager.listTables(p.connectionId),
+        })
+
+        this.commandHandlers.set('get_table_schema', {
+            validator: (p) => requireConnectionId(p) && requireString('tableName')(p),
+            handler: (p) => this.databaseManager.getTableSchema(p.connectionId, p.tableName),
+        })
+
+        this.commandHandlers.set('get_database_schema', {
+            validator: requireConnectionId,
+            handler: (p) => this.databaseManager.getDatabaseSchema(p.connectionId),
+        })
+
+        this.commandHandlers.set('list_indexes', {
+            validator: requireConnectionId,
+            handler: (p) => this.databaseManager.listIndexes(p.connectionId),
+        })
+
+        this.commandHandlers.set('list_triggers', {
+            validator: requireConnectionId,
+            handler: (p) => this.databaseManager.listTriggers(p.connectionId),
+        })
+
+        this.commandHandlers.set('get_er_diagram_data', {
+            validator: requireConnectionId,
+            handler: (p) => this.databaseManager.getERDiagramData(p.connectionId),
+        })
+
+        this.commandHandlers.set('get_table_data', {
+            validator: (p) => requireConnectionId(p) && requireString('tableName')(p),
+            handler: (p) => this.databaseManager.getTableData(
+                p.connectionId,
+                p.tableName,
+                p.limit,
+                p.offset,
+                p.orderBy,
+                p.orderDir
+            ),
+        })
+
+        this.commandHandlers.set('insert_row', {
+            validator: (p) => requireConnectionId(p) && requireString('tableName')(p) && typeof p.data === 'object',
+            handler: (p) => this.databaseManager.insertRow(p.connectionId, p.tableName, p.data),
+        })
+
+        this.commandHandlers.set('update_row', {
+            validator: (p) => requireConnectionId(p) && requireString('tableName')(p) && 
+                           typeof p.data === 'object' && typeof p.conditions === 'object',
+            handler: (p) => this.databaseManager.updateRow(p.connectionId, p.tableName, p.data, p.conditions),
+        })
+
+        this.commandHandlers.set('delete_row', {
+            validator: (p) => requireConnectionId(p) && requireString('tableName')(p) && typeof p.conditions === 'object',
+            handler: (p) => this.databaseManager.deleteRow(p.connectionId, p.tableName, p.conditions),
+        })
+
+        this.commandHandlers.set('get_query_history', {
+            handler: (p) => this.databaseManager.getQueryHistory(p?.limit, p?.offset),
+        })
+
+        this.commandHandlers.set('search_history', {
+            validator: (p) => typeof p?.query === 'string',
+            handler: (p) => this.databaseManager.searchHistory(p.query, p?.limit),
+        })
+
+        this.commandHandlers.set('delete_history_item', {
+            validator: (p) => typeof p?.id === 'string',
+            handler: (p) => this.databaseManager.deleteHistoryItem(p.id),
+        })
+
+        this.commandHandlers.set('clear_history', {
+            handler: (p) => this.databaseManager.clearHistory(p?.connectionId),
+        })
+
+        this.commandHandlers.set('preview_create_table', {
+            validator: (p) => typeof p?.table === 'object' && requireString('name')(p.table),
+            handler: (p) => this.databaseManager.previewCreateTable(p.table),
+        })
+
+        this.commandHandlers.set('preview_alter_table', {
+            validator: (p) => requireConnectionId(p) && requireString('tableName')(p) && Array.isArray(p.changes),
+            handler: (p) => this.databaseManager.previewAlterTable(p.connectionId, p.tableName, p.changes),
+        })
+
+        this.commandHandlers.set('preview_drop_table', {
+            validator: (p) => requireString('tableName')(p),
+            handler: (p) => this.databaseManager.previewDropTable(p.tableName),
+        })
+
+        this.commandHandlers.set('create_table', {
+            validator: (p) => requireConnectionId(p) && typeof p?.table === 'object',
+            handler: (p) => this.databaseManager.createTable(p.connectionId, p.table),
+        })
+
+        this.commandHandlers.set('alter_table', {
+            validator: (p) => requireConnectionId(p) && requireString('tableName')(p) && Array.isArray(p.changes),
+            handler: (p) => this.databaseManager.alterTable(p.connectionId, p.tableName, p.changes),
+        })
+
+        this.commandHandlers.set('drop_table', {
+            validator: (p) => requireConnectionId(p) && requireString('tableName')(p),
+            handler: (p) => this.databaseManager.dropTable(p.connectionId, p.tableName),
+        })
+
+        this.commandHandlers.set('execute_sql_file', {
+            validator: (p) => requireConnectionId(p) && requireString('filePath')(p),
+            handler: (p) => this.databaseManager.executeSqlFile(p.connectionId, p.filePath),
+        })
+
+        this.commandHandlers.set('show_save_dialog', {
+            handler: async (p) => {
+                const saveUri = await vscode.window.showSaveDialog({
+                    defaultUri: vscode.Uri.file(p?.defaultPath || 'export.csv'),
+                    filters: p?.filters || { 'CSV Files': ['csv'], 'All Files': ['*'] },
+                })
+                return saveUri?.fsPath
+            },
+        })
+
+        this.commandHandlers.set('show_open_dialog', {
+            handler: async (p) => {
+                const openUris = await vscode.window.showOpenDialog({
+                    canSelectFiles: true,
+                    canSelectFolders: false,
+                    canSelectMany: false,
+                    filters: p?.filters || { 'SQL Files': ['sql'], 'All Files': ['*'] },
+                })
+                return openUris?.[0]?.fsPath
+            },
+        })
+
+        this.commandHandlers.set('write_file', {
+            validator: (p) => requireString('path')(p) && typeof p?.content === 'string',
+            handler: async (p) => {
+                fs.writeFileSync(p.path, p.content, p.encoding || 'utf-8')
+                return true
+            },
+        })
+
+        this.commandHandlers.set('read_file', {
+            validator: requireString('path'),
+            handler: async (p) => {
+                return fs.readFileSync(p.path, p.encoding || 'utf-8')
+            },
+        })
+    }
+
+    public openDatabase(dbPath: string): void {
         this.panel.webview.postMessage({
             type: 'openDatabase',
             path: dbPath,
         })
     }
 
-    private async handleMessage(message: any) {
+    private async handleMessage(message: any): Promise<void> {
         const { id, command, params } = message
 
-        let result: any
-        switch (command) {
-            case 'create_connection':
-                result = await this.databaseManager.createConnection(params.name, params.dbPath)
-                break
-            case 'create_new_database':
-                result = await this.databaseManager.createNewDatabase(params.name, params.dbPath)
-                break
-            case 'close_connection':
-                result = await this.databaseManager.closeConnection(params.connectionId)
-                break
-            case 'list_connections':
-                result = await this.databaseManager.listConnections()
-                break
-            case 'get_connection_info':
-                result = await this.databaseManager.getConnectionInfo(params.connectionId)
-                break
-            case 'test_connection':
-                result = await this.databaseManager.testConnection(params.dbPath)
-                break
-            case 'execute_query':
-                result = await this.databaseManager.executeQuery(
-                    params.connectionId,
-                    params.sql,
-                    params.limit
-                )
-                break
-            case 'list_tables':
-                result = await this.databaseManager.listTables(params.connectionId)
-                break
-            case 'get_table_schema':
-                result = await this.databaseManager.getTableSchema(
-                    params.connectionId,
-                    params.tableName
-                )
-                break
-            case 'get_database_schema':
-                result = await this.databaseManager.getDatabaseSchema(params.connectionId)
-                break
-            case 'list_indexes':
-                result = await this.databaseManager.listIndexes(params.connectionId)
-                break
-            case 'list_triggers':
-                result = await this.databaseManager.listTriggers(params.connectionId)
-                break
-            case 'get_er_diagram_data':
-                result = await this.databaseManager.getERDiagramData(params.connectionId)
-                break
-            case 'get_table_data':
-                result = await this.databaseManager.getTableData(
-                    params.connectionId,
-                    params.tableName,
-                    params.limit,
-                    params.offset,
-                    params.orderBy,
-                    params.orderDir
-                )
-                break
-            case 'insert_row':
-                result = await this.databaseManager.insertRow(
-                    params.connectionId,
-                    params.tableName,
-                    params.data
-                )
-                break
-            case 'update_row':
-                result = await this.databaseManager.updateRow(
-                    params.connectionId,
-                    params.tableName,
-                    params.data,
-                    params.conditions
-                )
-                break
-            case 'delete_row':
-                result = await this.databaseManager.deleteRow(
-                    params.connectionId,
-                    params.tableName,
-                    params.conditions
-                )
-                break
-            case 'get_query_history':
-                result = await this.databaseManager.getQueryHistory(params.limit, params.offset)
-                break
-            case 'search_history':
-                result = await this.databaseManager.searchHistory(params.query, params.limit)
-                break
-            case 'delete_history_item':
-                result = await this.databaseManager.deleteHistoryItem(params.id)
-                break
-            case 'clear_history':
-                result = await this.databaseManager.clearHistory(params.connectionId)
-                break
-            case 'preview_create_table':
-                result = await this.databaseManager.previewCreateTable(params.table)
-                break
-            case 'preview_alter_table':
-                result = await this.databaseManager.previewAlterTable(
-                    params.connectionId,
-                    params.tableName,
-                    params.changes
-                )
-                break
-            case 'preview_drop_table':
-                result = await this.databaseManager.previewDropTable(params.tableName)
-                break
-            case 'create_table':
-                result = await this.databaseManager.createTable(params.connectionId, params.table)
-                break
-            case 'alter_table':
-                result = await this.databaseManager.alterTable(
-                    params.connectionId,
-                    params.tableName,
-                    params.changes
-                )
-                break
-            case 'drop_table':
-                result = await this.databaseManager.dropTable(params.connectionId, params.tableName)
-                break
-            case 'execute_sql_file':
-                result = await this.databaseManager.executeSqlFile(params.connectionId, params.filePath)
-                break
-            case 'show_save_dialog':
-                const saveUri = await vscode.window.showSaveDialog({
-                    defaultUri: vscode.Uri.file(params.defaultPath || 'export.csv'),
-                    filters: params.filters || { 'CSV Files': ['csv'], 'All Files': ['*'] },
-                })
-                result = saveUri?.fsPath
-                break
-            case 'show_open_dialog':
-                const openUris = await vscode.window.showOpenDialog({
-                    canSelectFiles: true,
-                    canSelectFolders: false,
-                    canSelectMany: false,
-                    filters: params.filters || { 'SQL Files': ['sql'], 'All Files': ['*'] },
-                })
-                result = openUris?.[0]?.fsPath
-                break
-            case 'write_file':
-                fs.writeFileSync(params.path, params.content, params.encoding || 'utf-8')
-                result = true
-                break
-            case 'read_file':
-                result = fs.readFileSync(params.path, params.encoding || 'utf-8')
-                break
-            default:
-                throw new Error(`Unknown command: ${command}`)
+        if (!command || typeof command !== 'string') {
+            throw new Error('Invalid message: command is required')
         }
+
+        const commandDef = this.commandHandlers.get(command)
+        if (!commandDef) {
+            throw new Error(`Unknown command: ${command}`)
+        }
+
+        // 参数验证
+        if (commandDef.validator && !commandDef.validator(params)) {
+            throw new Error(`Invalid parameters for command: ${command}`)
+        }
+
+        const result = await commandDef.handler(params || {})
 
         this.panel.webview.postMessage({
             id,
@@ -231,7 +303,7 @@ export class SQLitePanel {
         })
     }
 
-    private update() {
+    private update(): void {
         const webview = this.panel.webview
         this.panel.title = 'SQLite Client'
         webview.html = this.getHtmlForWebview(webview)
@@ -246,13 +318,24 @@ export class SQLitePanel {
         )
 
         const nonce = this.getNonce()
+        
+        // 增强的 CSP 配置
+        const csp = [
+            "default-src 'none'",
+            `script-src 'nonce-${nonce}'`,
+            `style-src 'unsafe-inline' ${webview.cspSource}`,
+            `img-src ${webview.cspSource} data: blob:`,
+            `font-src ${webview.cspSource}`,
+            "connect-src 'none'",
+            "frame-src 'none'",
+        ].join('; ')
 
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline' ${webview.cspSource}; img-src ${webview.cspSource} data:; font-src ${webview.cspSource};">
+    <meta http-equiv="Content-Security-Policy" content="${csp}">
     <title>SQLite Client</title>
     <script nonce="${nonce}">
         window.vscode = acquireVsCodeApi();
@@ -275,7 +358,7 @@ export class SQLitePanel {
         return text
     }
 
-    dispose() {
+    dispose(): void {
         SQLitePanel.currentPanel = undefined
         this.panel.dispose()
         while (this.disposables.length) {

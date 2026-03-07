@@ -1,7 +1,8 @@
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
+use parking_lot::Mutex;
 use rusqlite::{params, Connection};
 
 use crate::models::crud_log::{CrudLogFilter, CrudOperationLog, CrudOperationType};
@@ -10,7 +11,7 @@ use crate::utils::error::{AppError, AppResult};
 /// CRUD 操作日志存储
 /// 使用 SQLite 存储在应用数据目录中，重启后数据不丢失
 pub struct CrudLogStore {
-    conn: Mutex<Connection>,
+    conn: Arc<Mutex<Connection>>,
 }
 
 impl CrudLogStore {
@@ -20,7 +21,7 @@ impl CrudLogStore {
         let conn = Connection::open(&db_path)?;
 
         let store = Self {
-            conn: Mutex::new(conn),
+            conn: Arc::new(Mutex::new(conn)),
         };
         store.init_table()?;
 
@@ -29,10 +30,7 @@ impl CrudLogStore {
 
     /// 初始化数据库表
     fn init_table(&self) -> AppResult<()> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self.conn.lock();
         conn.execute(
             "CREATE TABLE IF NOT EXISTS crud_logs (
                 id TEXT PRIMARY KEY,
@@ -78,10 +76,7 @@ impl CrudLogStore {
 
     /// 添加日志记录
     pub fn add_log(&self, log: &CrudOperationLog) -> AppResult<()> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self.conn.lock();
         conn.execute(
             "INSERT INTO crud_logs (
                 id, connection_id, tab_id, table_name, operation_type,
@@ -158,10 +153,7 @@ impl CrudLogStore {
 
         let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
 
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self.conn.lock();
         let mut stmt = conn.prepare(&sql)?;
         let logs = stmt.query_map(&param_refs[..], |row| {
             Ok(CrudOperationLog {
@@ -183,16 +175,13 @@ impl CrudLogStore {
             })
         })?;
 
-        logs.collect::<Result<Vec<_>, _>>()
-            .map_err(|e| AppError::DatabaseError(e.to_string()))
+        let result: Result<Vec<_>, _> = logs.collect();
+        result.map_err(|e| AppError::DatabaseError(e.to_string()))
     }
 
     /// 获取指定 Tab 的日志数量
     pub fn count_logs_by_tab(&self, tab_id: &str) -> AppResult<usize> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self.conn.lock();
         let count: i64 = conn.query_row(
             "SELECT COUNT(*) FROM crud_logs WHERE tab_id = ?",
             [tab_id],
@@ -203,20 +192,14 @@ impl CrudLogStore {
 
     /// 删除指定 Tab 的日志（当 Tab 关闭时调用）
     pub fn delete_logs_by_tab(&self, tab_id: &str) -> AppResult<usize> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self.conn.lock();
         let deleted = conn.execute("DELETE FROM crud_logs WHERE tab_id = ?", [tab_id])?;
         Ok(deleted)
     }
 
     /// 删除指定连接的日志（当连接关闭时调用）
     pub fn delete_logs_by_connection(&self, connection_id: &str) -> AppResult<usize> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self.conn.lock();
         let deleted = conn.execute(
             "DELETE FROM crud_logs WHERE connection_id = ?",
             [connection_id],
@@ -226,10 +209,7 @@ impl CrudLogStore {
 
     /// 清理旧日志（保留最近 N 条）
     pub fn cleanup_old_logs(&self, keep_count: usize) -> AppResult<usize> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self.conn.lock();
 
         // 获取需要删除的日志 ID
         let ids_to_delete: Vec<String> = {
@@ -256,16 +236,12 @@ impl CrudLogStore {
 
     /// 获取所有表名（用于筛选）
     pub fn get_table_names(&self) -> AppResult<Vec<String>> {
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self.conn.lock();
         let mut stmt =
             conn.prepare("SELECT DISTINCT table_name FROM crud_logs ORDER BY table_name")?;
         let names = stmt.query_map([], |row| row.get::<_, String>(0))?;
-        names
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| AppError::DatabaseError(e.to_string()))
+        let result: Result<Vec<_>, _> = names.collect();
+        result.map_err(|e| AppError::DatabaseError(e.to_string()))
     }
 
     /// 获取统计数据
@@ -289,10 +265,7 @@ impl CrudLogStore {
 
         let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
 
-        let conn = self
-            .conn
-            .lock()
-            .map_err(|e| AppError::InternalError(format!("Lock poisoned: {}", e)))?;
+        let conn = self.conn.lock();
         let stats = conn.query_row(&sql, &param_refs[..], |row| {
             Ok(CrudLogStats {
                 total: row.get::<_, i64>(0)? as usize,

@@ -37,7 +37,13 @@ fn cell_value_to_param(value: &CellValue) -> rusqlite::types::Value {
         CellValue::Integer(i) => rusqlite::types::Value::Integer(*i),
         CellValue::Real(f) => rusqlite::types::Value::Real(*f),
         CellValue::Text(s) => rusqlite::types::Value::Text(s.clone()),
-        CellValue::Blob(b) => rusqlite::types::Value::Blob(hex::decode(b).unwrap_or_default()),
+        CellValue::Blob(b) => {
+            // 尝试解码十六进制，失败时保留原始字符串作为文本
+            match hex::decode(b) {
+                Ok(bytes) => rusqlite::types::Value::Blob(bytes),
+                Err(_) => rusqlite::types::Value::Text(b.clone()),
+            }
+        }
         CellValue::Boolean(b) => rusqlite::types::Value::Integer(if *b { 1 } else { 0 }),
     }
 }

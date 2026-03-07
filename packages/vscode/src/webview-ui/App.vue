@@ -5,21 +5,34 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import MainLayout from '@components/layout/MainLayout.vue'
 import { useConnectionStore } from '@stores/connection'
 
 const connectionStore = useConnectionStore()
 
+let messageHandler: ((event: MessageEvent) => void) | null = null
+
 onMounted(() => {
-    // Listen for messages from extension
-    window.addEventListener('message', async (event) => {
+    messageHandler = async (event: MessageEvent) => {
         const message = event.data
         if (message.type === 'openDatabase' && message.path) {
             const name = message.path.split('/').pop() || message.path
-            await connectionStore.createConnection(name, message.path)
+            try {
+                await connectionStore.createConnection(name, message.path)
+            } catch (error) {
+                console.error('Failed to open database:', error)
+            }
         }
-    })
+    }
+    
+    window.addEventListener('message', messageHandler)
+})
+
+onUnmounted(() => {
+    if (messageHandler) {
+        window.removeEventListener('message', messageHandler)
+    }
 })
 </script>
 

@@ -85,16 +85,20 @@ impl HistoryStore {
     pub fn add_history_item(&self, item: &QueryHistoryItem) -> AppResult<()> {
         let conn = self.conn.lock();
 
-        // 检查是否存在相同的 SQL 记录（完全匹配，不区分连接）
+        // 检查是否存在相同的 SQL 记录（限制时间窗口内，避免重复记录）
+        // 使用 datetime 函数和减法来查询最近1小时内的记录
         let exists: bool = conn
             .query_row(
-                "SELECT 1 FROM query_history WHERE sql = ?1 LIMIT 1",
+                "SELECT 1 FROM query_history 
+                 WHERE sql = ?1 
+                 AND executed_at > datetime('now', '-1 hour')
+                 LIMIT 1",
                 params![item.sql],
                 |_| Ok(true),
             )
             .unwrap_or(false);
 
-        // 如果存在相同的 SQL，则不保存
+        // 如果在最近1小时内存在相同的 SQL，则不保存
         if exists {
             return Ok(());
         }

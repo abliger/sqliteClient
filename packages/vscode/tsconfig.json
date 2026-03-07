@@ -12,8 +12,22 @@
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
         "declaration": true,
-        "moduleResolution": "node"
+        "moduleResolution": "node",
+        "paths": {
+            "@tauri-apps/api/core": ["./src/webview-ui/mocks/tauri-apps-api-core.ts"],
+            "@tauri-apps/plugin-dialog": ["./src/webview-ui/mocks/tauri-apps-plugin-dialog.ts"],
+            "@tauri-apps/plugin-fs": ["./src/webview-ui/mocks/tauri-apps-plugin-fs.ts"],
+            "@/*": ["../ui/src/*"],
+            "@components/*": ["../ui/src/components/*"],
+            "@stores/*": ["../ui/src/stores/*"],
+            "@services/*": ["../ui/src/services/*"],
+            "@types": ["../ui/src/types/index.ts"],
+            "@composables/*": ["../ui/src/composables/*"],
+            "@i18n/*": ["../ui/src/i18n/*"],
+            "@directives/*": ["../ui/src/directives/*"],
+            "@utils/*": ["../ui/src/utils/*"]
+        }
     },
     "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist", "webview-ui"]
+    "exclude": ["node_modules", "dist", "**/*.spec.ts"]
 }

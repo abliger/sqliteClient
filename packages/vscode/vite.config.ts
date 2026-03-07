@@ -21,6 +21,7 @@ export default defineConfig({
                 assetFileNames: 'assets/[name].[ext]',
             },
         },
+        sourcemap: true,
     },
     resolve: {
         alias: {
@@ -41,5 +42,8 @@ export default defineConfig({
             '@directives': path.join(uiSrc, 'directives'),
             '@utils': path.join(uiSrc, 'utils'),
         },
+    },
+    css: {
+        devSourcemap: true,
     },
 })
