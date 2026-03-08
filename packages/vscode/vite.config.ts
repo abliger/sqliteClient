@@ -18,14 +18,21 @@ export default defineConfig({
             output: {
                 entryFileNames: 'assets/[name].js',
                 chunkFileNames: 'assets/[name].js',
-                assetFileNames: 'assets/[name].[ext]',
+                assetFileNames: (assetInfo) => {
+                    const info = assetInfo.name || ''
+                    if (info.endsWith('.css')) return 'assets/[name][extname]'
+                    return 'assets/[name][extname]'
+                },
             },
         },
         sourcemap: true,
+        commonjsOptions: {
+            include: [/node_modules/],
+        },
     },
     resolve: {
         alias: {
-            // Tauri API mocks
+            // Tauri API mocks (使用绝对路径)
             '@tauri-apps/api/core': mocksDir + '/tauri-apps-api-core.ts',
             '@tauri-apps/api/primitives': mocksDir + '/tauri.ts',
             '@tauri-apps/plugin-dialog': mocksDir + '/tauri-apps-plugin-dialog.ts',
@@ -42,6 +49,10 @@ export default defineConfig({
             '@directives': path.join(uiSrc, 'directives'),
             '@utils': path.join(uiSrc, 'utils'),
         },
+        dedupe: ['vue', 'pinia'],
+    },
+    optimizeDeps: {
+        include: ['vue', 'pinia', 'vue-i18n'],
     },
     css: {
         devSourcemap: true,

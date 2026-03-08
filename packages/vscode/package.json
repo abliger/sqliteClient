@@ -77,7 +77,18 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
-        "better-sqlite3": "^9.4.0"
+        "better-sqlite3": "^9.4.0",
+        "pinia": "^2.1.7",
+        "vue": "^3.4.0",
+        "vue-i18n": "9",
+        "monaco-editor": "^0.45.0",
+        "echarts": "^5.4.3",
+        "@headlessui/vue": "^1.7.16",
+        "@heroicons/vue": "^2.1.1",
+        "@monaco-editor/loader": "^1.4.0",
+        "@vueuse/core": "^14.2.1",
+        "sql-formatter": "^15.7.2",
+        "uuid": "^9.0.1"
     },
     "devDependencies": {
         "@types/better-sqlite3": "^7.6.8",

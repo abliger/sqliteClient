@@ -1,5 +1,5 @@
 // VSCode API adapter - replaces Tauri API for webview context
-import { generateShortId } from '../../utils/id'
+import { generateShortId } from '../utils/id'
 
 declare global {
     interface Window {

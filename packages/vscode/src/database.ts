@@ -1,4 +1,4 @@
-import * as Database from 'better-sqlite3'
+import Database from 'better-sqlite3'
 import * as vscode from 'vscode'
 import * as path from 'path'
 import * as fs from 'fs'

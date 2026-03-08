@@ -13,6 +13,15 @@ import ColumnEditor from './ColumnEditor.vue'
 import IndexEditor from './IndexEditor.vue'
 import DDLPreview from './DDLPreview.vue'
 
+// 防抖函数
+function useDebounce<T extends (...args: unknown[]) => unknown>(fn: T, delay: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  return (...args: Parameters<T>): void => {
+    if (timeoutId) clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => fn(...args), delay)
+  }
+}
+
 const props = defineProps<{
   modelValue: boolean
   connectionId: string
@@ -198,8 +207,51 @@ function removeIndex(index: number) {
 // DDL预览和执行
 // ============================================
 
+// 自动刷新 DDL 预览（防抖 500ms）
+const debouncedPreviewDDL = useDebounce(async () => {
+  // 只在表单有效时自动刷新
+  if (!validateForm(false)) return
+  
+  // 只在用户已经在 DDL 标签页时自动刷新
+  if (activeTab.value !== 'ddl') return
+
+  isLoading.value = true
+  try {
+    if (isEditMode.value && props.existingTable) {
+      const changes = generateChanges()
+      previewResult.value = await schemaService.previewAlterTable(
+        props.connectionId,
+        props.existingTable.name,
+        changes
+      )
+    } else {
+      previewResult.value = await schemaService.previewCreateTable(tableForm.value)
+    }
+  } catch (err) {
+    // 自动刷新失败时不显示错误，避免打扰用户
+    console.warn('自动预览DDL失败:', err)
+  } finally {
+    isLoading.value = false
+  }
+}, 500)
+
+// 监听表结构变化，自动刷新 DDL
+watch(
+  () => ({
+    columns: tableForm.value.columns,
+    indexes: tableForm.value.indexes,
+    name: tableForm.value.name,
+    strict_mode: tableForm.value.strict_mode,
+  }),
+  () => {
+    debouncedPreviewDDL()
+  },
+  { deep: true }
+)
+
+// 手动触发预览（点击按钮时）
 async function previewDDL() {
-  if (!validateForm()) return
+  if (!validateForm(true)) return
 
   // 立即切换到 DDL 标签页，提升用户体验
   activeTab.value = 'ddl'
@@ -279,21 +331,25 @@ async function executeDDL() {
 
 const errors = ref<Record<string, string>>({})
 
-function validateForm(): boolean {
-  errors.value = {}
+function validateForm(showErrors = true): boolean {
+  if (showErrors) {
+    errors.value = {}
+  }
+
+  const newErrors: Record<string, string> = {}
 
   if (!tableForm.value.name.trim()) {
-    errors.value.tableName = '表名不能为空'
+    newErrors.tableName = '表名不能为空'
   }
 
   if (tableForm.value.columns.length === 0) {
-    errors.value.columns = '至少需要一列'
+    newErrors.columns = '至少需要一列'
   }
 
   for (let i = 0; i < tableForm.value.columns.length; i++) {
     const col = tableForm.value.columns[i]
     if (!col.name.trim()) {
-      errors.value[`column_${i}_name`] = '列名不能为空'
+      newErrors[`column_${i}_name`] = '列名不能为空'
     }
   }
 
@@ -301,13 +357,17 @@ function validateForm(): boolean {
   const names = new Set<string>()
   for (const col of tableForm.value.columns) {
     if (names.has(col.name)) {
-      errors.value.duplicateColumns = `重复的列名: ${col.name}`
+      newErrors.duplicateColumns = `重复的列名: ${col.name}`
       break
     }
     names.add(col.name)
   }
 
-  return Object.keys(errors.value).length === 0
+  if (showErrors) {
+    errors.value = newErrors
+  }
+
+  return Object.keys(newErrors).length === 0
 }
 
 // ============================================
@@ -329,6 +389,15 @@ function onBackdropMouseUp(e: MouseEvent) {
     closeDialog()
   }
   isMouseDownOnBackdrop = false
+}
+
+// DDL 标签页点击处理
+function onDDLTabClick() {
+  activeTab.value = 'ddl'
+  // 如果没有预览结果，立即触发一次预览
+  if (!previewResult.value && !isLoading.value) {
+    previewDDL()
+  }
 }
 </script>
 
@@ -397,7 +466,7 @@ function onBackdropMouseUp(e: MouseEvent) {
               :class="activeTab === 'ddl' 
                 ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' 
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'"
-              @click="activeTab = 'ddl'"
+              @click="onDDLTabClick"
             >
               DDL预览
             </button>
