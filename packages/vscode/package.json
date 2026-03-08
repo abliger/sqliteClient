@@ -1,6 +1,5 @@
 {
     "name": "sqlite-client",
-    "type": "module",
     "displayName": "SQLite Client",
     "description": "A powerful SQLite client for VSCode",
     "version": "0.1.0",
@@ -83,9 +82,10 @@
         ]
     },
     "scripts": {
-        "build": "pnpm build:extension && pnpm build:webview",
+        "build": "pnpm build:extension && pnpm build:webview && pnpm copy:native",
         "build:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --external:better-sqlite3 --format=cjs --platform=node",
         "build:webview": "vite build",
+        "copy:native": "node scripts/copy-native.js",
         "dev": "vite build --watch",
         "package": "pnpm build && npx vsce package --no-dependencies",
         "lint": "eslint src --fix",

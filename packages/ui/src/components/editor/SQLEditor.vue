@@ -64,15 +64,6 @@ const showImportDialog = ref(false)
 const showSnippetPanel = ref(false)
 const snippetPanelRef = ref<InstanceType<typeof SnippetPanel> | null>(null)
 
-// 左侧面板（数据库列表）显示状态
-const props = defineProps<{
-    isSidebarVisible?: boolean
-}>()
-
-const emit = defineEmits<{
-    'toggle-sidebar': []
-}>()
-
 // 当前选中的 SQL（用于添加到片段）
 const selectedSqlForSnippet = ref('')
 
@@ -440,13 +431,11 @@ const handleSnippetInsert = (sql: string) => {
         <EditorToolbar
             :is-executing="queryStore.activeTab?.isExecuting || false"
             :can-execute="!!connectionStore.activeConnectionId"
-            :is-sidebar-visible="props.isSidebarVisible"
             @execute="handleExecuteQuery"
             @execute-selected="handleExecuteSelected"
             @format="handleFormat"
             @import-sql="handleImportSql"
             @toggle-templates="handleToggleTemplates"
-            @toggle-sidebar="emit('toggle-sidebar')"
         />
 
         <!-- SQL 导入对话框 -->

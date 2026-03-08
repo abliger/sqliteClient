@@ -58,7 +58,10 @@ onMounted(() => {
 <template>
     <div class="h-full flex flex-col bg-surface-50 dark:bg-surface-900">
         <!-- 顶部连接标签栏 -->
-        <ConnectionTabs />
+        <ConnectionTabs
+            :is-sidebar-visible="isSidebarVisible"
+            @toggle-sidebar="toggleSidebar"
+        />
 
         <!-- 主内容区 -->
         <div class="flex-1 flex overflow-hidden">
@@ -82,10 +85,7 @@ onMounted(() => {
             <div class="flex-1 flex flex-col min-w-0">
                 <!-- SQL 编辑器 -->
                 <div class="flex-1 min-h-0">
-                    <SQLEditor
-                        :is-sidebar-visible="isSidebarVisible"
-                        @toggle-sidebar="toggleSidebar"
-                    />
+                    <SQLEditor />
                 </div>
 
                 <!-- 结果面板 -->

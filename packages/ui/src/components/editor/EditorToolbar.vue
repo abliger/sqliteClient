@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { PlayIcon, PlayCircleIcon, SparklesIcon, DocumentArrowUpIcon, BookmarkSquareIcon, ChevronRightIcon, ChevronLeftIcon } from '@heroicons/vue/24/outline'
+import { PlayIcon, PlayCircleIcon, SparklesIcon, DocumentArrowUpIcon, BookmarkSquareIcon } from '@heroicons/vue/24/outline'
 
 const { t } = useI18n()
 
 interface Props {
     isExecuting?: boolean
     canExecute?: boolean
-    isSidebarVisible?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
@@ -21,7 +20,6 @@ const emit = defineEmits<{
     format: []
     importSql: []
     toggleTemplates: []
-    toggleSidebar: []
 }>()
 </script>
 
@@ -83,27 +81,10 @@ const emit = defineEmits<{
             </button>
         </div>
 
-        <div class="flex items-center space-x-3">
-            <!-- Toggle Sidebar Button -->
-            <button
-                class="p-1.5 rounded-md hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-500 dark:text-surface-400 transition-colors"
-                :title="isSidebarVisible ? t('editor.hideSidebar') : t('editor.showSidebar')"
-                @click="emit('toggleSidebar')"
-            >
-                <component
-                    :is="isSidebarVisible ? ChevronRightIcon : ChevronLeftIcon"
-                    class="w-4 h-4"
-                />
-            </button>
-
-            <div class="h-4 w-px bg-surface-300 dark:bg-surface-600" />
-
-            <!-- Shortcut Hints -->
-            <div class="flex items-center space-x-2 text-xs text-surface-500 dark:text-surface-400">
-                <span>{{ t('editor.shortcutHint') }}</span>
-                <span>•</span>
-                <span>{{ t('editor.commentShortcut') }}</span>
-            </div>
+        <div class="flex items-center space-x-2 text-xs text-surface-500 dark:text-surface-400">
+            <span>{{ t('editor.shortcutHint') }}</span>
+            <span>•</span>
+            <span>{{ t('editor.commentShortcut') }}</span>
         </div>
     </div>
 </template>

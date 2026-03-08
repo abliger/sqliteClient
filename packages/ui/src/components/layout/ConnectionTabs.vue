@@ -5,7 +5,10 @@ import {
     XMarkIcon,
     FolderOpenIcon,
     DocumentPlusIcon,
-    Cog6ToothIcon
+    Cog6ToothIcon,
+    Square2StackIcon,
+    Bars3Icon,
+    Bars3BottomLeftIcon
 } from '@heroicons/vue/24/outline'
 import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
@@ -36,6 +39,15 @@ const connectionStore = useConnectionStore()
 const queryStore = useQueryStore()
 const settingsStore = useSettingsStore()
 const toastStore = useToastStore()
+
+// Props for sidebar toggle
+const props = defineProps<{
+    isSidebarVisible?: boolean
+}>()
+
+const emit = defineEmits<{
+    'toggle-sidebar': []
+}>()
 const isCreating = ref(false)
 const isCreateDialogOpen = ref(false)
 const selectedFolderPath = ref('')
@@ -332,8 +344,24 @@ const closeOtherConnections = async () => {
             </div>
         </div>
 
-        <!-- Settings Button -->
-        <div class="ml-auto">
+        <!-- Sidebar Toggle & Settings -->
+        <div class="ml-auto flex items-center space-x-2">
+            <!-- Sidebar Toggle Button Group -->
+            <Tooltip :content="isSidebarVisible ? t('editor.hideSidebar') : t('editor.showSidebar')" position="bottom">
+                <button
+                    class="flex items-center p-1.5 rounded-lg bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 text-surface-600 dark:text-surface-400 transition-colors"
+                    @click="emit('toggle-sidebar')"
+                >
+                    <component
+                        :is="isSidebarVisible ? Bars3BottomLeftIcon : Bars3Icon"
+                        class="w-5 h-5"
+                    />
+                </button>
+            </Tooltip>
+
+            <div class="w-px h-5 bg-surface-300 dark:bg-surface-600" />
+
+            <!-- Settings Button -->
             <Tooltip :content="t('settings.title')" position="bottom">
                 <button
                     class="p-1.5 rounded hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-400"
