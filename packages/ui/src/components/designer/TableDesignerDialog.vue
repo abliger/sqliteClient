@@ -113,8 +113,8 @@ function loadExistingTable(table: TableInfo) {
       foreign_key: col.foreign_key ? {
         ref_table: col.foreign_key.to_table,
         ref_column: col.foreign_key.to_column,
-        on_update: col.foreign_key.on_update as string,
-        on_delete: col.foreign_key.on_delete as string,
+        on_update: col.foreign_key.on_update as ForeignKeyAction,
+        on_delete: col.foreign_key.on_delete as ForeignKeyAction,
       } : undefined,
     })),
     indexes: [], // 需要单独加载
@@ -123,12 +123,14 @@ function loadExistingTable(table: TableInfo) {
   }
 }
 
-function normalizeDataType(type: string): string {
+import type { SQLiteDataType, ForeignKeyAction } from '@types'
+
+function normalizeDataType(type: string): SQLiteDataType {
   const upper = type.toUpperCase()
-  const validTypes = ['INTEGER', 'REAL', 'TEXT', 'BLOB', 'NUMERIC', 'BOOLEAN', 
+  const validTypes: SQLiteDataType[] = ['INTEGER', 'REAL', 'TEXT', 'BLOB', 'NUMERIC', 'BOOLEAN', 
     'DATETIME', 'DATE', 'TIME', 'VARCHAR', 'CHAR', 'DECIMAL', 'FLOAT', 
     'DOUBLE', 'INT', 'BIGINT', 'SMALLINT', 'TINYINT']
-  return validTypes.includes(upper) ? upper : 'TEXT'
+  return validTypes.includes(upper as SQLiteDataType) ? (upper as SQLiteDataType) : 'TEXT'
 }
 
 function addDefaultColumn() {

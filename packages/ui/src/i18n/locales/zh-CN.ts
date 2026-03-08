@@ -133,6 +133,7 @@ export default {
         importSql: '导入 SQL 文件',
         snippets: '代码片段',
         templates: 'SQL 模板',
+        addToSnippet: '添加到代码片段',
     },
 
     // Results

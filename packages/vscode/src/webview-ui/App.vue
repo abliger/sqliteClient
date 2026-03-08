@@ -25,7 +25,7 @@ onMounted(() => {
             }
         }
     }
-    
+
     window.addEventListener('message', messageHandler)
 })
 
@@ -45,7 +45,7 @@ onUnmounted(() => {
 
 /* Ensure the app fills the webview */
 .sqlite-client-vscode,
-.sqlite-client-vscode > div {
+.sqlite-client-vscode>div {
     height: 100%;
     width: 100%;
 }

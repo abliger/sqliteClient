@@ -6,6 +6,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { useConnectionStore } from '@stores/connection'
 import { useSettingsStore } from '@stores/settings'
 import { useQueryStore } from '@stores/query'
+import { useSchemaStore } from '@stores/schema'
 import { useToastStore } from '@stores/toast'
 import { setI18nLanguage } from '@i18n/index'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -18,6 +19,7 @@ const { t } = useI18n()
 const connectionStore = useConnectionStore()
 const settingsStore = useSettingsStore()
 const queryStore = useQueryStore()
+const schemaStore = useSchemaStore()
 const toastStore = useToastStore()
 const isInitializing = ref(true)
 
@@ -108,8 +110,9 @@ onMounted(async () => {
     // 初始化时恢复保存的连接和设置
     await connectionStore.restoreSavedConnections()
 
-    // 如果有活动连接，恢复对应的 query tabs
+    // 如果有活动连接，加载表结构并恢复对应的 query tabs
     if (connectionStore.activeConnectionId) {
+        await schemaStore.loadTables(connectionStore.activeConnectionId)
         queryStore.setCurrentConnection(connectionStore.activeConnectionId)
     }
 

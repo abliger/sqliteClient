@@ -199,7 +199,7 @@ const formatPlanStep = (step: QueryPlanStep): string => {
                     <span>警告</span>
                 </h4>
                 <div
-                    v-for="(warning, index) in executionInfo.warnings"
+                    v-for="(warning, index) in executionInfo?.warnings ?? []"
                     :key="index"
                     class="p-3 rounded-lg text-sm"
                     :class="warningColorClass(warning.level)"
@@ -229,7 +229,7 @@ const formatPlanStep = (step: QueryPlanStep): string => {
                 </h4>
                 <ul class="space-y-1">
                     <li
-                        v-for="(suggestion, index) in executionInfo.suggestions"
+                        v-for="(suggestion, index) in executionInfo?.suggestions ?? []"
                         :key="index"
                         class="flex items-start space-x-2 text-sm text-surface-600 dark:text-surface-400 bg-blue-50 dark:bg-blue-900/20 p-2 rounded"
                     >
@@ -249,7 +249,7 @@ const formatPlanStep = (step: QueryPlanStep): string => {
                 </h4>
                 <div class="bg-surface-900 rounded-lg p-3 overflow-x-auto">
                     <pre class="text-xs text-green-400 font-mono space-y-1">
-<code v-for="(step, index) in executionInfo.query_plan" :key="index">{{ formatPlanStep(step) }}</code>
+<code v-for="(step, index) in executionInfo?.query_plan ?? []" :key="index">{{ formatPlanStep(step) }}</code>
                     </pre>
                 </div>
             </div>

@@ -133,6 +133,7 @@ export default {
         importSql: 'Import SQL File',
         snippets: 'Snippets',
         templates: 'Templates',
+        addToSnippet: 'Add to Snippet',
     },
 
     // Results

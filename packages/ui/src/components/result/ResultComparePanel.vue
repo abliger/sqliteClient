@@ -542,7 +542,7 @@ watch(() => snapshots.value.length, (newCount, oldCount) => {
               </button>
               <button
                 class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                :disabled="isDeleting"
+                :disabled="!!isDeleting"
                 @click="confirmDelete"
               >
                 {{ isDeleting ? t('common.deleting') || '删除中...' : t('common.delete') || '删除' }}

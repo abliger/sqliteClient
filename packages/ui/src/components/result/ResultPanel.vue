@@ -68,7 +68,7 @@ const isResultEditable = computed(() => {
 // 获取当前表的表结构信息
 const currentTableInfo = computed(() => {
     if (!currentTableName.value) return null
-    return schemaStore.getTableByName(currentTableName.value)
+    return schemaStore.getTableByName(currentTableName.value) ?? null
 })
 
 // 表结构已随连接加载，无需额外加载
@@ -581,8 +581,8 @@ const handleQuickSnapshot = async () => {
             <div v-if="activeTab === 'er'" class="h-full">
                 <ERDiagram
                     :diagram="schemaStore.erDiagram"
-                    :loading="schemaStore.loadingERDiagram"
-                    :error="schemaStore.erDiagramError"
+                    :loading="schemaStore.isLoading"
+                    :error="schemaStore.error"
                     @refresh="loadERDiagram"
                 />
             </div>

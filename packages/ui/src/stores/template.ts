@@ -9,11 +9,10 @@ import type {
     UpdateSnippetRequest,
 } from '@types'
 
-const STORAGE_KEY = 'sqlite-client-snippets'
+const STORAGE_KEY = 'sqlite-client-snippets-v2'
 
-// 内置 SQL 模板
+// 内置 SQL 模板（全局可用，connection_id = null）
 const BUILTIN_SNIPPETS: Snippet[] = [
-    // ==================== 查询类 ====================
     {
         id: 'builtin-pagination',
         name: '分页查询',
@@ -33,6 +32,7 @@ LIMIT {{page_size}} OFFSET {{offset}};`,
         ],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        connection_id: null,
     },
     {
         id: 'builtin-pagination-total',
@@ -57,65 +57,8 @@ SELECT * FROM paginated;`,
         ],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        connection_id: null,
     },
-    {
-        id: 'builtin-recursive-cte',
-        name: '递归 CTE（树形结构）',
-        description: '使用递归 CTE 查询树形结构数据',
-        sql: `WITH RECURSIVE tree AS (
-  -- 锚点：根节点
-  SELECT id, parent_id, name, 0 as level, name as path
-  FROM {{table_name}}
-  WHERE parent_id IS NULL
-  
-  UNION ALL
-  
-  -- 递归：子节点
-  SELECT t.id, t.parent_id, t.name, tree.level + 1,
-         tree.path || ' > ' || t.name
-  FROM {{table_name}} t
-  INNER JOIN tree ON t.parent_id = tree.id
-)
-SELECT * FROM tree
-ORDER BY path;`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['递归', 'CTE', '树形结构', '层级'],
-        variables: [{ name: 'table_name', description: '表名', required: true }],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-recursive-cte-path',
-        name: '递归 CTE（路径查询）',
-        description: '查询从根到指定节点的完整路径',
-        sql: `WITH RECURSIVE path AS (
-  -- 锚点：目标节点
-  SELECT id, parent_id, name, name as full_path
-  FROM {{table_name}}
-  WHERE id = {{target_id}}
-  
-  UNION ALL
-  
-  -- 递归：向上查找父节点
-  SELECT t.id, t.parent_id, t.name, t.name || ' > ' || path.full_path
-  FROM {{table_name}} t
-  INNER JOIN path ON t.id = path.parent_id
-)
-SELECT * FROM path
-ORDER BY full_path;`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['递归', 'CTE', '路径', '层级'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'target_id', description: '目标节点ID', required: true },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-
-    // ==================== 日期处理类 ====================
     {
         id: 'builtin-date-current',
         name: '当前日期时间',
@@ -139,98 +82,8 @@ SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now') as iso_datetime;`,
         tags: ['日期', '时间', '当前'],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        connection_id: null,
     },
-    {
-        id: 'builtin-date-format',
-        name: '日期格式化',
-        description: '日期格式化和转换',
-        sql: `-- 格式化日期
-SELECT strftime('%Y-%m-%d %H:%M:%S', 'now') as formatted;
-
--- 提取年月日
-SELECT 
-  strftime('%Y', 'now') as year,
-  strftime('%m', 'now') as month,
-  strftime('%d', 'now') as day;
-
--- 提取时分秒
-SELECT 
-  strftime('%H', 'now') as hour,
-  strftime('%M', 'now') as minute,
-  strftime('%S', 'now') as second;
-
--- 星期几（0=周日，6=周六）
-SELECT strftime('%w', 'now') as weekday;
-
--- 一年中的第几天
-SELECT strftime('%j', 'now') as day_of_year;`,
-        type: 'builtin',
-        category: 'function',
-        tags: ['日期', '格式化', 'strftime'],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-date-calc',
-        name: '日期计算',
-        description: '日期加减计算',
-        sql: `-- 加减天数
-SELECT date('now', '+7 days') as next_week;
-SELECT date('now', '-1 month') as last_month;
-SELECT date('now', '+1 year') as next_year;
-
--- 加减时间
-SELECT datetime('now', '+8 hours') as later;
-SELECT datetime('now', '-30 minutes') as earlier;
-
--- 月初和月末
-SELECT date('now', 'start of month') as month_start;
-SELECT date('now', 'start of month', '+1 month', '-1 day') as month_end;
-
--- 年初和年末
-SELECT date('now', 'start of year') as year_start;
-SELECT date('now', 'start of year', '+1 year', '-1 day') as year_end;`,
-        type: 'builtin',
-        category: 'function',
-        tags: ['日期', '计算', '加减'],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-date-range',
-        name: '日期范围查询',
-        description: '查询特定日期范围内的数据',
-        sql: `-- 今天
-SELECT * FROM {{table_name}}
-WHERE date({{date_column}}) = date('now');
-
--- 昨天
-SELECT * FROM {{table_name}}
-WHERE date({{date_column}}) = date('now', '-1 day');
-
--- 最近7天
-SELECT * FROM {{table_name}}
-WHERE {{date_column}} >= datetime('now', '-7 days');
-
--- 本月
-SELECT * FROM {{table_name}}
-WHERE {{date_column}} >= date('now', 'start of month');
-
--- 今年
-SELECT * FROM {{table_name}}
-WHERE {{date_column}} >= date('now', 'start of year');`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['日期', '范围', '查询'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'date_column', description: '日期列名', required: true },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-
-    // ==================== 数据统计类 ====================
     {
         id: 'builtin-stats-basic',
         name: '基础统计',
@@ -253,71 +106,8 @@ FROM {{table_name}};`,
         ],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        connection_id: null,
     },
-    {
-        id: 'builtin-stats-group',
-        name: '分组统计',
-        description: '按条件分组统计',
-        sql: `SELECT 
-  {{group_column}},
-  COUNT(*) as count,
-  MIN({{value_column}}) as min_val,
-  MAX({{value_column}}) as max_val,
-  AVG({{value_column}}) as avg_val,
-  SUM({{value_column}}) as sum_val
-FROM {{table_name}}
-GROUP BY {{group_column}}
-ORDER BY count DESC;`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['统计', '分组', '聚合'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'group_column', description: '分组列', required: true },
-            { name: 'value_column', description: '统计列', required: true },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-stats-percentile',
-        name: '分位数统计',
-        description: '计算中位数和百分位数',
-        sql: `-- 中位数
-SELECT AVG({{column_name}}) as median
-FROM (
-  SELECT {{column_name}},
-    ROW_NUMBER() OVER (ORDER BY {{column_name}}) as row_num,
-    COUNT(*) OVER () as total_rows
-  FROM {{table_name}}
-  WHERE {{column_name}} IS NOT NULL
-)
-WHERE row_num IN (
-  (total_rows + 1) / 2,
-  (total_rows + 2) / 2
-);
-
--- 百分位数 (SQLite 3.25+)
-SELECT 
-  percentile_cont(0.25) WITHIN GROUP (ORDER BY {{column_name}}) as p25,
-  percentile_cont(0.5) WITHIN GROUP (ORDER BY {{column_name}}) as p50,
-  percentile_cont(0.75) WITHIN GROUP (ORDER BY {{column_name}}) as p75,
-  percentile_cont(0.9) WITHIN GROUP (ORDER BY {{column_name}}) as p90,
-  percentile_cont(0.95) WITHIN GROUP (ORDER BY {{column_name}}) as p95
-FROM {{table_name}}
-WHERE {{column_name}} IS NOT NULL;`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['统计', '分位数', '中位数'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'column_name', description: '数值列', required: true },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-
-    // ==================== 表结构类 ====================
     {
         id: 'builtin-ddl-create-table',
         name: '创建表模板',
@@ -340,72 +130,8 @@ CREATE INDEX IF NOT EXISTS idx_{{table_name}}_status ON {{table_name}}(status);`
         variables: [{ name: 'table_name', description: '表名', required: true }],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        connection_id: null,
     },
-    {
-        id: 'builtin-ddl-alter-table',
-        name: '修改表结构',
-        description: '添加、删除、修改列',
-        sql: `-- 添加列
-ALTER TABLE {{table_name}} ADD COLUMN {{column_name}} {{data_type}};
-
--- 重命名列 (SQLite 3.25+)
-ALTER TABLE {{table_name}} RENAME COLUMN old_name TO new_name;
-
--- 删除列 (SQLite 3.35+)
-ALTER TABLE {{table_name}} DROP COLUMN {{column_name}};
-
--- 重命名表
-ALTER TABLE {{table_name}} RENAME TO {{new_table_name}};`,
-        type: 'builtin',
-        category: 'ddl',
-        tags: ['DDL', '修改表', '列'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'column_name', description: '列名', required: false },
-            { name: 'data_type', description: '数据类型', default_value: 'TEXT', required: false },
-            { name: 'new_table_name', description: '新表名', required: false },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-ddl-index',
-        name: '索引管理',
-        description: '创建和管理索引',
-        sql: `-- 创建索引
-CREATE INDEX IF NOT EXISTS idx_{{table_name}}_{{column_name}} 
-ON {{table_name}}({{column_name}});
-
--- 创建唯一索引
-CREATE UNIQUE INDEX IF NOT EXISTS idx_{{table_name}}_unique 
-ON {{table_name}}({{column_name}});
-
--- 复合索引
-CREATE INDEX IF NOT EXISTS idx_{{table_name}}_composite 
-ON {{table_name}}(col1, col2, col3);
-
--- 部分索引
-CREATE INDEX IF NOT EXISTS idx_{{table_name}}_partial 
-ON {{table_name}}({{column_name}}) 
-WHERE status = 1;
-
--- 删除索引
-DROP INDEX IF EXISTS idx_{{table_name}}_{{column_name}};
-
--- 查看索引
-SELECT * FROM sqlite_master WHERE type = 'index' AND tbl_name = '{{table_name}}';`,
-        type: 'builtin',
-        category: 'ddl',
-        tags: ['DDL', '索引', '性能'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'column_name', description: '列名', required: true },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-
-    // ==================== 数据操作类 ====================
     {
         id: 'builtin-dml-upsert',
         name: 'UPSERT（插入或更新）',
@@ -427,267 +153,7 @@ ON CONFLICT(id) DO UPDATE SET
         ],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-dml-insert-select',
-        name: '批量插入（从查询）',
-        description: '从查询结果批量插入数据',
-        sql: `INSERT INTO {{target_table}} (col1, col2, col3)
-SELECT col1, col2, col3
-FROM {{source_table}}
-WHERE {{condition}};`,
-        type: 'builtin',
-        category: 'dml',
-        tags: ['DML', '批量插入', '查询插入'],
-        variables: [
-            { name: 'target_table', description: '目标表', required: true },
-            { name: 'source_table', description: '源表', required: true },
-            { name: 'condition', description: '筛选条件', default_value: '1=1', required: false },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-dml-update-join',
-        name: 'UPDATE JOIN',
-        description: '根据关联表更新数据',
-        sql: `UPDATE {{table_name}}
-SET col1 = (SELECT value FROM other_table WHERE other_table.id = {{table_name}}.ref_id)
-WHERE EXISTS (
-  SELECT 1 FROM other_table 
-  WHERE other_table.id = {{table_name}}.ref_id
-);`,
-        type: 'builtin',
-        category: 'dml',
-        tags: ['DML', '更新', '关联'],
-        variables: [{ name: 'table_name', description: '表名', required: true }],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-dml-delete-duplicate',
-        name: '删除重复数据',
-        description: '保留一条，删除重复数据',
-        sql: `DELETE FROM {{table_name}}
-WHERE rowid NOT IN (
-  SELECT MIN(rowid)
-  FROM {{table_name}}
-  GROUP BY {{duplicate_columns}}
-);`,
-        type: 'builtin',
-        category: 'dml',
-        tags: ['DML', '删除', '重复数据'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'duplicate_columns', description: '判重列（逗号分隔）', required: true },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-
-    // ==================== 高级查询类 ====================
-    {
-        id: 'builtin-query-pivot',
-        name: '行转列（Pivot）',
-        description: '将行数据转换为列',
-        sql: `SELECT 
-  {{group_column}},
-  SUM(CASE WHEN {{pivot_column}} = 'A' THEN {{value_column}} ELSE 0 END) as A_value,
-  SUM(CASE WHEN {{pivot_column}} = 'B' THEN {{value_column}} ELSE 0 END) as B_value,
-  SUM(CASE WHEN {{pivot_column}} = 'C' THEN {{value_column}} ELSE 0 END) as C_value
-FROM {{table_name}}
-GROUP BY {{group_column}};`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['查询', '透视', '行转列'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'group_column', description: '分组列', required: true },
-            { name: 'pivot_column', description: '透视列', required: true },
-            { name: 'value_column', description: '值列', required: true },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-query-running-total',
-        name: '累计求和',
-        description: '使用窗口函数计算累计求和',
-        sql: `SELECT 
-  {{date_column}},
-  {{amount_column}},
-  SUM({{amount_column}}) OVER (
-    ORDER BY {{date_column}}
-    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-  ) as running_total,
-  AVG({{amount_column}}) OVER (
-    ORDER BY {{date_column}}
-    ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
-  ) as moving_avg_7d
-FROM {{table_name}}
-ORDER BY {{date_column}};`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['查询', '窗口函数', '累计', '移动平均'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'date_column', description: '日期列', required: true },
-            { name: 'amount_column', description: '数值列', required: true },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-query-top-n-per-group',
-        name: '每组取前N条',
-        description: '使用窗口函数获取每组的前N条记录',
-        sql: `WITH ranked AS (
-  SELECT *,
-    ROW_NUMBER() OVER (
-      PARTITION BY {{group_column}} 
-      ORDER BY {{order_column}} DESC
-    ) as rank
-  FROM {{table_name}}
-)
-SELECT * FROM ranked
-WHERE rank <= {{n}}
-ORDER BY {{group_column}}, rank;`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['查询', '窗口函数', '排名', '分组'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'group_column', description: '分组列', required: true },
-            { name: 'order_column', description: '排序列', required: true },
-            { name: 'n', description: '取前N条', default_value: '3', required: true },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-query-gap-analysis',
-        name: '缺失值分析',
-        description: '查找序列中的缺失值',
-        sql: `-- 查找缺失的 ID
-WITH RECURSIVE numbers AS (
-  SELECT MIN({{id_column}}) as n
-  FROM {{table_name}}
-  UNION ALL
-  SELECT n + 1
-  FROM numbers
-  WHERE n < (SELECT MAX({{id_column}}) FROM {{table_name}})
-)
-SELECT n as missing_id
-FROM numbers
-WHERE n NOT IN (SELECT {{id_column}} FROM {{table_name}});`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['查询', '缺失值', '序列'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'id_column', description: 'ID列', required: true },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-query-search-all-columns',
-        name: '全字段搜索',
-        description: '在多个字段中搜索关键词',
-        sql: `SELECT *
-FROM {{table_name}}
-WHERE (
-  {{search_column1}} LIKE '%{{keyword}}%'
-  OR {{search_column2}} LIKE '%{{keyword}}%'
-  OR {{search_column3}} LIKE '%{{keyword}}%'
-);`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['查询', '搜索', '模糊匹配'],
-        variables: [
-            { name: 'table_name', description: '表名', required: true },
-            { name: 'search_column1', description: '搜索列1', required: true },
-            { name: 'search_column2', description: '搜索列2', required: true },
-            { name: 'search_column3', description: '搜索列3', required: true },
-            { name: 'keyword', description: '搜索关键词', required: true },
-        ],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-
-    // ==================== 元数据查询类 ====================
-    {
-        id: 'builtin-meta-tables',
-        name: '查询所有表',
-        description: '获取数据库中所有表的信息',
-        sql: `-- 所有表
-SELECT 
-  name as table_name,
-  sql as create_statement
-FROM sqlite_master
-WHERE type = 'table'
-  AND name NOT LIKE 'sqlite_%'
-ORDER BY name;
-
--- 表统计
-SELECT 
-  name as table_name,
-  (SELECT COUNT(*) FROM pragma_table_info(name)) as column_count
-FROM sqlite_master
-WHERE type = 'table'
-  AND name NOT LIKE 'sqlite_%'
-ORDER BY name;`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['元数据', '表', '系统表'],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-meta-columns',
-        name: '查询表结构',
-        description: '获取表的详细结构信息',
-        sql: `-- 列信息
-PRAGMA table_info({{table_name}});
-
--- 外键
-PRAGMA foreign_key_list({{table_name}});
-
--- 索引
-PRAGMA index_list({{table_name}});
-
--- 统计信息
-SELECT 
-  COUNT(*) as row_count
-FROM {{table_name}};`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['元数据', '列', '结构'],
-        variables: [{ name: 'table_name', description: '表名', required: true }],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 'builtin-meta-db-info',
-        name: '数据库信息',
-        description: '获取数据库文件信息',
-        sql: `-- 数据库文件大小
-SELECT page_count * page_size as size_bytes
-FROM pragma_page_count(), pragma_page_size();
-
--- SQLite 版本
-SELECT sqlite_version() as version;
-
--- 连接状态
-PRAGMA integrity_check;
-
--- 编译选项
-PRAGMA compile_options;`,
-        type: 'builtin',
-        category: 'query',
-        tags: ['元数据', '数据库', '信息'],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        connection_id: null,
     },
 ]
 
@@ -717,6 +183,9 @@ export const useTemplateStore = defineStore('template', () => {
     // 用户自定义片段
     const customSnippets = ref<Snippet[]>(loadCustomSnippets())
 
+    // 当前选中的数据库连接ID
+    const currentConnectionId = ref<string | null>(null)
+
     // 搜索关键字
     const searchKeyword = ref('')
 
@@ -737,9 +206,23 @@ export const useTemplateStore = defineStore('template', () => {
         return [...BUILTIN_SNIPPETS, ...customSnippets.value]
     })
 
+    // 当前连接的片段（优先显示）+ 全局片段
+    const connectionSnippets = computed<Snippet[]>(() => {
+        const connId = currentConnectionId.value
+        if (!connId) {
+            // 没有选中连接时，只显示全局片段
+            return allSnippets.value.filter(s => !s.connection_id || s.connection_id === null)
+        }
+        
+        // 显示当前连接的片段 + 全局片段
+        return allSnippets.value.filter(s => 
+            !s.connection_id || s.connection_id === null || s.connection_id === connId
+        )
+    })
+
     // 过滤后的片段
     const filteredSnippets = computed<Snippet[]>(() => {
-        let result = allSnippets.value
+        let result = connectionSnippets.value
 
         // 按类型过滤
         if (selectedType.value) {
@@ -771,7 +254,14 @@ export const useTemplateStore = defineStore('template', () => {
         return result
     })
 
-    // 按分类分组的片段
+    // 仅当前连接的自定义片段（用于显示"我的片段"）
+    const currentConnectionCustomSnippets = computed<Snippet[]>(() => {
+        const connId = currentConnectionId.value
+        if (!connId) return []
+        return customSnippets.value.filter(s => s.connection_id === connId)
+    })
+
+    // 按分类分组的片段列表
     const snippetsByCategory = computed(() => {
         const groups: Record<SnippetCategory, Snippet[]> = {
             query: [],
@@ -791,7 +281,7 @@ export const useTemplateStore = defineStore('template', () => {
     // 所有可用标签（去重）
     const allTags = computed<string[]>(() => {
         const tags = new Set<string>()
-        allSnippets.value.forEach(s => s.tags.forEach(t => tags.add(t)))
+        connectionSnippets.value.forEach(s => s.tags.forEach(t => tags.add(t)))
         return Array.from(tags).sort()
     })
 
@@ -804,6 +294,11 @@ export const useTemplateStore = defineStore('template', () => {
         { value: 'other', label: '其他' },
     ]
 
+    // 设置当前连接ID
+    function setCurrentConnectionId(connectionId: string | null) {
+        currentConnectionId.value = connectionId
+    }
+
     // 创建自定义片段
     function createSnippet(request: CreateSnippetRequest): Snippet {
         const now = new Date().toISOString()
@@ -814,6 +309,8 @@ export const useTemplateStore = defineStore('template', () => {
             type: 'custom',
             created_at: now,
             updated_at: now,
+            // 如果没有指定 connection_id，默认使用当前连接
+            connection_id: request.connection_id ?? currentConnectionId.value,
         }
 
         customSnippets.value.push(snippet)
@@ -911,6 +408,7 @@ export const useTemplateStore = defineStore('template', () => {
     return {
         // State
         customSnippets,
+        currentConnectionId,
         searchKeyword,
         selectedCategory,
         selectedType,
@@ -919,13 +417,16 @@ export const useTemplateStore = defineStore('template', () => {
 
         // Getters
         allSnippets,
+        connectionSnippets,
         filteredSnippets,
+        currentConnectionCustomSnippets,
         snippetsByCategory,
         allTags,
         categories,
         builtinSnippets: BUILTIN_SNIPPETS,
 
         // Actions
+        setCurrentConnectionId,
         createSnippet,
         updateSnippet,
         deleteSnippet,

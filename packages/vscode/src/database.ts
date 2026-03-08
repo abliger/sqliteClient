@@ -59,13 +59,24 @@ export class DatabaseManager {
     private maxHistorySize: number
     private maxQueryResults: number
 
-    constructor(options: DatabaseManagerOptions = {}) {
+    constructor(
+        private context: vscode.ExtensionContext,
+        options: DatabaseManagerOptions = {}
+    ) {
         this.maxHistorySize = options.maxHistorySize || 1000
         this.maxQueryResults = options.maxQueryResults || 10000
         
-        // Store history in extension storage
-        const storagePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || os.homedir()
-        this.historyPath = path.join(storagePath, '.sqlite-client-history.json')
+        // Store history in VSCode's global storage (not workspace)
+        // This ensures history persists across workspaces and isn't committed
+        const globalStoragePath = this.context.globalStorageUri.fsPath
+        
+        // Ensure storage directory exists
+        if (!fs.existsSync(globalStoragePath)) {
+            fs.mkdirSync(globalStoragePath, { recursive: true })
+        }
+        
+        this.historyPath = path.join(globalStoragePath, 'query-history.json')
+        console.log('[DatabaseManager] History stored at:', this.historyPath)
         this.loadHistory()
     }
 

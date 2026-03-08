@@ -16,7 +16,10 @@ const queryStore = useQueryStore()
 // 当活动连接变化时，加载表结构和切换 query tabs
 watch(
     () => connectionStore.activeConnectionId,
-    async (connectionId) => {
+    async (connectionId, oldConnectionId) => {
+        // 只在连接真正变化时处理，避免初始 null -> null 的触发
+        if (connectionId === oldConnectionId) return
+        
         if (connectionId) {
             await schemaStore.loadTables(connectionId)
             // 设置当前连接，切换对应的 query tabs
@@ -25,8 +28,7 @@ watch(
             schemaStore.clearSchema()
             queryStore.setCurrentConnection('')
         }
-    },
-    { immediate: true }
+    }
 )
 
 // 监听连接变化，清理已关闭连接的 tabs

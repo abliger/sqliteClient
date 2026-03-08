@@ -517,6 +517,8 @@ export interface Snippet {
     variables?: SnippetVariable[]
     created_at: string
     updated_at: string
+    /** 关联的数据库连接ID，null 表示全局片段 */
+    connection_id?: string | null
 }
 
 /** SQL 片段变量 */
@@ -535,6 +537,8 @@ export interface CreateSnippetRequest {
     category: SnippetCategory
     tags?: string[]
     variables?: SnippetVariable[]
+    /** 关联的数据库连接ID，null 表示全局片段 */
+    connection_id?: string | null
 }
 
 /** 更新片段请求 */
@@ -546,6 +550,8 @@ export interface UpdateSnippetRequest {
     category?: SnippetCategory
     tags?: string[]
     variables?: SnippetVariable[]
+    /** 关联的数据库连接ID */
+    connection_id?: string | null
 }
 
 /** 片段过滤器 */

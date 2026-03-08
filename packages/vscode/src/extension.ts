@@ -1,17 +1,29 @@
 import * as vscode from 'vscode'
 import { SQLitePanel } from './webview-panel'
 import { DatabaseManager } from './database'
+import { SQLiteEditorProvider } from './editor-provider'
 
 let databaseManager: DatabaseManager | null = null
+let editorProvider: SQLiteEditorProvider | null = null
 
-function getDatabaseManager(): DatabaseManager {
+function getDatabaseManager(context: vscode.ExtensionContext): DatabaseManager {
     if (!databaseManager) {
-        databaseManager = new DatabaseManager({
+        databaseManager = new DatabaseManager(context, {
             maxHistorySize: 1000,
             maxQueryResults: 10000,
         })
     }
     return databaseManager
+}
+
+function getEditorProvider(context: vscode.ExtensionContext): SQLiteEditorProvider {
+    if (!editorProvider) {
+        editorProvider = SQLiteEditorProvider.getInstance(
+            context.extensionUri,
+            getDatabaseManager(context)
+        )
+    }
+    return editorProvider
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -21,7 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('sqliteClient.open', () => {
             try {
-                const manager = getDatabaseManager()
+                const manager = getDatabaseManager(context)
                 SQLitePanel.createOrShow(context.extensionUri, manager)
             } catch (error) {
                 vscode.window.showErrorMessage(`Failed to open SQLite Client: ${error}`)
@@ -31,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         vscode.commands.registerCommand('sqliteClient.openDatabase', async (uri?: vscode.Uri) => {
             try {
-                const manager = getDatabaseManager()
+                const manager = getDatabaseManager(context)
                 let dbPath: string | undefined
 
                 if (uri?.fsPath) {
@@ -69,12 +81,27 @@ export function activate(context: vscode.ExtensionContext) {
         })
     )
 
+    // Register custom editor provider (双击打开功能)
+    context.subscriptions.push(
+        vscode.window.registerCustomEditorProvider(
+            'sqliteClient.editor',
+            getEditorProvider(context),
+            {
+                webviewOptions: {
+                    retainContextWhenHidden: true,
+                },
+                supportsMultipleEditorsPerDocument: false,
+            }
+        )
+    )
+
     // Clean up on deactivation
     context.subscriptions.push({
         dispose: () => {
             try {
                 databaseManager?.dispose()
                 databaseManager = null
+                editorProvider = null
             } catch (error) {
                 console.error('Error disposing database manager:', error)
             }

@@ -323,7 +323,7 @@ export class SQLitePanel {
         const csp = [
             "default-src 'none'",
             `script-src 'nonce-${nonce}'`,
-            `style-src 'unsafe-inline' ${webview.cspSource}`,
+            `style-src 'nonce-${nonce}' ${webview.cspSource}`,
             `img-src ${webview.cspSource} data: blob:`,
             `font-src ${webview.cspSource}`,
             "connect-src 'none'",

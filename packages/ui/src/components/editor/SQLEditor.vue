@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted, nextTick, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
 import { useSchemaStore } from '@stores/schema'
 import { useSettingsStore } from '@stores/settings'
+import { useTemplateStore } from '@stores/template'
 import { useSQLCompletion, FullFeaturedStrategyFactory } from '@composables/sql-completion'
 import { sqlFormatter } from '@services/formatter'
 import EditorToolbar from './EditorToolbar.vue'
 import QueryTabs from './QueryTabs.vue'
 import SqlImportDialog from '@components/dialogs/SqlImportDialog.vue'
-import TemplatePanel from './TemplatePanel.vue'
+import SnippetPanel from './SnippetPanel.vue'
 import * as monaco from 'monaco-editor'
 import type { editor as MonacoEditor } from 'monaco-editor'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
@@ -45,11 +47,12 @@ if (!(window as WindowWithMonaco).MonacoEnvironment) {
   }
 }
 
+const { t, locale } = useI18n()
 const connectionStore = useConnectionStore()
 const queryStore = useQueryStore()
 const schemaStore = useSchemaStore()
 const settingsStore = useSettingsStore()
-// Template store is used by TemplatePanel component, no direct usage here
+const templateStore = useTemplateStore()
 const editorContainer = ref<HTMLDivElement>()
 let editor: MonacoEditor.IStandaloneCodeEditor | null = null
 let disposeContentListener: (() => void) | null = null
@@ -57,8 +60,12 @@ let disposeContentListener: (() => void) | null = null
 // SQL 导入对话框状态
 const showImportDialog = ref(false)
 
-// 模板面板状态
-const showTemplatePanel = ref(false)
+// 代码片段面板状态
+const showSnippetPanel = ref(false)
+const snippetPanelRef = ref<InstanceType<typeof SnippetPanel> | null>(null)
+
+// 当前选中的 SQL（用于添加到片段）
+const selectedSqlForSnippet = ref('')
 
 function handleImportSql() {
   if (!connectionStore.activeConnectionId) return
@@ -101,15 +108,11 @@ const { dispose: disposeCompletion } = useSQLCompletion({
   }
 })
 
-// 当活动连接变化时，加载 schema 数据
+// 当活动连接变化时，更新模板 store 的当前连接
 watch(
   () => connectionStore.activeConnectionId,
-  async (connectionId) => {
-    if (connectionId) {
-      await schemaStore.loadTables(connectionId)
-    } else {
-      schemaStore.clearSchema()
-    }
+  (connectionId) => {
+    templateStore.setCurrentConnectionId(connectionId)
   },
   { immediate: true }
 )
@@ -168,6 +171,27 @@ onMounted(() => {
   // 注册 SQL 格式化器
   registerSQLFormatter()
 
+  // 添加右键菜单
+  const addToSnippetActionId = 'add-to-snippet'
+  const registerAddToSnippetAction = () => {
+    // 先移除已存在的同名 action
+    const existingAction = editor?.getAction(addToSnippetActionId)
+    if (existingAction) {
+      // Monaco Editor 没有直接移除 action 的方法，我们通过重新添加来覆盖
+    }
+    editor?.addAction({
+      id: addToSnippetActionId,
+      label: t('editor.addToSnippet'),
+      keybindings: [],
+      contextMenuGroupId: '9_cutcopypaste',
+      contextMenuOrder: 3,
+      run: () => {
+        handleAddToSnippet()
+      }
+    })
+  }
+  registerAddToSnippetAction()
+
   // 监听系统主题变化（当设置为 auto 时）
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
   const handleThemeChange = () => {
@@ -177,11 +201,17 @@ onMounted(() => {
   }
   mediaQuery.addEventListener('change', handleThemeChange)
 
+  // 监听语言变化，更新右键菜单
+  const unwatchLocale = watch(locale, () => {
+    registerAddToSnippetAction()
+  })
+
   // 保存清理函数
   const originalDispose = disposeContentListener
   disposeContentListener = () => {
     originalDispose?.()
     mediaQuery.removeEventListener('change', handleThemeChange)
+    unwatchLocale()
   }
 })
 
@@ -328,52 +358,67 @@ const handleFormat = () => {
   editor?.trigger('keyboard', 'editor.action.formatDocument', null)
 }
 
-// 切换模板面板
+// 切换代码片段面板
 const handleToggleTemplates = () => {
-  showTemplatePanel.value = !showTemplatePanel.value
+  showSnippetPanel.value = !showSnippetPanel.value
+}
+
+// 将选中的 SQL 添加到代码片段
+const handleAddToSnippet = () => {
+  if (!editor) return
+  
+  const selection = editor.getSelection()
+  let sql = ''
+  
+  if (selection && !selection.isEmpty()) {
+    sql = editor.getModel()?.getValueInRange(selection) || ''
+  } else {
+    sql = editor.getValue()
+  }
+  
+  if (!sql.trim()) return
+  
+  selectedSqlForSnippet.value = sql
+  showSnippetPanel.value = true
+  
+  // 等待面板打开后调用创建对话框
+  nextTick(() => {
+    snippetPanelRef.value?.openCreateDialog(sql)
+  })
 }
 
 // 插入 SQL 片段
 const handleInsertSnippet = (sql: string) => {
-  console.log('[SQLEditor] handleInsertSnippet called with sql:', sql)
-  
-  if (!editor) {
-    console.warn('[SQLEditor] Editor not ready')
-    return
-  }
+  if (!editor) return
 
   const selection = editor.getSelection()
   if (selection && !selection.isEmpty()) {
-    // 如果有选中的内容，替换选中内容
-    editor.executeEdits('snippet', [
-      {
-        range: selection,
-        text: sql,
-      },
-    ])
+    editor.executeEdits('snippet', [{
+      range: selection,
+      text: sql,
+    }])
   } else {
-    // 在光标位置插入
     const position = editor.getPosition()
     if (position) {
-      editor.executeEdits('snippet', [
-        {
-          range: new monaco.Range(
-            position.lineNumber,
-            position.column,
-            position.lineNumber,
-            position.column
-          ),
-          text: sql,
-        },
-      ])
+      editor.executeEdits('snippet', [{
+        range: new monaco.Range(
+          position.lineNumber,
+          position.column,
+          position.lineNumber,
+          position.column
+        ),
+        text: sql,
+      }])
     }
   }
 
-  // 关闭面板
-  showTemplatePanel.value = false
-
-  // 聚焦编辑器
   editor.focus()
+}
+
+// 处理代码片段插入并关闭面板
+const handleSnippetInsert = (sql: string) => {
+  handleInsertSnippet(sql)
+  showSnippetPanel.value = false
 }
 </script>
 
@@ -404,7 +449,7 @@ const handleInsertSnippet = (sql: string) => {
         <div class="flex-1 min-h-0 flex">
           <div ref="editorContainer" class="flex-1 min-h-0" />
 
-          <!-- 模板面板 -->
+          <!-- 代码片段面板 -->
           <Transition
             enter-active-class="transition-all duration-200 ease-out"
             enter-from-class="opacity-0 translate-x-4 w-0"
@@ -414,12 +459,13 @@ const handleInsertSnippet = (sql: string) => {
             leave-to-class="opacity-0 translate-x-4 w-0"
           >
             <div
-              v-if="showTemplatePanel"
+              v-if="showSnippetPanel"
               class="w-80 border-l border-surface-200 dark:border-surface-700 overflow-hidden flex-shrink-0"
             >
-              <TemplatePanel
-                @insert="handleInsertSnippet"
-                @close="showTemplatePanel = false"
+              <SnippetPanel
+                ref="snippetPanelRef"
+                @insert="handleSnippetInsert"
+                @close="showSnippetPanel = false"
               />
             </div>
           </Transition>
