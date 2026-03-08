@@ -9,6 +9,7 @@ import type { SqlFileExecutionResult, SqlFileExecutionProgress } from '@types'
 // 动态导入 Tauri API
 let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
 let listenEvent: typeof import('@tauri-apps/api/event').listen | null = null
+type UnlistenFn = () => void
 
 if (isTauri()) {
     Promise.all([

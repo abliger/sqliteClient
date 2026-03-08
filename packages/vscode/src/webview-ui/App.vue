@@ -9,6 +9,15 @@ import { onMounted, onUnmounted } from 'vue'
 import MainLayout from '@components/layout/MainLayout.vue'
 import { useConnectionStore } from '@stores/connection'
 
+// 为 TypeScript 声明 vscode 全局对象
+declare global {
+    interface Window {
+        vscode?: {
+            postMessage: (message: any) => void
+        }
+    }
+}
+
 const connectionStore = useConnectionStore()
 
 let messageHandler: ((event: MessageEvent) => void) | null = null
@@ -27,7 +36,7 @@ onMounted(() => {
     }
 
     window.addEventListener('message', messageHandler)
-    
+
     // 通知后端 WebView 已就绪
     window.vscode?.postMessage({ type: 'webviewReady' })
     console.log('[App] Webview ready notified')

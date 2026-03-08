@@ -366,14 +366,14 @@ export class SQLitePanel {
 
         const nonce = this.getNonce()
         
-        // 增强的 CSP 配置
+        // CSP 配置 - 放宽以支持 Monaco Editor 和其他动态加载
         const csp = [
             "default-src 'none'",
-            `script-src 'nonce-${nonce}'`,
-            `style-src 'nonce-${nonce}' ${webview.cspSource}`,
+            `script-src 'nonce-${nonce}' 'unsafe-eval' ${webview.cspSource}`,
+            `style-src 'nonce-${nonce}' 'unsafe-inline' ${webview.cspSource}`,
             `img-src ${webview.cspSource} data: blob:`,
             `font-src ${webview.cspSource}`,
-            "connect-src 'none'",
+            `connect-src ${webview.cspSource}`,
             "frame-src 'none'",
         ].join('; ')
 

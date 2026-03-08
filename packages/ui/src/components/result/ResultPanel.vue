@@ -61,6 +61,12 @@ const currentResult = computed(() => queryStore.activeTab?.result)
 const isExecuting = computed(() => queryStore.activeTab?.isExecuting || false)
 const executionTime = computed(() => queryStore.activeTab?.executionTime)
 
+// 当前选中的快照数量（用于决定显示"保存快照"还是"更新快照"）
+const selectedSnapshotCount = computed(() => {
+    const settings = queryStore.compareSettings[connectionStore.activeConnectionId || '']?.[queryStore.activeTabId || '']
+    return settings?.selectedSnapshotIds?.length || 0
+})
+
 // 从 SQL 中提取表名（使用改进的解析器）
 const currentTableName = computed(() => {
     const sql = queryStore.activeTab?.sql || ''
@@ -492,11 +498,11 @@ const handleQuickSnapshot = async () => {
                 <button 
                     class="btn-ghost text-xs text-primary-600 dark:text-primary-400" 
                     :disabled="isSavingSnapshot"
-                    title="保存当前结果为快照，用于后续对比"
+                    :title="selectedSnapshotCount > 0 ? '更新选中的快照' : '保存当前结果为快照，用于后续对比'"
                     @click="handleQuickSnapshot"
                 >
                     <CameraIcon class="w-3.5 h-3.5 mr-1" />
-                    {{ isSavingSnapshot ? '保存中...' : (lastSnapshotId ? '更新快照' : '保存快照') }}
+                    {{ isSavingSnapshot ? '保存中...' : (selectedSnapshotCount > 0 ? '更新快照' : '保存快照') }}
                 </button>
                 <div class="w-px h-4 bg-surface-300 dark:bg-surface-600 mx-1" />
                 <button class="btn-ghost text-xs" :disabled="isExporting" @click="handleExportCSV">
