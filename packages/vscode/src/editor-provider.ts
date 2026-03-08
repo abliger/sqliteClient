@@ -66,16 +66,15 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
         console.log('[SQLiteEditorProvider] Resolving custom editor for:', dbPath)
 
         try {
-            // 使用现有的 SQLitePanel 创建 WebView
-            const panel = SQLitePanel.createOrShow(this.extensionUri, this.databaseManager)
+            // 使用 CustomEditor 提供的 webviewPanel 创建 SQLitePanel
+            const panel = SQLitePanel.bindToWebviewPanel(
+                webviewPanel,
+                this.extensionUri,
+                this.databaseManager
+            )
             
             // 打开数据库文件
             panel.openDatabase(dbPath)
-            
-            // 当 WebView 面板关闭时清理
-            webviewPanel.onDidDispose(() => {
-                console.log('[SQLiteEditorProvider] WebView panel disposed')
-            })
         } catch (error) {
             console.error('[SQLiteEditorProvider] Failed to open database:', error)
             vscode.window.showErrorMessage(`无法打开数据库: ${error}`)

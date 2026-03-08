@@ -49,6 +49,35 @@ export class SQLitePanel {
         return SQLitePanel.currentPanel
     }
 
+    /**
+     * 绑定到现有的 WebviewPanel（用于 CustomEditor）
+     */
+    public static bindToWebviewPanel(
+        webviewPanel: vscode.WebviewPanel,
+        extensionUri: vscode.Uri,
+        databaseManager: DatabaseManager
+    ): SQLitePanel {
+        // 配置 WebviewPanel
+        webviewPanel.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [
+                vscode.Uri.joinPath(extensionUri, 'dist', 'webview'),
+                vscode.Uri.joinPath(extensionUri, 'media'),
+            ],
+        }
+        
+        // 设置标题
+        webviewPanel.title = 'SQLite Client'
+        
+        // 创建 SQLitePanel 实例
+        const panel = new SQLitePanel(webviewPanel, extensionUri, databaseManager)
+        SQLitePanel.currentPanel = panel
+        return panel
+    }
+
+    private isWebviewReady = false
+    private pendingMessages: any[] = []
+
     private constructor(
         panel: vscode.WebviewPanel,
         extensionUri: vscode.Uri,
@@ -66,6 +95,17 @@ export class SQLitePanel {
         this.panel.webview.onDidReceiveMessage(
             async (message) => {
                 try {
+                    // 处理 webview 就绪通知
+                    if (message.type === 'webviewReady') {
+                        console.log('[SQLitePanel] Webview is ready')
+                        this.isWebviewReady = true
+                        // 发送所有待处理的消息
+                        for (const msg of this.pendingMessages) {
+                            this.panel.webview.postMessage(msg)
+                        }
+                        this.pendingMessages = []
+                        return
+                    }
                     await this.handleMessage(message)
                 } catch (error) {
                     console.error('Message handler error:', error)
@@ -272,10 +312,17 @@ export class SQLitePanel {
     }
 
     public openDatabase(dbPath: string): void {
-        this.panel.webview.postMessage({
+        const message = {
             type: 'openDatabase',
             path: dbPath,
-        })
+        }
+        
+        if (this.isWebviewReady) {
+            this.panel.webview.postMessage(message)
+        } else {
+            console.log('[SQLitePanel] Webview not ready, queuing openDatabase message')
+            this.pendingMessages.push(message)
+        }
     }
 
     private async handleMessage(message: any): Promise<void> {

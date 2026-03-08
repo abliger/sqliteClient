@@ -27,6 +27,10 @@ onMounted(() => {
     }
 
     window.addEventListener('message', messageHandler)
+    
+    // 通知后端 WebView 已就绪
+    window.vscode?.postMessage({ type: 'webviewReady' })
+    console.log('[App] Webview ready notified')
 })
 
 onUnmounted(() => {
