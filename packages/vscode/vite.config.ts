@@ -14,6 +14,7 @@ export default defineConfig({
         outDir: path.resolve(__dirname, 'dist/webview'),
         emptyOutDir: true,
         rollupOptions: {
+            external: ['vscode'],
             input: path.resolve(__dirname, 'src/webview-ui/index.html'),
             output: {
                 entryFileNames: 'assets/[name].js',

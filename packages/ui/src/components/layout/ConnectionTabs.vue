@@ -6,10 +6,8 @@ import {
     FolderOpenIcon,
     DocumentPlusIcon,
     Cog6ToothIcon,
-    Square2StackIcon,
     Bars3Icon,
     Bars3BottomLeftIcon,
-    WindowIcon,
     ChevronDownIcon,
     ChevronUpIcon
 } from '@heroicons/vue/24/outline'
@@ -54,7 +52,7 @@ const settingsStore = useSettingsStore()
 const toastStore = useToastStore()
 
 // Props for sidebar and bottom panel toggle
-const props = defineProps<{
+defineProps<{
     isSidebarVisible?: boolean
     isBottomPanelVisible?: boolean
 }>()

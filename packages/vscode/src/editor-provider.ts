@@ -106,28 +106,41 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
         const htmlPath = vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'index.html')
         
         try {
-            const htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf-8')
+            let htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf-8')
             
-            // 替换资源路径为 VSCode WebView 可访问的路径
-            const scriptUri = webview.asWebviewUri(
-                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.js')
-            )
-            const styleUri = webview.asWebviewUri(
-                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.css')
+            // 基础资源路径
+            const assetsBaseUri = webview.asWebviewUri(
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets')
             )
             
-            // 添加 VSCode API 注入
+            // 替换所有资源路径 - 使用正则替换所有匹配
+            // 替换 ./assets/ 开头的路径为 webview 可访问的完整路径
+            htmlContent = htmlContent.replace(
+                /(['"])\.\/assets\//g,
+                `$1${assetsBaseUri.toString()}/`
+            )
+            
+            // 添加 CSP 和 VSCode API
+            const nonce = this.getNonce()
+            const csp = [
+                "default-src 'none'",
+                `script-src 'nonce-${nonce}' 'unsafe-eval' ${webview.cspSource}`,
+                `style-src ${webview.cspSource} 'unsafe-inline'`,
+                `img-src ${webview.cspSource} data: blob:`,
+                `font-src ${webview.cspSource}`,
+                `connect-src ${webview.cspSource}`,
+                "frame-src 'none'",
+            ].join('; ')
+            
             const vscodeScript = `
-                <script>
+                <meta http-equiv="Content-Security-Policy" content="${csp}">
+                <script nonce="${nonce}">
                     window.vscode = acquireVsCodeApi();
                 </script>
             `
             
-            // 替换资源路径并添加 VSCode API
-            return htmlContent
-                .replace('./assets/index.js', scriptUri.toString())
-                .replace('./assets/index.css', styleUri.toString())
-                .replace('</head>', `${vscodeScript}</head>`)
+            // 添加 CSP 和 VSCode API
+            return htmlContent.replace('</head>', `${vscodeScript}</head>`)
         } catch (error) {
             console.error('Failed to read HTML file, using fallback:', error)
             

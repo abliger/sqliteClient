@@ -42,7 +42,9 @@ async function loadDialogIfNeeded(): Promise<void> {
             dialogLoadingPromise = null
         })
     }
-    return dialogLoadingPromise
+    if (dialogLoadingPromise) {
+        await dialogLoadingPromise
+    }
 }
 
 const { t } = useI18n()

@@ -456,29 +456,16 @@ const handleSnippetInsert = (sql: string) => {
         />
 
         <!-- 编辑器区域 -->
-        <div class="flex-1 min-h-0 flex">
-          <div ref="editorContainer" class="flex-1 min-h-0" />
+        <div ref="editorContainer" class="flex-1 min-h-0" />
 
-          <!-- 代码片段面板 -->
-          <Transition
-            enter-active-class="transition-all duration-200 ease-out"
-            enter-from-class="opacity-0 translate-x-4"
-            enter-to-class="opacity-100 translate-x-0"
-            leave-active-class="transition-all duration-200 ease-in"
-            leave-from-class="opacity-100 translate-x-0"
-            leave-to-class="opacity-0 translate-x-4"
-          >
-            <div
-              v-show="showSnippetPanel"
-              class="w-80 h-full border-l border-surface-200 dark:border-surface-700 flex-shrink-0 overflow-hidden"
-            >
-              <SnippetPanel
-                ref="snippetPanelRef"
-                @insert="handleSnippetInsert"
-                @close="showSnippetPanel = false"
-              />
-            </div>
-          </Transition>
-        </div>
+        <!-- 代码片段面板 - 使用 Teleport 传送到 body 确保正确显示 -->
+        <Teleport to="body">
+          <SnippetPanel
+            v-if="showSnippetPanel"
+            ref="snippetPanelRef"
+            @insert="handleSnippetInsert"
+            @close="showSnippetPanel = false"
+          />
+        </Teleport>
     </div>
 </template>

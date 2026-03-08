@@ -68,7 +68,7 @@ export function createVSCodeService<T extends Record<string, Function>>(
     commandMap: Record<keyof T, string>
 ): T {
     return new Proxy({} as T, {
-        get(target, prop: string) {
+        get(_target, prop: string) {
             // 如果不在 VS Code 环境，返回原始 Tauri 服务
             if (!isVSCode()) {
                 return tauriService[prop as keyof T]

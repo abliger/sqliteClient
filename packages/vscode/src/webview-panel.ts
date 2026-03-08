@@ -508,14 +508,26 @@ export class SQLitePanel {
                 `$1${assetsBaseUri.toString()}/`
             )
             
-            // 添加 VSCode API 注入
+            // 添加 CSP 和 VSCode API
+            const nonce = this.getNonce()
+            const csp = [
+                "default-src 'none'",
+                `script-src 'nonce-${nonce}' 'unsafe-eval' ${webview.cspSource}`,
+                `style-src ${webview.cspSource} 'unsafe-inline'`,
+                `img-src ${webview.cspSource} data: blob:`,
+                `font-src ${webview.cspSource}`,
+                `connect-src ${webview.cspSource}`,
+                "frame-src 'none'",
+            ].join('; ')
+            
             const vscodeScript = `
-                <script>
+                <meta http-equiv="Content-Security-Policy" content="${csp}">
+                <script nonce="${nonce}">
                     window.vscode = acquireVsCodeApi();
                 </script>
             `
             
-            // 添加 VSCode API 到 head
+            // 添加 CSP 和 VSCode API 到 head
             htmlContent = htmlContent.replace('</head>', `${vscodeScript}</head>`)
             
             console.log('[SQLitePanel] Generated HTML with URIs:', {
