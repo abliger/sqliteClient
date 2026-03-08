@@ -207,6 +207,9 @@ function removeIndex(index: number) {
 // DDL预览和执行
 // ============================================
 
+// 标记表结构是否发生变化（需要刷新DDL）
+const hasStructureChanged = ref(false)
+
 // 自动刷新 DDL 预览（防抖 500ms）
 const debouncedPreviewDDL = useDebounce(async () => {
   // 只在表单有效时自动刷新
@@ -215,6 +218,11 @@ const debouncedPreviewDDL = useDebounce(async () => {
   // 只在用户已经在 DDL 标签页时自动刷新
   if (activeTab.value !== 'ddl') return
 
+  await doPreviewDDL(false)
+}, 500)
+
+// 实际执行预览
+async function doPreviewDDL(showError = false) {
   isLoading.value = true
   try {
     if (isEditMode.value && props.existingTable) {
@@ -227,15 +235,19 @@ const debouncedPreviewDDL = useDebounce(async () => {
     } else {
       previewResult.value = await schemaService.previewCreateTable(tableForm.value)
     }
+    hasStructureChanged.value = false
   } catch (err) {
-    // 自动刷新失败时不显示错误，避免打扰用户
-    console.warn('自动预览DDL失败:', err)
+    if (showError) {
+      toastStore.error('预览DDL失败', String(err))
+    } else {
+      console.warn('自动预览DDL失败:', err)
+    }
   } finally {
     isLoading.value = false
   }
-}, 500)
+}
 
-// 监听表结构变化，自动刷新 DDL
+// 监听表结构变化，标记需要刷新
 watch(
   () => ({
     columns: tableForm.value.columns,
@@ -244,10 +256,21 @@ watch(
     strict_mode: tableForm.value.strict_mode,
   }),
   () => {
-    debouncedPreviewDDL()
+    hasStructureChanged.value = true
+    // 如果当前在DDL标签页，立即刷新
+    if (activeTab.value === 'ddl') {
+      debouncedPreviewDDL()
+    }
   },
   { deep: true }
 )
+
+// 监听标签页切换，切换到DDL时自动刷新
+watch(() => activeTab.value, async (tab) => {
+  if (tab === 'ddl' && hasStructureChanged.value && !isLoading.value) {
+    await doPreviewDDL(false)
+  }
+})
 
 // 手动触发预览（点击按钮时）
 async function previewDDL() {
@@ -255,28 +278,13 @@ async function previewDDL() {
 
   // 立即切换到 DDL 标签页，提升用户体验
   activeTab.value = 'ddl'
-  isLoading.value = true
   previewResult.value = null
-
-  try {
-    if (isEditMode.value && props.existingTable) {
-      // 编辑模式：生成变更
-      const changes = generateChanges()
-      previewResult.value = await schemaService.previewAlterTable(
-        props.connectionId,
-        props.existingTable.name,
-        changes
-      )
-    } else {
-      // 新建模式
-      previewResult.value = await schemaService.previewCreateTable(tableForm.value)
-    }
-  } catch (err) {
-    toastStore.error('预览DDL失败', String(err))
-    // 出错时回到字段标签页，方便用户修改
+  
+  await doPreviewDDL(true)
+  
+  // 出错时回到字段标签页
+  if (!previewResult.value) {
     activeTab.value = 'columns'
-  } finally {
-    isLoading.value = false
   }
 }
 
@@ -392,11 +400,11 @@ function onBackdropMouseUp(e: MouseEvent) {
 }
 
 // DDL 标签页点击处理
-function onDDLTabClick() {
+async function onDDLTabClick() {
   activeTab.value = 'ddl'
-  // 如果没有预览结果，立即触发一次预览
-  if (!previewResult.value && !isLoading.value) {
-    previewDDL()
+  // 如果没有预览结果或表结构已变化，触发预览
+  if (!isLoading.value && (!previewResult.value || hasStructureChanged.value)) {
+    await doPreviewDDL(false)
   }
 }
 </script>
