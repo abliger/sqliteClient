@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch, onMounted } from 'vue'
+import { watch, onMounted, ref } from 'vue'
 import { useConnectionStore } from '@stores/connection'
 import { useSchemaStore } from '@stores/schema'
 import { useQueryStore } from '@stores/query'
@@ -12,6 +12,13 @@ import DatabaseTree from '@components/explorer/DatabaseTree.vue'
 const connectionStore = useConnectionStore()
 const schemaStore = useSchemaStore()
 const queryStore = useQueryStore()
+
+// 左侧边栏显示状态
+const isSidebarVisible = ref(true)
+
+function toggleSidebar() {
+    isSidebarVisible.value = !isSidebarVisible.value
+}
 
 // 当活动连接变化时，加载表结构和切换 query tabs
 watch(
@@ -56,15 +63,29 @@ onMounted(() => {
         <!-- 主内容区 -->
         <div class="flex-1 flex overflow-hidden">
             <!-- 左侧边栏 - 数据库浏览器 -->
-            <Sidebar>
-                <DatabaseTree />
-            </Sidebar>
+            <transition
+                enter-active-class="transition-all duration-200 ease-out"
+                enter-from-class="opacity-0 w-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition-all duration-200 ease-in"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0 w-0"
+            >
+                <div v-show="isSidebarVisible" class="flex-shrink-0">
+                    <Sidebar>
+                        <DatabaseTree />
+                    </Sidebar>
+                </div>
+            </transition>
 
             <!-- 中间和右侧 - 编辑器和结果 -->
             <div class="flex-1 flex flex-col min-w-0">
                 <!-- SQL 编辑器 -->
                 <div class="flex-1 min-h-0">
-                    <SQLEditor />
+                    <SQLEditor
+                        :is-sidebar-visible="isSidebarVisible"
+                        @toggle-sidebar="toggleSidebar"
+                    />
                 </div>
 
                 <!-- 结果面板 -->

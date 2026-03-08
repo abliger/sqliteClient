@@ -11,16 +11,24 @@ import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
 import { useSettingsStore } from '@stores/settings'
 import { useToastStore } from '@stores/toast'
-import { isTauri } from '@utils/tauri'
+import { isTauri, isDialogSupported } from '@utils/tauri'
 import Tooltip from '@components/ui/Tooltip.vue'
 import CreateDatabaseDialog from '@components/dialogs/CreateDatabaseDialog.vue'
 
-// 动态导入 Tauri dialog
+// 动态导入 Tauri dialog（桌面应用）或 VSCode mock（VSCode 扩展）
 let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
-if (isTauri()) {
-    import('@tauri-apps/plugin-dialog').then(m => {
-        openDialog = m.open
-    })
+let dialogLoaded = false
+
+// 延迟加载 dialog，确保环境已初始化
+function loadDialogIfNeeded() {
+    if (dialogLoaded) return
+    dialogLoaded = true
+    
+    if (isTauri() || isDialogSupported()) {
+        import('@tauri-apps/plugin-dialog').then(m => {
+            openDialog = m.open
+        })
+    }
 }
 
 const { t } = useI18n()
@@ -44,8 +52,9 @@ const contextMenu = ref({
 const contextMenuRef = useTemplateRef<HTMLElement>('contextMenuRef')
 
 const handleOpenDatabase = async () => {
-    if (!isTauri() || !openDialog) {
-        toastStore.error('Not available', 'File dialog is only available in the desktop app')
+    loadDialogIfNeeded()
+    if (!isDialogSupported() || !openDialog) {
+        toastStore.error('Not available', 'File dialog is only available in the desktop app or VSCode')
         return
     }
     
@@ -74,8 +83,9 @@ const handleOpenDatabase = async () => {
 }
 
 const handleCreateDatabase = async () => {
-    if (!isTauri() || !openDialog) {
-        toastStore.error('Not available', 'Folder dialog is only available in the desktop app')
+    loadDialogIfNeeded()
+    if (!isDialogSupported() || !openDialog) {
+        toastStore.error('Not available', 'Folder dialog is only available in the desktop app or VSCode')
         return
     }
     

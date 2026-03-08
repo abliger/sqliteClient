@@ -239,6 +239,24 @@ impl SchemaAnalyzer {
         let mut table_nodes = Vec::new();
         let mut relations = Vec::new();
 
+        // Virtual canvas size (should match frontend)
+        const VIRTUAL_CANVAS_SIZE: f64 = 5000.0;
+        const VIRTUAL_CANVAS_CENTER: f64 = VIRTUAL_CANVAS_SIZE / 2.0;
+
+        // Calculate grid layout
+        let cols = (tables.len() as f64).sqrt().ceil() as usize;
+        let cols = cols.max(1);
+        let spacing_x = 250.0;
+        let spacing_y = 200.0;
+
+        // Calculate total grid size
+        let total_width = cols as f64 * spacing_x;
+        let total_height = ((tables.len() + cols - 1) / cols) as f64 * spacing_y;
+
+        // Center the grid around virtual canvas center
+        let start_x = VIRTUAL_CANVAS_CENTER - total_width / 2.0;
+        let start_y = VIRTUAL_CANVAS_CENTER - total_height / 2.0;
+
         // 创建表节点
         for (i, table) in tables.iter().enumerate() {
             let columns: Vec<ColumnNode> = table
@@ -253,17 +271,24 @@ impl SchemaAnalyzer {
                 })
                 .collect();
 
-            // 简单的网格布局
-            let x = (i % 4) as f64 * 250.0 + 50.0;
-            let y = (i / 4) as f64 * 300.0 + 50.0;
-            let height = 40.0 + columns.len() as f64 * 25.0;
+            // Grid layout centered on virtual canvas
+            let col = i % cols;
+            let row = i / cols;
+            let x = start_x + col as f64 * spacing_x;
+            let y = start_y + row as f64 * spacing_y;
+            // Node dimensions should match frontend
+            const NODE_WIDTH: f64 = 180.0;
+            const NODE_HEADER_HEIGHT: f64 = 32.0;
+            const NODE_ROW_HEIGHT: f64 = 24.0;
+            const NODE_PADDING: f64 = 12.0;
+            let height = NODE_HEADER_HEIGHT + columns.len() as f64 * NODE_ROW_HEIGHT + NODE_PADDING * 2.0;
 
             table_nodes.push(TableNode {
                 id: table.name.clone(),
                 name: table.name.clone(),
                 x,
                 y,
-                width: 200.0,
+                width: NODE_WIDTH,
                 height,
                 columns,
             });

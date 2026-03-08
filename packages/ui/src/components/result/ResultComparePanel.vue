@@ -10,7 +10,8 @@ import {
   CheckIcon,
   PhotoIcon,
   LightBulbIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  PencilIcon
 } from '@heroicons/vue/24/outline'
 
 const { t } = useI18n()

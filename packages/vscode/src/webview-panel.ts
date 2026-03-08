@@ -57,21 +57,12 @@ export class SQLitePanel {
         extensionUri: vscode.Uri,
         databaseManager: DatabaseManager
     ): SQLitePanel {
-        // 配置 WebviewPanel
-        webviewPanel.webview.options = {
-            enableScripts: true,
-            localResourceRoots: [
-                vscode.Uri.joinPath(extensionUri, 'dist', 'webview'),
-                vscode.Uri.joinPath(extensionUri, 'media'),
-            ],
-        }
+        console.log('[SQLitePanel] Binding to existing WebviewPanel')
         
-        // 设置标题
-        webviewPanel.title = 'SQLite Client'
-        
-        // 创建 SQLitePanel 实例
-        const panel = new SQLitePanel(webviewPanel, extensionUri, databaseManager)
+        // 创建 SQLitePanel 实例（不设置 HTML，由调用者设置）
+        const panel = new SQLitePanel(webviewPanel, extensionUri, databaseManager, false)
         SQLitePanel.currentPanel = panel
+        
         return panel
     }
 
@@ -81,14 +72,17 @@ export class SQLitePanel {
     private constructor(
         panel: vscode.WebviewPanel,
         extensionUri: vscode.Uri,
-        databaseManager: DatabaseManager
+        databaseManager: DatabaseManager,
+        shouldUpdate: boolean = true
     ) {
         this.panel = panel
         this.extensionUri = extensionUri
         this.databaseManager = databaseManager
 
         this.registerCommandHandlers()
-        this.update()
+        if (shouldUpdate) {
+            this.update()
+        }
 
         this.panel.onDidDispose(() => this.dispose(), null, this.disposables)
 
@@ -357,27 +351,57 @@ export class SQLitePanel {
     }
 
     private getHtmlForWebview(webview: vscode.Webview): string {
-        const scriptUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.js')
-        )
-        const styleUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.css')
-        )
-
-        const nonce = this.getNonce()
+        // 使用构建后的静态 HTML 文件
+        const htmlPath = vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'index.html')
         
-        // CSP 配置 - 放宽以支持 Monaco Editor 和其他动态加载
-        const csp = [
-            "default-src 'none'",
-            `script-src 'nonce-${nonce}' 'unsafe-eval' ${webview.cspSource}`,
-            `style-src 'nonce-${nonce}' 'unsafe-inline' ${webview.cspSource}`,
-            `img-src ${webview.cspSource} data: blob:`,
-            `font-src ${webview.cspSource}`,
-            `connect-src ${webview.cspSource}`,
-            "frame-src 'none'",
-        ].join('; ')
+        try {
+            const htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf-8')
+            
+            // 替换资源路径为 VSCode WebView 可访问的路径
+            const scriptUri = webview.asWebviewUri(
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.js')
+            )
+            const styleUri = webview.asWebviewUri(
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.css')
+            )
+            
+            // 添加 VSCode API 注入
+            const vscodeScript = `
+                <script>
+                    window.vscode = acquireVsCodeApi();
+                </script>
+            `
+            
+            // 替换资源路径并添加 VSCode API
+            return htmlContent
+                .replace('./assets/index.js', scriptUri.toString())
+                .replace('./assets/index.css', styleUri.toString())
+                .replace('</head>', `${vscodeScript}</head>`)
+        } catch (error) {
+            console.error('Failed to read HTML file, using fallback:', error)
+            
+            // 回退到动态生成的 HTML
+            const scriptUri = webview.asWebviewUri(
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.js')
+            )
+            const styleUri = webview.asWebviewUri(
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.css')
+            )
 
-        return `<!DOCTYPE html>
+            const nonce = this.getNonce()
+            
+            // CSP 配置 - 放宽以支持 Monaco Editor 和其他动态加载
+            const csp = [
+                "default-src 'none'",
+                `script-src 'nonce-${nonce}' 'unsafe-eval' ${webview.cspSource}`,
+                `style-src 'nonce-${nonce}' 'unsafe-inline' ${webview.cspSource}`,
+                `img-src ${webview.cspSource} data: blob:`,
+                `font-src ${webview.cspSource}`,
+                `connect-src ${webview.cspSource}`,
+                "frame-src 'none'",
+            ].join('; ')
+
+            return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -394,6 +418,7 @@ export class SQLitePanel {
     <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
 </body>
 </html>`
+        }
     }
 
     private getNonce(): string {

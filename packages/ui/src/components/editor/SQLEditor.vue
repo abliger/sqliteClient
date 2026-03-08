@@ -64,6 +64,15 @@ const showImportDialog = ref(false)
 const showSnippetPanel = ref(false)
 const snippetPanelRef = ref<InstanceType<typeof SnippetPanel> | null>(null)
 
+// 左侧面板（数据库列表）显示状态
+const props = defineProps<{
+    isSidebarVisible?: boolean
+}>()
+
+const emit = defineEmits<{
+    'toggle-sidebar': []
+}>()
+
 // 当前选中的 SQL（用于添加到片段）
 const selectedSqlForSnippet = ref('')
 
@@ -431,11 +440,13 @@ const handleSnippetInsert = (sql: string) => {
         <EditorToolbar
             :is-executing="queryStore.activeTab?.isExecuting || false"
             :can-execute="!!connectionStore.activeConnectionId"
+            :is-sidebar-visible="props.isSidebarVisible"
             @execute="handleExecuteQuery"
             @execute-selected="handleExecuteSelected"
             @format="handleFormat"
             @import-sql="handleImportSql"
             @toggle-templates="handleToggleTemplates"
+            @toggle-sidebar="emit('toggle-sidebar')"
         />
 
         <!-- SQL 导入对话框 -->
@@ -452,15 +463,15 @@ const handleSnippetInsert = (sql: string) => {
           <!-- 代码片段面板 -->
           <Transition
             enter-active-class="transition-all duration-200 ease-out"
-            enter-from-class="opacity-0 translate-x-4 w-0"
-            enter-to-class="opacity-100 translate-x-0 w-80"
+            enter-from-class="opacity-0 translate-x-4"
+            enter-to-class="opacity-100 translate-x-0"
             leave-active-class="transition-all duration-200 ease-in"
-            leave-from-class="opacity-100 translate-x-0 w-80"
-            leave-to-class="opacity-0 translate-x-4 w-0"
+            leave-from-class="opacity-100 translate-x-0"
+            leave-to-class="opacity-0 translate-x-4"
           >
             <div
               v-if="showSnippetPanel"
-              class="w-80 border-l border-surface-200 dark:border-surface-700 overflow-hidden flex-shrink-0"
+              class="w-80 border-l border-surface-200 dark:border-surface-700 flex-shrink-0"
             >
               <SnippetPanel
                 ref="snippetPanelRef"

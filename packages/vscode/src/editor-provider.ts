@@ -1,4 +1,5 @@
 import * as vscode from 'vscode'
+import * as fs from 'fs'
 import { DatabaseManager } from './database'
 import { SQLitePanel } from './webview-panel'
 
@@ -66,7 +67,24 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
         console.log('[SQLiteEditorProvider] Resolving custom editor for:', dbPath)
 
         try {
-            // 使用 CustomEditor 提供的 webviewPanel 创建 SQLitePanel
+            // 配置 webview 选项（必须在设置 HTML 之前）
+            webviewPanel.webview.options = {
+                enableScripts: true,
+                localResourceRoots: [
+                    vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview'),
+                    vscode.Uri.joinPath(this.extensionUri, 'media'),
+                ],
+            }
+            
+            // 设置标题
+            webviewPanel.title = 'SQLite Client'
+            
+            // 生成 HTML 并设置
+            const html = this.getHtmlForWebview(webviewPanel.webview)
+            console.log('[SQLiteEditorProvider] Setting HTML, length:', html.length)
+            webviewPanel.webview.html = html
+            
+            // 创建面板控制器
             const panel = SQLitePanel.bindToWebviewPanel(
                 webviewPanel,
                 this.extensionUri,
@@ -75,11 +93,92 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
             
             // 打开数据库文件
             panel.openDatabase(dbPath)
+            console.log('[SQLiteEditorProvider] Database open request sent')
         } catch (error) {
             console.error('[SQLiteEditorProvider] Failed to open database:', error)
             vscode.window.showErrorMessage(`无法打开数据库: ${error}`)
             throw error
         }
+    }
+
+    private getHtmlForWebview(webview: vscode.Webview): string {
+        // 使用构建后的静态 HTML 文件
+        const htmlPath = vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'index.html')
+        
+        try {
+            const htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf-8')
+            
+            // 替换资源路径为 VSCode WebView 可访问的路径
+            const scriptUri = webview.asWebviewUri(
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.js')
+            )
+            const styleUri = webview.asWebviewUri(
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.css')
+            )
+            
+            // 添加 VSCode API 注入
+            const vscodeScript = `
+                <script>
+                    window.vscode = acquireVsCodeApi();
+                </script>
+            `
+            
+            // 替换资源路径并添加 VSCode API
+            return htmlContent
+                .replace('./assets/index.js', scriptUri.toString())
+                .replace('./assets/index.css', styleUri.toString())
+                .replace('</head>', `${vscodeScript}</head>`)
+        } catch (error) {
+            console.error('Failed to read HTML file, using fallback:', error)
+            
+            // 回退到动态生成的 HTML
+            const scriptUri = webview.asWebviewUri(
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.js')
+            )
+            const styleUri = webview.asWebviewUri(
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.css')
+            )
+
+            const nonce = this.getNonce()
+            
+            // CSP 配置
+            const csp = [
+                "default-src 'none'",
+                `script-src 'nonce-${nonce}' 'unsafe-eval' ${webview.cspSource}`,
+                `style-src 'nonce-${nonce}' 'unsafe-inline' ${webview.cspSource}`,
+                `img-src ${webview.cspSource} data: blob:`,
+                `font-src ${webview.cspSource}`,
+                `connect-src ${webview.cspSource}`,
+                "frame-src 'none'",
+            ].join('; ')
+
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="${csp}">
+    <title>SQLite Client</title>
+    <script nonce="${nonce}">
+        window.vscode = acquireVsCodeApi();
+    </script>
+    <link rel="stylesheet" href="${styleUri}">
+</head>
+<body>
+    <div id="app"></div>
+    <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
+</body>
+</html>`
+        }
+    }
+
+    private getNonce(): string {
+        let text = ''
+        const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+        for (let i = 0; i < 32; i++) {
+            text += possible.charAt(Math.floor(Math.random() * possible.length))
+        }
+        return text
     }
 
     /**

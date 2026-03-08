@@ -11,7 +11,7 @@ import { crudService } from '@services/crud'
 import * as crudLogService from '@services/crudLog'
 import { useCrudLogStore } from '@stores/crudLog'
 import { extractPrimaryTableName, isEditableQuery } from '@utils/sqlParser'
-import { isTauri } from '@utils/tauri'
+import { isTauri, isDialogSupported } from '@utils/tauri'
 import ResultGrid from './ResultGrid.vue'
 import ResultStatus from './ResultStatus.vue'
 import CrudLogPanel from './CrudLogPanel.vue'
@@ -29,12 +29,18 @@ const schemaStore = useSchemaStore()
 const toastStore = useToastStore()
 const crudLogStore = useCrudLogStore()
 
-// 动态导入 Tauri dialog
+// 延迟加载 dialog
 let saveDialog: typeof import('@tauri-apps/plugin-dialog').save | null = null
-if (isTauri()) {
-    import('@tauri-apps/plugin-dialog').then(m => {
-        saveDialog = m.save
-    })
+let dialogLoaded = false
+function loadDialogIfNeeded() {
+    if (dialogLoaded) return
+    dialogLoaded = true
+    
+    if (isTauri() || isDialogSupported()) {
+        import('@tauri-apps/plugin-dialog').then(m => {
+            saveDialog = m.save
+        })
+    }
 }
 const activeTab = ref<'results' | 'messages' | 'logs' | 'history' | 'compare' | 'er'>('results')
 const isExporting = ref(false)
@@ -321,8 +327,9 @@ const handleDeleteRow = async () => {
 }
 
 const handleExportCSV = async () => {
-    if (!isTauri() || !saveDialog) {
-        toastStore.error('Not available', 'Export is only available in the desktop app')
+    loadDialogIfNeeded()
+    if (!isDialogSupported() || !saveDialog) {
+        toastStore.error('Not available', 'Export is only available in the desktop app or VSCode')
         return
     }
     
@@ -352,8 +359,9 @@ const handleExportCSV = async () => {
 }
 
 const handleExportJSON = async () => {
-    if (!isTauri() || !saveDialog) {
-        toastStore.error('Not available', 'Export is only available in the desktop app')
+    loadDialogIfNeeded()
+    if (!isDialogSupported() || !saveDialog) {
+        toastStore.error('Not available', 'Export is only available in the desktop app or VSCode')
         return
     }
     
@@ -494,15 +502,15 @@ const handleQuickSnapshot = async () => {
 
             <!-- 导出按钮 -->
             <div v-if="currentResult?.type === 'rows'" class="flex items-center space-x-2">
-                <!-- 保存快照按钮 -->
+                <!-- 快照按钮 - 未选快照时显示"创建快照"，选了快照时显示"更新快照" -->
                 <button 
                     class="btn-ghost text-xs text-primary-600 dark:text-primary-400" 
                     :disabled="isSavingSnapshot"
-                    :title="selectedSnapshotCount > 0 ? '更新选中的快照' : '保存当前结果为快照，用于后续对比'"
+                    :title="selectedSnapshotCount > 0 ? '将当前结果更新到选中的快照' : '保存当前结果为快照'"
                     @click="handleQuickSnapshot"
                 >
                     <CameraIcon class="w-3.5 h-3.5 mr-1" />
-                    {{ isSavingSnapshot ? '保存中...' : (selectedSnapshotCount > 0 ? '更新快照' : '保存快照') }}
+                    {{ isSavingSnapshot ? '保存中...' : (selectedSnapshotCount > 0 ? '更新快照' : '创建快照') }}
                 </button>
                 <div class="w-px h-4 bg-surface-300 dark:bg-surface-600 mx-1" />
                 <button class="btn-ghost text-xs" :disabled="isExporting" @click="handleExportCSV">

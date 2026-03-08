@@ -5,6 +5,9 @@ declare global {
         __TAURI_INTERNALS__?: {
             invoke: typeof InvokeFn
         }
+        vscode?: {
+            postMessage: (message: any) => void
+        }
     }
 }
 
@@ -14,6 +17,28 @@ declare global {
 export function isTauri(): boolean {
     return typeof window !== 'undefined' && 
            window.__TAURI_INTERNALS__ !== undefined
+}
+
+/**
+ * 检测是否在 VSCode WebView 环境中运行
+ * 注意：这个检测应该在 DOM 加载完成后使用
+ */
+export function isVSCode(): boolean {
+    return typeof window !== 'undefined' && 
+           window.vscode !== undefined
+}
+
+/**
+ * 检测是否支持文件对话框（Tauri 桌面应用或 VSCode 扩展）
+ * 这是一个运行时检查，可以在任何时候调用
+ */
+export function isDialogSupported(): boolean {
+    if (typeof window === 'undefined') return false
+    // 检查 Tauri 环境
+    if (window.__TAURI_INTERNALS__ !== undefined) return true
+    // 检查 VSCode WebView 环境
+    if (window.vscode !== undefined) return true
+    return false
 }
 
 /**

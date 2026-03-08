@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useImportStore } from '@stores/import'
 import { useConnectionStore } from '@stores/connection'
 import { useToastStore } from '@stores/toast'
-import { isTauri } from '@utils/tauri'
+import { isTauri, isDialogSupported } from '@utils/tauri'
 import { importService, SQLITE_DATA_TYPES } from '@services/import'
 import { 
   DocumentArrowUpIcon,
@@ -22,12 +22,18 @@ const importStore = useImportStore()
 const connectionStore = useConnectionStore()
 const toastStore = useToastStore()
 
-// 动态导入 Tauri dialog
+// 延迟加载 dialog
 let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
-if (isTauri()) {
-    import('@tauri-apps/plugin-dialog').then(m => {
-        openDialog = m.open
-    })
+let dialogLoaded = false
+function loadDialogIfNeeded() {
+    if (dialogLoaded) return
+    dialogLoaded = true
+    
+    if (isTauri() || isDialogSupported()) {
+        import('@tauri-apps/plugin-dialog').then(m => {
+            openDialog = m.open
+        })
+    }
 }
 
 const isTableNameValid = ref(true)
@@ -41,8 +47,9 @@ const supportedFormats = [
 
 // 选择文件
 const handleSelectFile = async () => {
-  if (!isTauri() || !openDialog) {
-    toastStore.error('Not available', 'File dialog is only available in the desktop app')
+  loadDialogIfNeeded()
+  if (!isDialogSupported() || !openDialog) {
+    toastStore.error('Not available', 'File dialog is only available in the desktop app or VSCode')
     return
   }
   

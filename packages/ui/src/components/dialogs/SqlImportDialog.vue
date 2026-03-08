@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { isTauri } from '@utils/tauri'
+import { isTauri, isDialogSupported } from '@utils/tauri'
 import { queryService } from '@services/query'
 import { useToastStore } from '@stores/toast'
 import type { SqlFileExecutionResult, SqlFileExecutionProgress } from '@types'
@@ -11,14 +11,25 @@ let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
 let listenEvent: typeof import('@tauri-apps/api/event').listen | null = null
 type UnlistenFn = () => void
 
-if (isTauri()) {
-    Promise.all([
-        import('@tauri-apps/plugin-dialog'),
-        import('@tauri-apps/api/event')
-    ]).then(([dialog, event]) => {
-        openDialog = dialog.open
-        listenEvent = event.listen
-    })
+// 延迟加载 dialog
+let dialogLoaded = false
+function loadDialogIfNeeded() {
+    if (dialogLoaded) return
+    dialogLoaded = true
+    
+    if (isTauri()) {
+        Promise.all([
+            import('@tauri-apps/plugin-dialog'),
+            import('@tauri-apps/api/event')
+        ]).then(([dialog, event]) => {
+            openDialog = dialog.open
+            listenEvent = event.listen
+        })
+    } else if (isDialogSupported()) {
+        import('@tauri-apps/plugin-dialog').then(m => {
+            openDialog = m.open
+        })
+    }
 }
 
 const { t } = useI18n()
@@ -75,8 +86,9 @@ onUnmounted(() => {
 })
 
 async function selectFile() {
-  if (!isTauri() || !openDialog) {
-    toastStore.error('Not available', 'File dialog is only available in the desktop app')
+  loadDialogIfNeeded()
+  if (!isDialogSupported() || !openDialog) {
+    toastStore.error('Not available', 'File dialog is only available in the desktop app or VSCode')
     return
   }
   
