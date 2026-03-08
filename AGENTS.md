@@ -54,6 +54,80 @@ sqlite-client/
 5. 错误处理使用 Toast 通知
 6. SQL 标识符使用 `quoteTableName()` / `quoteColumnName()` 防止注入
 
+## Git 提交规范
+
+### 每次功能完成必须提交
+
+**如果项目使用 Git，每完成一个功能或修复后，必须立即进行 Git 提交。**
+
+提交流程：
+
+```bash
+# 1. 检查变更
+git status
+git diff
+
+# 2. 添加相关文件（使用精确路径，避免 git add .）
+git add <具体文件路径>
+
+# 3. 提交（遵循 commit message 规范）
+git commit -m "<type>: <description>"
+
+# 4. 如有必要，推送到远程
+git push
+```
+
+### Commit Message 格式
+
+```
+<type>: <简短描述>
+
+[可选的详细描述]
+
+[可选的关闭 issue 引用]
+```
+
+**type 类型：**
+
+| 类型 | 用途 | 示例 |
+|------|------|------|
+| `feat` | 新功能 | `feat: 添加 AI SQL 生成功能` |
+| `fix` | Bug 修复 | `fix: 修复 ER 图缩放后表格不显示问题` |
+| `refactor` | 代码重构 | `refactor: 优化查询执行逻辑` |
+| `test` | 测试相关 | `test: 添加 ERDiagram 组件单元测试` |
+| `docs` | 文档更新 | `docs: 更新 API 使用说明` |
+| `style` | 代码格式 | `style: 修复 ESLint 警告` |
+| `chore` | 构建/工具 | `chore: 更新依赖版本` |
+
+**示例：**
+
+```bash
+# 功能开发
+git commit -m "feat: 添加查询结果导出为 Excel 功能"
+
+# Bug 修复
+git commit -m "fix: 修复右键菜单语言不跟随系统设置的问题
+
+- 在 en.ts 和 zh-CN.ts 中添加 editor.addToSnippet 翻译键
+- SQLEditor.vue 中使用 useI18n 动态获取菜单 label
+- 监听 locale 变化自动更新右键菜单"
+
+# 测试
+git commit -m "test: 添加 tauri.ts 工具函数单元测试
+
+- 测试 isTauri() 环境检测
+- 测试 safeInvoke() 安全调用
+- 测试 createTauriOnlyFn() 包装器"
+```
+
+### 提交注意事项
+
+1. **原子性提交**：一个提交只包含一个功能或修复
+2. **避免大提交**：不要将多个不相关的变更混在一起
+3. **及时提交**：完成一个可工作的单元后立即提交，不要积压
+4. **测试通过后再提交**：确保提交前 `npm run test` 通过
+5. **不要提交**：node_modules、构建产物、日志文件
+
 ## VSCode 扩展开发注意事项
 
 ### 安全规范
