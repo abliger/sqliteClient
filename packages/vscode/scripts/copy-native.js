@@ -1,69 +1,58 @@
 /**
- * 复制 better-sqlite3 原生模块到输出目录
- * VS Code 扩展需要包含原生二进制文件
+ * Copy native modules and dependencies to dist folder for VSCode extension
  */
-const fs = require('fs');
-const path = require('path');
+const fs = require('fs')
+const path = require('path')
 
-const sourceDir = path.join(__dirname, '../node_modules/better-sqlite3');
-const destDir = path.join(__dirname, '../dist');
+const srcDir = path.join(__dirname, '..', 'node_modules')
+const destDir = path.join(__dirname, '..', 'dist', 'node_modules')
 
-// 确保目标目录存在
+// Ensure destination exists
 if (!fs.existsSync(destDir)) {
-    fs.mkdirSync(destDir, { recursive: true });
+    fs.mkdirSync(destDir, { recursive: true })
 }
 
-// 复制 better-sqlite3 的预编译二进制文件
-function copyPrebuilds() {
-    const prebuildsDir = path.join(sourceDir, 'build/Release');
-    const destPrebuildsDir = path.join(destDir, 'build/Release');
-    
-    if (!fs.existsSync(prebuildsDir)) {
-        console.error('❌ better-sqlite3 build files not found. Run `npm rebuild better-sqlite3` first.');
-        process.exit(1);
-    }
-    
-    if (!fs.existsSync(destPrebuildsDir)) {
-        fs.mkdirSync(destPrebuildsDir, { recursive: true });
-    }
-    
-    // 复制 better_sqlite3.node 文件
-    const sourceFile = path.join(prebuildsDir, 'better_sqlite3.node');
-    const destFile = path.join(destPrebuildsDir, 'better_sqlite3.node');
-    
-    if (fs.existsSync(sourceFile)) {
-        fs.copyFileSync(sourceFile, destFile);
-        console.log('✅ Copied better_sqlite3.node');
-    } else {
-        console.error('❌ better_sqlite3.node not found');
-        process.exit(1);
-    }
-    
-    // 复制 test_extension.node（如果存在）
-    const testExtSource = path.join(prebuildsDir, 'test_extension.node');
-    if (fs.existsSync(testExtSource)) {
-        fs.copyFileSync(testExtSource, path.join(destPrebuildsDir, 'test_extension.node'));
-        console.log('✅ Copied test_extension.node');
-    }
-}
+// Modules to copy
+const modulesToCopy = [
+    'better-sqlite3',
+    'bindings',
+    'file-uri-to-path',
+]
 
-// 复制 package.json（用于确定模块版本）
-function copyPackageJson() {
-    const pkgSource = path.join(sourceDir, 'package.json');
-    const pkgDest = path.join(destDir, 'better-sqlite3-package.json');
-    
-    if (fs.existsSync(pkgSource)) {
-        fs.copyFileSync(pkgSource, pkgDest);
-        console.log('✅ Copied better-sqlite3 package.json');
+function copyDir(src, dest) {
+    if (!fs.existsSync(src)) {
+        console.warn(`Source does not exist: ${src}`)
+        return
+    }
+
+    if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true })
+    }
+
+    const entries = fs.readdirSync(src, { withFileTypes: true })
+
+    for (const entry of entries) {
+        const srcPath = path.join(src, entry.name)
+        const destPath = path.join(dest, entry.name)
+
+        // Skip hidden files and directories
+        if (entry.name.startsWith('.')) continue
+
+        if (entry.isDirectory()) {
+            copyDir(srcPath, destPath)
+        } else {
+            fs.copyFileSync(srcPath, destPath)
+        }
     }
 }
 
-try {
-    console.log('📦 Copying better-sqlite3 native modules...');
-    copyPrebuilds();
-    copyPackageJson();
-    console.log('✅ Native modules copied successfully!');
-} catch (err) {
-    console.error('❌ Failed to copy native modules:', err);
-    process.exit(1);
+console.log('Copying native modules to dist...')
+
+for (const module of modulesToCopy) {
+    const src = path.join(srcDir, module)
+    const dest = path.join(destDir, module)
+    console.log(`Copying ${module}...`)
+    copyDir(src, dest)
 }
+
+console.log('Done copying native modules.')

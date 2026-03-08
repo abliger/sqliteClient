@@ -12,24 +12,37 @@ let listenEvent: typeof import('@tauri-apps/api/event').listen | null = null
 type UnlistenFn = () => void
 
 // 延迟加载 dialog
-let dialogLoaded = false
-function loadDialogIfNeeded() {
-    if (dialogLoaded) return
-    dialogLoaded = true
+let dialogLoadingPromise: Promise<void> | null = null
+async function loadDialogIfNeeded(): Promise<void> {
+    // 如果已经加载完成，直接返回
+    if (openDialog) return
     
+    // 如果正在加载中，等待加载完成
+    if (dialogLoadingPromise) {
+        return dialogLoadingPromise
+    }
+    
+    // 开始加载
     if (isTauri()) {
-        Promise.all([
+        dialogLoadingPromise = Promise.all([
             import('@tauri-apps/plugin-dialog'),
             import('@tauri-apps/api/event')
         ]).then(([dialog, event]) => {
             openDialog = dialog.open
             listenEvent = event.listen
+        }).catch(err => {
+            console.error('Failed to load dialog:', err)
+            dialogLoadingPromise = null
         })
     } else if (isDialogSupported()) {
-        import('@tauri-apps/plugin-dialog').then(m => {
+        dialogLoadingPromise = import('@tauri-apps/plugin-dialog').then(m => {
             openDialog = m.open
+        }).catch(err => {
+            console.error('Failed to load dialog:', err)
+            dialogLoadingPromise = null
         })
     }
+    return dialogLoadingPromise
 }
 
 const { t } = useI18n()
@@ -86,7 +99,9 @@ onUnmounted(() => {
 })
 
 async function selectFile() {
-  loadDialogIfNeeded()
+  // 等待 dialog 加载完成
+  await loadDialogIfNeeded()
+  
   if (!isDialogSupported() || !openDialog) {
     toastStore.error('Not available', 'File dialog is only available in the desktop app or VSCode')
     return

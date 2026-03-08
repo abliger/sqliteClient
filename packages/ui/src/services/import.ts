@@ -1,4 +1,5 @@
-import { safeInvoke, isTauri } from '@utils/tauri'
+import { safeInvoke, isTauri, isVSCode } from '@utils/tauri'
+import { postVSCodeMessage } from './vscode-bridge'
 
 export interface ImportFileInfo {
     extension: string
@@ -50,26 +51,34 @@ export class TauriNotAvailableError extends Error {
 
 export const importService = {
     async getSupportedFormats(): Promise<ImportFileInfo[]> {
-        if (!isTauri()) {
-            return [
-                { extension: 'csv', name: 'CSV', description: 'Comma Separated Values' },
-                { extension: 'xlsx', name: 'Excel', description: 'Microsoft Excel 2007+' },
-                { extension: 'xls', name: 'Excel 97-2003', description: 'Microsoft Excel 97-2003' },
-            ]
+        if (isVSCode()) {
+            return postVSCodeMessage<ImportFileInfo[]>('get_supported_import_formats')
+                .catch(() => [
+                    { extension: 'csv', name: 'CSV', description: 'Comma Separated Values' },
+                    { extension: 'xlsx', name: 'Excel', description: 'Microsoft Excel 2007+' },
+                    { extension: 'xls', name: 'Excel 97-2003', description: 'Microsoft Excel 97-2003' },
+                ])
         }
-        return safeInvoke('get_supported_import_formats') as Promise<ImportFileInfo[]>
+        if (isTauri()) {
+            return safeInvoke('get_supported_import_formats') as Promise<ImportFileInfo[]>
+        }
+        return [
+            { extension: 'csv', name: 'CSV', description: 'Comma Separated Values' },
+            { extension: 'xlsx', name: 'Excel', description: 'Microsoft Excel 2007+' },
+            { extension: 'xls', name: 'Excel 97-2003', description: 'Microsoft Excel 97-2003' },
+        ]
     },
 
     async parseImportFile(filePath: string, fileType: string): Promise<ImportPreview> {
-        if (!isTauri()) throw new TauriNotAvailableError('parseImportFile')
-        return safeInvoke('parse_import_file', { filePath, fileType }) as Promise<ImportPreview>
+        if (isVSCode()) return postVSCodeMessage<ImportPreview>('parse_import_file', { filePath, fileType })
+        if (isTauri()) return safeInvoke('parse_import_file', { filePath, fileType }) as Promise<ImportPreview>
+        throw new TauriNotAvailableError('parseImportFile')
     },
 
     async detectColumnTypes(
         previewData: Record<string, string>[],
     ): Promise<Record<string, string>> {
-        if (!isTauri()) {
-            // 简单的类型检测逻辑
+        if (isVSCode() || !isTauri()) {
             const types: Record<string, string> = {}
             if (previewData.length > 0) {
                 const firstRow = previewData[0]
@@ -94,17 +103,18 @@ export const importService = {
         config: ImportConfig,
         previewData: Record<string, string>[],
     ): Promise<ImportResult> {
-        if (!isTauri()) throw new TauriNotAvailableError('executeImport')
-        return safeInvoke('execute_import', { connectionId, config, previewData }) as Promise<ImportResult>
+        if (isVSCode()) return postVSCodeMessage<ImportResult>('execute_import', { connectionId, config, previewData })
+        if (isTauri()) return safeInvoke('execute_import', { connectionId, config, previewData }) as Promise<ImportResult>
+        throw new TauriNotAvailableError('executeImport')
     },
 
     async validateTableName(connectionId: string, tableName: string): Promise<boolean> {
-        if (!isTauri()) throw new TauriNotAvailableError('validateTableName')
-        return safeInvoke('validate_table_name', { connectionId, tableName }) as Promise<boolean>
+        if (isVSCode()) return postVSCodeMessage<boolean>('validate_table_name', { connectionId, tableName })
+        if (isTauri()) return safeInvoke('validate_table_name', { connectionId, tableName }) as Promise<boolean>
+        throw new TauriNotAvailableError('validateTableName')
     },
 }
 
-// SQLite 数据类型列表
 export const SQLITE_DATA_TYPES = [
     { value: 'TEXT', label: 'TEXT', description: '文本字符串' },
     { value: 'INTEGER', label: 'INTEGER', description: '整数值' },
@@ -116,7 +126,6 @@ export const SQLITE_DATA_TYPES = [
     { value: 'BLOB', label: 'BLOB', description: '二进制数据' },
 ]
 
-// 默认导入配置
 export function createDefaultImportConfig(): ImportConfig {
     return {
         table_name: '',
@@ -130,7 +139,6 @@ export function createDefaultImportConfig(): ImportConfig {
     }
 }
 
-// 根据预览数据生成列映射
 export function generateColumnMappings(
     preview: ImportPreview,
     _tableName: string,
@@ -145,21 +153,17 @@ export function generateColumnMappings(
     }))
 }
 
-// 清理列名（移除特殊字符）
 function sanitizeColumnName(name: string): string {
-    // 移除特殊字符，替换空格为下划线
     let sanitized = name
         .trim()
         .replace(/[^\w\s]/g, '')
         .replace(/\s+/g, '_')
         .replace(/_+/g, '_')
 
-    // 确保不以数字开头
     if (/^\d/.test(sanitized)) {
         sanitized = '_' + sanitized
     }
 
-    // 如果为空，使用默认名
     if (!sanitized) {
         sanitized = 'column'
     }

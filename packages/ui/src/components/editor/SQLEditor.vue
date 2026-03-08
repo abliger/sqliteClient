@@ -363,6 +363,16 @@ const handleToggleTemplates = () => {
   showSnippetPanel.value = !showSnippetPanel.value
 }
 
+// 监听面板显示状态，调整编辑器布局
+watch(showSnippetPanel, () => {
+  // 使用 nextTick 确保 DOM 更新完成后再调整布局
+  nextTick(() => {
+    if (editor) {
+      editor.layout()
+    }
+  })
+})
+
 // 将选中的 SQL 添加到代码片段
 const handleAddToSnippet = () => {
   if (!editor) return
@@ -459,8 +469,8 @@ const handleSnippetInsert = (sql: string) => {
             leave-to-class="opacity-0 translate-x-4"
           >
             <div
-              v-if="showSnippetPanel"
-              class="w-80 border-l border-surface-200 dark:border-surface-700 flex-shrink-0"
+              v-show="showSnippetPanel"
+              class="w-80 h-full border-l border-surface-200 dark:border-surface-700 flex-shrink-0 overflow-hidden"
             >
               <SnippetPanel
                 ref="snippetPanelRef"

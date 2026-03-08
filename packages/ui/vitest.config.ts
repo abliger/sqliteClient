@@ -3,7 +3,23 @@ import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
 export default defineConfig({
-    plugins: [vue()],
+    plugins: [
+        vue(),
+        {
+            name: 'worker-mock',
+            enforce: 'pre',
+            resolveId(id) {
+                if (id.endsWith('?worker')) {
+                    return { id: 'virtual:worker-mock', external: false }
+                }
+            },
+            load(id) {
+                if (id === 'virtual:worker-mock') {
+                    return 'export default function() { return class MockWorker { postMessage() {} terminate() {} addEventListener() {} removeEventListener() {} } }'
+                }
+            },
+        },
+    ],
     test: {
         globals: true,
         environment: 'jsdom',
@@ -24,6 +40,13 @@ export default defineConfig({
             '@types': resolve(__dirname, 'src/types'),
             '@composables': resolve(__dirname, 'src/composables'),
             '@i18n': resolve(__dirname, 'src/i18n'),
+            '@utils': resolve(__dirname, 'src/utils'),
+            'monaco-editor': resolve(__dirname, 'src/test/monaco-mock.ts'),
+            'monaco-editor/esm/vs/editor/editor.worker?worker': resolve(__dirname, 'src/test/worker-mock.ts'),
+            'monaco-editor/esm/vs/language/json/json.worker?worker': resolve(__dirname, 'src/test/worker-mock.ts'),
+            'monaco-editor/esm/vs/language/css/css.worker?worker': resolve(__dirname, 'src/test/worker-mock.ts'),
+            'monaco-editor/esm/vs/language/html/html.worker?worker': resolve(__dirname, 'src/test/worker-mock.ts'),
+            'monaco-editor/esm/vs/language/typescript/ts.worker?worker': resolve(__dirname, 'src/test/worker-mock.ts'),
         },
     },
 })

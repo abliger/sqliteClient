@@ -1,4 +1,5 @@
-import { safeInvoke, isTauri } from '@utils/tauri'
+import { safeInvoke, isTauri, isVSCode } from '@utils/tauri'
+import { postVSCodeMessage } from './vscode-bridge'
 import type { CrudOperationLog, CrudLogFilter, CrudOperationType } from '@types'
 
 export interface CrudLogStats {
@@ -10,62 +11,44 @@ export interface CrudLogStats {
     deletes: number
 }
 
-/**
- * 添加 CRUD 操作日志
- */
 export async function addCrudLog(log: CrudOperationLog): Promise<void> {
-    if (!isTauri()) return
-    return safeInvoke('add_crud_log', { log }) as Promise<void>
+    if (isVSCode()) return postVSCodeMessage<void>('add_crud_log', { log })
+    if (isTauri()) return safeInvoke('add_crud_log', { log }) as Promise<void>
 }
 
-/**
- * 查询 CRUD 操作日志
- */
 export async function queryCrudLogs(
     filter: CrudLogFilter,
     limit: number = 100,
 ): Promise<CrudOperationLog[]> {
-    if (!isTauri()) return []
-    return safeInvoke('query_crud_logs', { filter, limit }) as Promise<CrudOperationLog[]>
+    if (isVSCode()) return postVSCodeMessage<CrudOperationLog[]>('query_crud_logs', { filter, limit })
+    if (isTauri()) return safeInvoke('query_crud_logs', { filter, limit }) as Promise<CrudOperationLog[]>
+    return []
 }
 
-/**
- * 获取指定 Tab 的日志数量
- */
 export async function countCrudLogsByTab(tabId: string): Promise<number> {
-    if (!isTauri()) return 0
-    return safeInvoke('count_crud_logs_by_tab', { tabId }) as Promise<number>
+    if (isVSCode()) return postVSCodeMessage<number>('count_crud_logs_by_tab', { tabId })
+    if (isTauri()) return safeInvoke('count_crud_logs_by_tab', { tabId }) as Promise<number>
+    return 0
 }
 
-/**
- * 删除指定 Tab 的日志
- */
 export async function deleteCrudLogsByTab(tabId: string): Promise<number> {
-    if (!isTauri()) return 0
-    return safeInvoke('delete_crud_logs_by_tab', { tabId }) as Promise<number>
+    if (isVSCode()) return postVSCodeMessage<number>('delete_crud_logs_by_tab', { tabId })
+    if (isTauri()) return safeInvoke('delete_crud_logs_by_tab', { tabId }) as Promise<number>
+    return 0
 }
 
-/**
- * 获取所有表名（用于筛选）
- */
 export async function getCrudLogTableNames(): Promise<string[]> {
-    if (!isTauri()) return []
-    return safeInvoke('get_crud_log_table_names') as Promise<string[]>
+    if (isVSCode()) return postVSCodeMessage<string[]>('get_crud_log_table_names')
+    if (isTauri()) return safeInvoke('get_crud_log_table_names') as Promise<string[]>
+    return []
 }
 
-/**
- * 获取 CRUD 日志统计
- */
 export async function getCrudLogStats(connectionId?: string): Promise<CrudLogStats> {
-    if (!isTauri()) {
-        return { total: 0, success: 0, failed: 0, inserts: 0, updates: 0, deletes: 0 }
-    }
-    return safeInvoke('get_crud_log_stats', { connectionId }) as Promise<CrudLogStats>
+    if (isVSCode()) return postVSCodeMessage<CrudLogStats>('get_crud_log_stats', { connectionId })
+    if (isTauri()) return safeInvoke('get_crud_log_stats', { connectionId }) as Promise<CrudLogStats>
+    return { total: 0, success: 0, failed: 0, inserts: 0, updates: 0, deletes: 0 }
 }
 
-/**
- * 创建日志对象（辅助函数）
- */
 export function createCrudLog(
     connectionId: string,
     tabId: string,

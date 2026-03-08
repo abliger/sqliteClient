@@ -8,7 +8,10 @@ import {
     Cog6ToothIcon,
     Square2StackIcon,
     Bars3Icon,
-    Bars3BottomLeftIcon
+    Bars3BottomLeftIcon,
+    WindowIcon,
+    ChevronDownIcon,
+    ChevronUpIcon
 } from '@heroicons/vue/24/outline'
 import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
@@ -20,17 +23,27 @@ import CreateDatabaseDialog from '@components/dialogs/CreateDatabaseDialog.vue'
 
 // 动态导入 Tauri dialog（桌面应用）或 VSCode mock（VSCode 扩展）
 let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
-let dialogLoaded = false
+let dialogLoadingPromise: Promise<void> | null = null
 
 // 延迟加载 dialog，确保环境已初始化
-function loadDialogIfNeeded() {
-    if (dialogLoaded) return
-    dialogLoaded = true
+async function loadDialogIfNeeded(): Promise<void> {
+    // 如果已经加载完成，直接返回
+    if (openDialog) return
     
+    // 如果正在加载中，等待加载完成
+    if (dialogLoadingPromise) {
+        return dialogLoadingPromise
+    }
+    
+    // 开始加载
     if (isTauri() || isDialogSupported()) {
-        import('@tauri-apps/plugin-dialog').then(m => {
+        dialogLoadingPromise = import('@tauri-apps/plugin-dialog').then(m => {
             openDialog = m.open
+        }).catch(err => {
+            console.error('Failed to load dialog:', err)
+            dialogLoadingPromise = null
         })
+        return dialogLoadingPromise
     }
 }
 
@@ -40,13 +53,15 @@ const queryStore = useQueryStore()
 const settingsStore = useSettingsStore()
 const toastStore = useToastStore()
 
-// Props for sidebar toggle
+// Props for sidebar and bottom panel toggle
 const props = defineProps<{
     isSidebarVisible?: boolean
+    isBottomPanelVisible?: boolean
 }>()
 
 const emit = defineEmits<{
     'toggle-sidebar': []
+    'toggle-bottom-panel': []
 }>()
 const isCreating = ref(false)
 const isCreateDialogOpen = ref(false)
@@ -64,7 +79,9 @@ const contextMenu = ref({
 const contextMenuRef = useTemplateRef<HTMLElement>('contextMenuRef')
 
 const handleOpenDatabase = async () => {
-    loadDialogIfNeeded()
+    // 等待 dialog 加载完成
+    await loadDialogIfNeeded()
+    
     if (!isDialogSupported() || !openDialog) {
         toastStore.error('Not available', 'File dialog is only available in the desktop app or VSCode')
         return
@@ -95,7 +112,9 @@ const handleOpenDatabase = async () => {
 }
 
 const handleCreateDatabase = async () => {
-    loadDialogIfNeeded()
+    // 等待 dialog 加载完成
+    await loadDialogIfNeeded()
+    
     if (!isDialogSupported() || !openDialog) {
         toastStore.error('Not available', 'Folder dialog is only available in the desktop app or VSCode')
         return
@@ -346,7 +365,7 @@ const closeOtherConnections = async () => {
 
         <!-- Sidebar Toggle & Settings -->
         <div class="ml-auto flex items-center space-x-2">
-            <!-- Sidebar Toggle Button Group -->
+            <!-- Sidebar Toggle Button -->
             <Tooltip :content="isSidebarVisible ? t('editor.hideSidebar') : t('editor.showSidebar')" position="bottom">
                 <button
                     class="flex items-center p-1.5 rounded-lg bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 text-surface-600 dark:text-surface-400 transition-colors"
@@ -354,6 +373,21 @@ const closeOtherConnections = async () => {
                 >
                     <component
                         :is="isSidebarVisible ? Bars3BottomLeftIcon : Bars3Icon"
+                        class="w-5 h-5"
+                    />
+                </button>
+            </Tooltip>
+
+            <div class="w-px h-5 bg-surface-300 dark:bg-surface-600" />
+
+            <!-- Bottom Panel Toggle Button -->
+            <Tooltip :content="isBottomPanelVisible ? t('editor.hideBottomPanel') : t('editor.showBottomPanel')" position="bottom">
+                <button
+                    class="flex items-center p-1.5 rounded-lg bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 text-surface-600 dark:text-surface-400 transition-colors"
+                    @click="emit('toggle-bottom-panel')"
+                >
+                    <component
+                        :is="isBottomPanelVisible ? ChevronDownIcon : ChevronUpIcon"
                         class="w-5 h-5"
                     />
                 </button>

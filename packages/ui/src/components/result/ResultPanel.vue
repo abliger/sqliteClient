@@ -31,15 +31,25 @@ const crudLogStore = useCrudLogStore()
 
 // 延迟加载 dialog
 let saveDialog: typeof import('@tauri-apps/plugin-dialog').save | null = null
-let dialogLoaded = false
-function loadDialogIfNeeded() {
-    if (dialogLoaded) return
-    dialogLoaded = true
+let dialogLoadingPromise: Promise<void> | null = null
+async function loadDialogIfNeeded(): Promise<void> {
+    // 如果已经加载完成，直接返回
+    if (saveDialog) return
     
+    // 如果正在加载中，等待加载完成
+    if (dialogLoadingPromise) {
+        return dialogLoadingPromise
+    }
+    
+    // 开始加载
     if (isTauri() || isDialogSupported()) {
-        import('@tauri-apps/plugin-dialog').then(m => {
+        dialogLoadingPromise = import('@tauri-apps/plugin-dialog').then(m => {
             saveDialog = m.save
+        }).catch(err => {
+            console.error('Failed to load dialog:', err)
+            dialogLoadingPromise = null
         })
+        return dialogLoadingPromise
     }
 }
 const activeTab = ref<'results' | 'messages' | 'logs' | 'history' | 'compare' | 'er'>('results')
@@ -327,7 +337,9 @@ const handleDeleteRow = async () => {
 }
 
 const handleExportCSV = async () => {
-    loadDialogIfNeeded()
+    // 等待 dialog 加载完成
+    await loadDialogIfNeeded()
+    
     if (!isDialogSupported() || !saveDialog) {
         toastStore.error('Not available', 'Export is only available in the desktop app or VSCode')
         return
@@ -359,7 +371,9 @@ const handleExportCSV = async () => {
 }
 
 const handleExportJSON = async () => {
-    loadDialogIfNeeded()
+    // 等待 dialog 加载完成
+    await loadDialogIfNeeded()
+    
     if (!isDialogSupported() || !saveDialog) {
         toastStore.error('Not available', 'Export is only available in the desktop app or VSCode')
         return

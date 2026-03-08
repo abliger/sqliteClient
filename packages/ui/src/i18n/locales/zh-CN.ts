@@ -138,6 +138,8 @@ export default {
         addToSnippet: '添加到代码片段',
         hideSidebar: '隐藏侧边栏',
         showSidebar: '显示侧边栏',
+        hideBottomPanel: '隐藏编辑器',
+        showBottomPanel: '显示编辑器',
     },
 
     // Results

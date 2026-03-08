@@ -1,4 +1,5 @@
-import { safeInvoke, isTauri } from '@utils/tauri'
+import { safeInvoke, isTauri, isVSCode } from '@utils/tauri'
+import { postVSCodeMessage } from './vscode-bridge'
 import type {
     DatabaseSchema,
     DesignerTable,
@@ -20,113 +21,114 @@ export class TauriNotAvailableError extends Error {
 
 export const schemaService = {
     async listTables(connectionId: string): Promise<TableInfo[]> {
-        if (!isTauri()) return []
-        return safeInvoke('list_tables', { connectionId }) as Promise<TableInfo[]>
+        if (isVSCode()) return postVSCodeMessage<TableInfo[]>('list_tables', { connectionId })
+        if (isTauri()) return safeInvoke('list_tables', { connectionId }) as Promise<TableInfo[]>
+        return []
     },
 
     async getTableSchema(connectionId: string, tableName: string): Promise<TableInfo> {
-        if (!isTauri()) throw new TauriNotAvailableError('getTableSchema')
-        return safeInvoke('get_table_schema', { connectionId, tableName }) as Promise<TableInfo>
+        if (isVSCode()) return postVSCodeMessage<TableInfo>('get_table_schema', { connectionId, tableName })
+        if (isTauri()) return safeInvoke('get_table_schema', { connectionId, tableName }) as Promise<TableInfo>
+        throw new TauriNotAvailableError('getTableSchema')
     },
 
     async getDatabaseSchema(connectionId: string): Promise<DatabaseSchema> {
-        if (!isTauri()) throw new TauriNotAvailableError('getDatabaseSchema')
-        return safeInvoke('get_database_schema', { connectionId }) as Promise<DatabaseSchema>
+        if (isVSCode()) return postVSCodeMessage<DatabaseSchema>('get_database_schema', { connectionId })
+        if (isTauri()) return safeInvoke('get_database_schema', { connectionId }) as Promise<DatabaseSchema>
+        throw new TauriNotAvailableError('getDatabaseSchema')
     },
 
     async getERDiagramData(connectionId: string): Promise<ERDiagram> {
-        if (!isTauri()) throw new TauriNotAvailableError('getERDiagramData')
-        return safeInvoke('get_er_diagram_data', { connectionId }) as Promise<ERDiagram>
+        if (isVSCode()) return postVSCodeMessage<ERDiagram>('get_er_diagram_data', { connectionId })
+        if (isTauri()) return safeInvoke('get_er_diagram_data', { connectionId }) as Promise<ERDiagram>
+        throw new TauriNotAvailableError('getERDiagramData')
     },
 
     async listIndexes(connectionId: string): Promise<IndexInfo[]> {
-        if (!isTauri()) return []
-        return safeInvoke('list_indexes', { connectionId }) as Promise<IndexInfo[]>
+        if (isVSCode()) return postVSCodeMessage<IndexInfo[]>('list_indexes', { connectionId })
+        if (isTauri()) return safeInvoke('list_indexes', { connectionId }) as Promise<IndexInfo[]>
+        return []
     },
 
     async listTriggers(connectionId: string): Promise<TriggerInfo[]> {
-        if (!isTauri()) return []
-        return safeInvoke('list_triggers', { connectionId }) as Promise<TriggerInfo[]>
+        if (isVSCode()) return postVSCodeMessage<TriggerInfo[]>('list_triggers', { connectionId })
+        if (isTauri()) return safeInvoke('list_triggers', { connectionId }) as Promise<TriggerInfo[]>
+        return []
     },
 
     // ============================================
     // DDL 操作
     // ============================================
 
-    /**
-     * 预览创建表的DDL
-     */
     async previewCreateTable(table: DesignerTable): Promise<PreviewDDLResult> {
-        if (!isTauri()) throw new TauriNotAvailableError('previewCreateTable')
-        return safeInvoke('preview_create_table', { table }) as Promise<PreviewDDLResult>
+        if (isVSCode()) return postVSCodeMessage<PreviewDDLResult>('preview_create_table', { table })
+        if (isTauri()) return safeInvoke('preview_create_table', { table }) as Promise<PreviewDDLResult>
+        throw new TauriNotAvailableError('previewCreateTable')
     },
 
-    /**
-     * 预览修改表的DDL
-     */
     async previewAlterTable(
         connectionId: string,
         tableName: string,
         changes: TableChange[],
     ): Promise<PreviewDDLResult> {
-        if (!isTauri()) throw new TauriNotAvailableError('previewAlterTable')
-        return safeInvoke('preview_alter_table', { connectionId, tableName, changes }) as Promise<PreviewDDLResult>
+        if (isVSCode()) return postVSCodeMessage<PreviewDDLResult>('preview_alter_table', { connectionId, tableName, changes })
+        if (isTauri()) return safeInvoke('preview_alter_table', { connectionId, tableName, changes }) as Promise<PreviewDDLResult>
+        throw new TauriNotAvailableError('previewAlterTable')
     },
 
-    /**
-     * 预览删除表的DDL
-     */
     async previewDropTable(tableName: string): Promise<PreviewDDLResult> {
-        if (!isTauri()) throw new TauriNotAvailableError('previewDropTable')
-        return safeInvoke('preview_drop_table', { tableName }) as Promise<PreviewDDLResult>
+        if (isVSCode()) return postVSCodeMessage<PreviewDDLResult>('preview_drop_table', { tableName })
+        if (isTauri()) return safeInvoke('preview_drop_table', { tableName }) as Promise<PreviewDDLResult>
+        throw new TauriNotAvailableError('previewDropTable')
     },
 
-    /**
-     * 创建表
-     */
     async createTable(connectionId: string, table: DesignerTable): Promise<DDLExecutionResult> {
-        if (!isTauri()) throw new TauriNotAvailableError('createTable')
-        return safeInvoke('create_table', { connectionId, table }) as Promise<DDLExecutionResult>
+        if (isVSCode()) return postVSCodeMessage<DDLExecutionResult>('create_table', { connectionId, table })
+        if (isTauri()) return safeInvoke('create_table', { connectionId, table }) as Promise<DDLExecutionResult>
+        throw new TauriNotAvailableError('createTable')
     },
 
-    /**
-     * 修改表
-     */
     async alterTable(
         connectionId: string,
         tableName: string,
         changes: TableChange[],
     ): Promise<DDLExecutionResult> {
-        if (!isTauri()) throw new TauriNotAvailableError('alterTable')
-        return safeInvoke('alter_table', { connectionId, tableName, changes }) as Promise<DDLExecutionResult>
+        if (isVSCode()) return postVSCodeMessage<DDLExecutionResult>('alter_table', { connectionId, tableName, changes })
+        if (isTauri()) return safeInvoke('alter_table', { connectionId, tableName, changes }) as Promise<DDLExecutionResult>
+        throw new TauriNotAvailableError('alterTable')
     },
 
-    /**
-     * 删除表
-     */
     async dropTable(connectionId: string, tableName: string): Promise<DDLExecutionResult> {
-        if (!isTauri()) throw new TauriNotAvailableError('dropTable')
-        return safeInvoke('drop_table', { connectionId, tableName }) as Promise<DDLExecutionResult>
+        if (isVSCode()) return postVSCodeMessage<DDLExecutionResult>('drop_table', { connectionId, tableName })
+        if (isTauri()) return safeInvoke('drop_table', { connectionId, tableName }) as Promise<DDLExecutionResult>
+        throw new TauriNotAvailableError('dropTable')
     },
 
-    /**
-     * 获取SQLite数据类型列表
-     */
     async getDataTypes(): Promise<string[]> {
-        if (!isTauri()) {
-            // 返回默认数据类型列表
-            return ['INTEGER', 'REAL', 'TEXT', 'BLOB', 'NUMERIC', 'BOOLEAN', 'DATETIME', 'DATE', 'TIME', 'VARCHAR', 'CHAR', 'DECIMAL', 'FLOAT', 'DOUBLE', 'INT', 'BIGINT', 'SMALLINT', 'TINYINT']
+        if (isVSCode() || isTauri()) {
+            // VS Code 暂时返回默认值，Tauri 可调用后端
+            if (isTauri()) {
+                try {
+                    return safeInvoke('get_sqlite_data_types') as Promise<string[]>
+                } catch {
+                    // fallback to default
+                }
+            }
         }
-        return safeInvoke('get_sqlite_data_types') as Promise<string[]>
+        return ['INTEGER', 'REAL', 'TEXT', 'BLOB', 'NUMERIC', 'BOOLEAN', 'DATETIME', 'DATE', 'TIME', 'VARCHAR', 'CHAR', 'DECIMAL', 'FLOAT', 'DOUBLE', 'INT', 'BIGINT', 'SMALLINT', 'TINYINT']
     },
 
-    /**
-     * 获取外键动作选项
-     */
     async getForeignKeyActions(): Promise<string[]> {
-        if (!isTauri()) {
+        if (isVSCode()) {
             return ['NO ACTION', 'RESTRICT', 'SET NULL', 'SET DEFAULT', 'CASCADE']
         }
-        return safeInvoke('get_foreign_key_actions') as Promise<string[]>
+        if (isTauri()) {
+            try {
+                return safeInvoke('get_foreign_key_actions') as Promise<string[]>
+            } catch {
+                // fallback to default
+            }
+        }
+        return ['NO ACTION', 'RESTRICT', 'SET NULL', 'SET DEFAULT', 'CASCADE']
     },
 }

@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { queryService } from './query'
+import { queryService, TauriNotAvailableError } from './query'
 
-// Mock the tauri invoke
-vi.mock('@tauri-apps/api/core', () => ({
-    invoke: vi.fn(),
+// Mock the tauri utils
+vi.mock('@utils/tauri', () => ({
+    isTauri: vi.fn(),
+    isVSCode: vi.fn(),
+    safeInvoke: vi.fn(),
+}))
+
+// Mock vscode-bridge
+vi.mock('./vscode-bridge', () => ({
+    postVSCodeMessage: vi.fn(),
 }))
 
 describe('Query Service', () => {
@@ -11,77 +18,192 @@ describe('Query Service', () => {
         vi.clearAllMocks()
     })
 
-    it('should execute query', async () => {
-        const { invoke } = await import('@tauri-apps/api/core')
-        const mockResult = { type: 'rows', columns: ['id'], rows: [] }
-        vi.mocked(invoke).mockResolvedValue(mockResult)
-
-        const result = await queryService.executeQuery({
-            connectionId: 'conn-123',
-            sql: 'SELECT * FROM users',
-            limit: 100,
+    describe('Tauri environment', () => {
+        beforeEach(async () => {
+            const { isTauri, isVSCode } = await import('@utils/tauri')
+            vi.mocked(isTauri).mockReturnValue(true)
+            vi.mocked(isVSCode).mockReturnValue(false)
         })
 
-        expect(invoke).toHaveBeenCalledWith('execute_query', {
-            connectionId: 'conn-123',
-            sql: 'SELECT * FROM users',
-            limit: 100,
+        it('should execute query', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockResult = { type: 'rows', columns: ['id'], rows: [] }
+            vi.mocked(safeInvoke).mockResolvedValue(mockResult)
+
+            const result = await queryService.executeQuery({
+                connectionId: 'conn-123',
+                sql: 'SELECT * FROM users',
+                limit: 100,
+            })
+
+            expect(safeInvoke).toHaveBeenCalledWith('execute_query', {
+                connectionId: 'conn-123',
+                sql: 'SELECT * FROM users',
+                limit: 100,
+            })
+            expect(result).toEqual(mockResult)
         })
-        expect(result).toEqual(mockResult)
+
+        it('should execute query with default limit', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockResult = { type: 'rows', columns: ['id'], rows: [] }
+            vi.mocked(safeInvoke).mockResolvedValue(mockResult)
+
+            await queryService.executeQuery({
+                connectionId: 'conn-123',
+                sql: 'SELECT * FROM users',
+            })
+
+            expect(safeInvoke).toHaveBeenCalledWith('execute_query', {
+                connectionId: 'conn-123',
+                sql: 'SELECT * FROM users',
+                limit: undefined,
+            })
+        })
+
+        it('should execute query stream', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockResult = { stream_id: 'stream-123', columns: ['id'], has_more: true, fetched_rows: 0 }
+            vi.mocked(safeInvoke).mockResolvedValue(mockResult)
+
+            const result = await queryService.executeQueryStream('conn-123', 'SELECT * FROM users', 100)
+
+            expect(safeInvoke).toHaveBeenCalledWith('execute_query_stream', {
+                connectionId: 'conn-123',
+                sql: 'SELECT * FROM users',
+                batchSize: 100,
+            })
+            expect(result).toEqual(mockResult)
+        })
+
+        it('should fetch stream batch', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockRows = [{ values: { id: { type: 'Integer', value: 1 } } }]
+            vi.mocked(safeInvoke).mockResolvedValue(mockRows)
+
+            const result = await queryService.fetchStreamBatch('stream-123', 100)
+
+            expect(safeInvoke).toHaveBeenCalledWith('fetch_stream_batch', {
+                streamId: 'stream-123',
+                batchSize: 100,
+            })
+            expect(result).toEqual(mockRows)
+        })
+
+        it('should cancel query', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            vi.mocked(safeInvoke).mockResolvedValue(undefined)
+
+            await queryService.cancelQuery('query-123')
+
+            expect(safeInvoke).toHaveBeenCalledWith('cancel_query', { queryId: 'query-123' })
+        })
+
+        it('should execute SQL file', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockResult = { success: true, executedStatements: 5, totalStatements: 5, errors: [] }
+            vi.mocked(safeInvoke).mockResolvedValue(mockResult)
+
+            const result = await queryService.executeSqlFile('conn-123', '/path/to/script.sql')
+
+            expect(safeInvoke).toHaveBeenCalledWith('execute_sql_file', {
+                connectionId: 'conn-123',
+                filePath: '/path/to/script.sql',
+            })
+            expect(result).toEqual(mockResult)
+        })
     })
 
-    it('should execute query with default limit', async () => {
-        const { invoke } = await import('@tauri-apps/api/core')
-        const mockResult = { type: 'rows', columns: ['id'], rows: [] }
-        vi.mocked(invoke).mockResolvedValue(mockResult)
-
-        await queryService.executeQuery({
-            connectionId: 'conn-123',
-            sql: 'SELECT * FROM users',
+    describe('VS Code environment', () => {
+        beforeEach(async () => {
+            const { isTauri, isVSCode } = await import('@utils/tauri')
+            vi.mocked(isTauri).mockReturnValue(false)
+            vi.mocked(isVSCode).mockReturnValue(true)
         })
 
-        expect(invoke).toHaveBeenCalledWith('execute_query', {
-            connectionId: 'conn-123',
-            sql: 'SELECT * FROM users',
-            limit: undefined,
+        it('should use VS Code bridge for executeQuery', async () => {
+            const { postVSCodeMessage } = await import('./vscode-bridge')
+            const mockResult = { type: 'rows', columns: ['id'], rows: [] }
+            vi.mocked(postVSCodeMessage).mockResolvedValue(mockResult)
+
+            const result = await queryService.executeQuery({
+                connectionId: 'conn-123',
+                sql: 'SELECT * FROM users',
+                limit: 100,
+            })
+
+            expect(postVSCodeMessage).toHaveBeenCalledWith('execute_query', {
+                connectionId: 'conn-123',
+                sql: 'SELECT * FROM users',
+                limit: 100,
+            })
+            expect(result).toEqual(mockResult)
+        })
+
+        it('should use VS Code bridge for executeQueryStream', async () => {
+            const { postVSCodeMessage } = await import('./vscode-bridge')
+            const mockResult = { stream_id: 'stream-123', columns: ['id'], has_more: true, fetched_rows: 0 }
+            vi.mocked(postVSCodeMessage).mockResolvedValue(mockResult)
+
+            await queryService.executeQueryStream('conn-123', 'SELECT * FROM users', 100)
+
+            expect(postVSCodeMessage).toHaveBeenCalledWith('execute_query_stream', {
+                connectionId: 'conn-123',
+                sql: 'SELECT * FROM users',
+                batchSize: 100,
+            })
+        })
+
+        it('should use VS Code bridge for executeSqlFile', async () => {
+            const { postVSCodeMessage } = await import('./vscode-bridge')
+            const mockResult = { success: true, executedStatements: 3, totalStatements: 3, errors: [] }
+            vi.mocked(postVSCodeMessage).mockResolvedValue(mockResult)
+
+            await queryService.executeSqlFile('conn-123', '/path/to/script.sql')
+
+            expect(postVSCodeMessage).toHaveBeenCalledWith('execute_sql_file', {
+                connectionId: 'conn-123',
+                filePath: '/path/to/script.sql',
+            })
         })
     })
 
-    it('should execute query stream', async () => {
-        const { invoke } = await import('@tauri-apps/api/core')
-        const mockResult = { streamId: 'stream-123', columns: ['id'], hasMore: true }
-        vi.mocked(invoke).mockResolvedValue(mockResult)
-
-        const result = await queryService.executeQueryStream('conn-123', 'SELECT * FROM users', 100)
-
-        expect(invoke).toHaveBeenCalledWith('execute_query_stream', {
-            connectionId: 'conn-123',
-            sql: 'SELECT * FROM users',
-            batchSize: 100,
+    describe('Browser environment (no Tauri/VSCode)', () => {
+        beforeEach(async () => {
+            const { isTauri, isVSCode } = await import('@utils/tauri')
+            vi.mocked(isTauri).mockReturnValue(false)
+            vi.mocked(isVSCode).mockReturnValue(false)
         })
-        expect(result).toEqual(mockResult)
-    })
 
-    it('should fetch stream batch', async () => {
-        const { invoke } = await import('@tauri-apps/api/core')
-        const mockRows = [{ id: 1 }, { id: 2 }]
-        vi.mocked(invoke).mockResolvedValue(mockRows)
-
-        const result = await queryService.fetchStreamBatch('stream-123', 100)
-
-        expect(invoke).toHaveBeenCalledWith('fetch_stream_batch', {
-            streamId: 'stream-123',
-            batchSize: 100,
+        it('should throw TauriNotAvailableError for executeQuery', async () => {
+            await expect(
+                queryService.executeQuery({
+                    connectionId: 'conn-123',
+                    sql: 'SELECT * FROM users',
+                }),
+            ).rejects.toThrow(TauriNotAvailableError)
         })
-        expect(result).toEqual(mockRows)
-    })
 
-    it('should cancel query', async () => {
-        const { invoke } = await import('@tauri-apps/api/core')
-        vi.mocked(invoke).mockResolvedValue(undefined)
+        it('should throw TauriNotAvailableError for executeQueryStream', async () => {
+            await expect(
+                queryService.executeQueryStream('conn-123', 'SELECT * FROM users'),
+            ).rejects.toThrow(TauriNotAvailableError)
+        })
 
-        await queryService.cancelQuery('query-123')
+        it('should throw TauriNotAvailableError for fetchStreamBatch', async () => {
+            await expect(
+                queryService.fetchStreamBatch('stream-123', 100),
+            ).rejects.toThrow(TauriNotAvailableError)
+        })
 
-        expect(invoke).toHaveBeenCalledWith('cancel_query', { queryId: 'query-123' })
+        it('should throw TauriNotAvailableError for cancelQuery', async () => {
+            await expect(queryService.cancelQuery('query-123')).rejects.toThrow(TauriNotAvailableError)
+        })
+
+        it('should throw TauriNotAvailableError for executeSqlFile', async () => {
+            await expect(
+                queryService.executeSqlFile('conn-123', '/path/to/script.sql'),
+            ).rejects.toThrow(TauriNotAvailableError)
+        })
     })
 })

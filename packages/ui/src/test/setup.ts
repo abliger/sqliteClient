@@ -10,6 +10,21 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
     open: vi.fn(),
 }))
 
+// Mock window.matchMedia for monaco theme detection
+Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation(query => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(), // deprecated
+        removeListener: vi.fn(), // deprecated
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+    })),
+})
+
 // Mock vue-i18n useI18n
 vi.mock('vue-i18n', async (importOriginal) => {
     const actual = await importOriginal<typeof import('vue-i18n')>()
@@ -17,6 +32,7 @@ vi.mock('vue-i18n', async (importOriginal) => {
         ...actual,
         useI18n: () => ({
             t: (key: string) => key,
+            locale: { value: 'en' },
         }),
     }
 })

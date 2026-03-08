@@ -99,6 +99,79 @@ describe('date utils', () => {
       // Should include year since different year
       expect(result).toBe('2023-01-05 08:05')
     })
+
+    // 新增边界测试
+    it('should handle exactly 0 seconds ago (刚刚)', () => {
+      const date = new Date('2024-01-15 10:30:00')
+      expect(formatDistanceToNow(date)).toBe('刚刚')
+    })
+
+    it('should handle 9 seconds ago (刚刚)', () => {
+      const date = new Date('2024-01-15 10:29:51')
+      expect(formatDistanceToNow(date)).toBe('刚刚')
+    })
+
+    it('should handle 59 seconds ago', () => {
+      const date = new Date('2024-01-15 10:29:01')
+      expect(formatDistanceToNow(date)).toBe('59秒前')
+    })
+
+    it('should handle 59 minutes ago', () => {
+      const date = new Date('2024-01-15 09:31:00')
+      expect(formatDistanceToNow(date)).toBe('59分钟前')
+    })
+
+    it('should handle 23 hours ago', () => {
+      const date = new Date('2024-01-14 11:30:00')
+      expect(formatDistanceToNow(date)).toBe('23小时前')
+    })
+
+    it('should handle 29 days ago', () => {
+      const date = new Date('2023-12-17 10:30:00')
+      expect(formatDistanceToNow(date)).toBe('29天前')
+    })
+
+    it('should handle future dates (negative diff)', () => {
+      const date = new Date('2024-01-15 10:30:30')
+      const result = formatDistanceToNow(date)
+      // 未来时间会显示为负数秒，但应该仍然返回字符串
+      expect(typeof result).toBe('string')
+    })
+
+    it('should show correct format for same year but over 30 days', () => {
+      vi.setSystemTime(new Date('2024-06-15 10:30:00'))
+      const date = new Date('2024-01-15 10:30:00')
+      const result = formatDistanceToNow(date)
+      // Same year, should not include year
+      expect(result).toMatch(/^\d{2}-\d{2} \d{2}:\d{2}$/)
+      expect(result).toBe('01-15 10:30')
+    })
+
+    it('should handle date at beginning of year', () => {
+      vi.setSystemTime(new Date('2024-12-31 23:59:59'))
+      const date = new Date('2024-01-01 00:00:00')
+      const result = formatDistanceToNow(date)
+      expect(result).toMatch(/^\d{2}-\d{2} \d{2}:\d{2}$/)
+    })
+
+    it('should handle date at end of year', () => {
+      vi.setSystemTime(new Date('2025-01-01 00:00:00'))
+      const date = new Date('2024-12-31 23:59:59')
+      const result = formatDistanceToNow(date)
+      expect(result).toBe('刚刚')
+    })
+
+    it('should handle leap year February 29', () => {
+      vi.setSystemTime(new Date('2024-03-01 10:30:00'))
+      const date = new Date('2024-02-29 10:30:00')
+      expect(formatDistanceToNow(date)).toBe('1天前')
+    })
+
+    it('should handle milliseconds difference', () => {
+      vi.setSystemTime(new Date('2024-01-15 10:30:00.500'))
+      const date = new Date('2024-01-15 10:30:00.100')
+      expect(formatDistanceToNow(date)).toBe('刚刚')
+    })
   })
 
   describe('formatDate', () => {
@@ -130,6 +203,43 @@ describe('date utils', () => {
       const date = new Date('2024-02-29 12:00:00')
       
       expect(formatDate(date)).toBe('2024-02-29 12:00:00')
+    })
+
+    // 新增边界测试
+    it('should handle all single digits', () => {
+      const date = new Date('2024-01-01 01:01:01')
+      expect(formatDate(date)).toBe('2024-01-01 01:01:01')
+    })
+
+    it('should handle all double digits', () => {
+      const date = new Date('2024-12-31 23:59:59')
+      expect(formatDate(date)).toBe('2024-12-31 23:59:59')
+    })
+
+    it('should handle year 2000', () => {
+      const date = new Date('2000-01-01 00:00:00')
+      expect(formatDate(date)).toBe('2000-01-01 00:00:00')
+    })
+
+    it('should handle year 1999', () => {
+      const date = new Date('1999-12-31 23:59:59')
+      expect(formatDate(date)).toBe('1999-12-31 23:59:59')
+    })
+
+    it('should handle current date', () => {
+      const now = new Date()
+      const result = formatDate(now)
+      expect(result).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+    })
+
+    it('should handle noon', () => {
+      const date = new Date('2024-06-15 12:00:00')
+      expect(formatDate(date)).toBe('2024-06-15 12:00:00')
+    })
+
+    it('should handle PM times', () => {
+      const date = new Date('2024-06-15 15:30:45')
+      expect(formatDate(date)).toBe('2024-06-15 15:30:45')
     })
   })
 })

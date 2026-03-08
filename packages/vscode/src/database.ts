@@ -1,8 +1,47 @@
-import Database from 'better-sqlite3'
 import * as vscode from 'vscode'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
+
+// Dynamic import for better-sqlite3 to handle VS Code extension path
+let Database: typeof import('better-sqlite3').default
+
+function loadBetterSQLite3(context: vscode.ExtensionContext): typeof import('better-sqlite3').default {
+    if (Database) return Database
+    
+    try {
+        // Try loading from extension's bundled node_modules first
+        const bundledPath = path.join(context.extensionPath, 'dist', 'node_modules')
+        if (fs.existsSync(bundledPath)) {
+            // Set module paths for dependencies
+            const module = require('module')
+            const originalPaths = module.globalPaths.slice()
+            
+            // Add bundled node_modules to search paths
+            module.globalPaths.unshift(bundledPath)
+            
+            try {
+                const betterSqlite3Path = path.join(bundledPath, 'better-sqlite3')
+                const mod = require(betterSqlite3Path)
+                Database = mod.default || mod
+                console.log('[DatabaseManager] Loaded better-sqlite3 from bundled path:', betterSqlite3Path)
+                return Database
+            } finally {
+                // Restore original paths
+                module.globalPaths.length = 0
+                module.globalPaths.push(...originalPaths)
+            }
+        }
+    } catch (err) {
+        console.warn('[DatabaseManager] Failed to load bundled better-sqlite3:', err)
+    }
+    
+    // Fallback to regular require (for development)
+    const mod = require('better-sqlite3')
+    Database = mod.default || mod
+    console.log('[DatabaseManager] Loaded better-sqlite3 from node_modules')
+    return Database
+}
 import {
     ConnectionConfig,
     ConnectionInfo,
@@ -63,6 +102,9 @@ export class DatabaseManager {
         private context: vscode.ExtensionContext,
         options: DatabaseManagerOptions = {}
     ) {
+        // Load better-sqlite3 native module
+        loadBetterSQLite3(context)
+        
         this.maxHistorySize = options.maxHistorySize || 1000
         this.maxQueryResults = options.maxQueryResults || 10000
         

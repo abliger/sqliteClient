@@ -20,6 +20,13 @@ function toggleSidebar() {
     isSidebarVisible.value = !isSidebarVisible.value
 }
 
+// 底部编辑器栏显示状态
+const isBottomPanelVisible = ref(true)
+
+function toggleBottomPanel() {
+    isBottomPanelVisible.value = !isBottomPanelVisible.value
+}
+
 // 当活动连接变化时，加载表结构和切换 query tabs
 watch(
     () => connectionStore.activeConnectionId,
@@ -60,7 +67,9 @@ onMounted(() => {
         <!-- 顶部连接标签栏 -->
         <ConnectionTabs
             :is-sidebar-visible="isSidebarVisible"
+            :is-bottom-panel-visible="isBottomPanelVisible"
             @toggle-sidebar="toggleSidebar"
+            @toggle-bottom-panel="toggleBottomPanel"
         />
 
         <!-- 主内容区 -->
@@ -81,17 +90,26 @@ onMounted(() => {
                 </div>
             </transition>
 
-            <!-- 中间和右侧 - 编辑器和结果 -->
-            <div class="flex-1 flex flex-col min-w-0">
-                <!-- SQL 编辑器 -->
-                <div class="flex-1 min-h-0">
-                    <SQLEditor />
-                </div>
-
-                <!-- 结果面板 -->
-                <div class="h-1/2 min-h-[200px] border-t border-surface-200 dark:border-surface-700">
+            <!-- 中间和右侧 - 结果和编辑器 -->
+            <div class="flex-1 flex flex-col min-w-0" :class="{ 'divide-y divide-surface-200 dark:divide-surface-700': isBottomPanelVisible }">
+                <!-- 结果面板 - 放在上方 -->
+                <div class="flex-1 min-h-[200px] overflow-hidden">
                     <ResultPanel />
                 </div>
+
+                <!-- SQL 编辑器 - 放在下方 -->
+                <transition
+                    enter-active-class="transition-all duration-200 ease-out"
+                    enter-from-class="opacity-0 h-0"
+                    enter-to-class="opacity-100 h-1/2"
+                    leave-active-class="transition-all duration-200 ease-in"
+                    leave-from-class="opacity-100 h-1/2"
+                    leave-to-class="opacity-0 h-0"
+                >
+                    <div v-show="isBottomPanelVisible" class="h-1/2 min-h-[250px] overflow-hidden">
+                        <SQLEditor />
+                    </div>
+                </transition>
             </div>
         </div>
     </div>

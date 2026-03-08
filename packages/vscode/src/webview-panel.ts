@@ -303,6 +303,145 @@ export class SQLitePanel {
                 return fs.readFileSync(p.path, p.encoding || 'utf-8')
             },
         })
+
+        // Export commands
+        this.commandHandlers.set('export_to_csv', {
+            validator: (p) => requireConnectionId(p) && requireString('sql')(p) && requireString('outputPath')(p),
+            handler: async (p) => {
+                // VS Code: 使用对话框让用户选择保存位置
+                const saveUri = await vscode.window.showSaveDialog({
+                    defaultUri: vscode.Uri.file(p.outputPath),
+                    filters: { 'CSV Files': ['csv'] },
+                })
+                if (!saveUri) throw new Error('Export cancelled')
+                
+                const result = await this.databaseManager.executeQuery(p.connectionId, p.sql, 10000)
+                if (result.type !== 'rows') throw new Error('Query did not return rows')
+                
+                // 简单 CSV 导出
+                const headers = result.columns.join(',')
+                const rows = result.rows.map(row => 
+                    result.columns.map(col => {
+                        const val = row.values[col]
+                        if (val?.type === 'Null') return ''
+                        if (val?.type === 'Text') return `"${val.value?.replace(/"/g, '""')}"`
+                        return val?.value ?? ''
+                    }).join(',')
+                ).join('\n')
+                
+                fs.writeFileSync(saveUri.fsPath, `${headers}\n${rows}`)
+                return true
+            },
+        })
+
+        this.commandHandlers.set('export_to_json', {
+            validator: (p) => requireConnectionId(p) && requireString('sql')(p) && requireString('outputPath')(p),
+            handler: async (p) => {
+                const saveUri = await vscode.window.showSaveDialog({
+                    defaultUri: vscode.Uri.file(p.outputPath),
+                    filters: { 'JSON Files': ['json'] },
+                })
+                if (!saveUri) throw new Error('Export cancelled')
+                
+                const result = await this.databaseManager.executeQuery(p.connectionId, p.sql, 10000)
+                if (result.type !== 'rows') throw new Error('Query did not return rows')
+                
+                const data = result.rows.map(row => {
+                    const obj: Record<string, any> = {}
+                    result.columns.forEach(col => {
+                        const val = row.values[col]
+                        obj[col] = val?.type === 'Null' ? null : val?.value
+                    })
+                    return obj
+                })
+                
+                fs.writeFileSync(saveUri.fsPath, JSON.stringify(data, null, p.pretty ? 2 : 0))
+                return true
+            },
+        })
+
+        // Import commands
+        this.commandHandlers.set('get_supported_import_formats', {
+            handler: async () => [
+                { extension: 'csv', name: 'CSV', description: 'Comma Separated Values' },
+                { extension: 'json', name: 'JSON', description: 'JSON Lines' },
+            ],
+        })
+
+        this.commandHandlers.set('parse_import_file', {
+            validator: (p) => requireString('filePath')(p) && requireString('fileType')(p),
+            handler: async (p) => {
+                const content = fs.readFileSync(p.filePath, 'utf-8')
+                if (p.fileType === 'csv') {
+                    const lines = content.split('\n').filter(l => l.trim())
+                    const headers = lines[0].split(',').map(h => h.trim())
+                    const rows = lines.slice(1, 11).map(line => {
+                        const values = line.split(',')
+                        const row: Record<string, string> = {}
+                        headers.forEach((h, i) => { row[h] = values[i]?.trim() ?? '' })
+                        return row
+                    })
+                    return {
+                        columns: headers,
+                        rows,
+                        total_rows: lines.length - 1,
+                        suggested_types: {},
+                    }
+                }
+                throw new Error(`Unsupported file type: ${p.fileType}`)
+            },
+        })
+
+        // Metadata commands
+        this.commandHandlers.set('refresh_metadata', {
+            validator: requireConnectionId,
+            handler: async (p) => {
+                const conn = await this.databaseManager.getConnectionInfo(p.connectionId)
+                return conn.metadata
+            },
+        })
+
+        this.commandHandlers.set('restore_saved_connections', {
+            handler: async () => this.databaseManager.listConnections(),
+        })
+
+        this.commandHandlers.set('load_saved_connection_configs', {
+            handler: async () => this.databaseManager.listConnections().then(conns => conns.map(c => c.config)),
+        })
+
+        // CRUD log commands (simplified - in-memory only for VS Code)
+        this.commandHandlers.set('add_crud_log', { handler: async () => {} })
+        this.commandHandlers.set('query_crud_logs', { handler: async () => [] })
+        this.commandHandlers.set('count_crud_logs_by_tab', { handler: async () => 0 })
+        this.commandHandlers.set('delete_crud_logs_by_tab', { handler: async () => 0 })
+        this.commandHandlers.set('get_crud_log_table_names', { handler: async () => [] })
+        this.commandHandlers.set('get_crud_log_stats', { 
+            handler: async () => ({ total: 0, success: 0, failed: 0, inserts: 0, updates: 0, deletes: 0 }),
+        })
+
+        // Stream query commands (not supported in VS Code, fallback to regular query)
+        this.commandHandlers.set('execute_query_stream', {
+            validator: (p) => requireConnectionId(p) && requireString('sql')(p),
+            handler: async (p) => {
+                // Fallback to regular query
+                const result = await this.databaseManager.executeQuery(p.connectionId, p.sql, p.batchSize || 1000)
+                return {
+                    stream_id: 'stream-' + Date.now(),
+                    total_rows: result.type === 'rows' ? result.rows.length : 0,
+                    fetched_rows: result.type === 'rows' ? result.rows.length : 0,
+                    has_more: result.type === 'rows' ? result.has_more : false,
+                    columns: result.type === 'rows' ? result.columns : [],
+                }
+            },
+        })
+
+        this.commandHandlers.set('fetch_stream_batch', {
+            handler: async () => [],
+        })
+
+        this.commandHandlers.set('cancel_query', {
+            handler: async () => {},
+        })
     }
 
     public openDatabase(dbPath: string): void {
@@ -355,14 +494,18 @@ export class SQLitePanel {
         const htmlPath = vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'index.html')
         
         try {
-            const htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf-8')
+            let htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf-8')
             
-            // 替换资源路径为 VSCode WebView 可访问的路径
-            const scriptUri = webview.asWebviewUri(
-                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.js')
+            // 基础资源路径
+            const assetsBaseUri = webview.asWebviewUri(
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets')
             )
-            const styleUri = webview.asWebviewUri(
-                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.css')
+            
+            // 替换所有资源路径 - 使用正则替换所有匹配
+            // 替换 ./assets/ 开头的路径为 webview 可访问的完整路径
+            htmlContent = htmlContent.replace(
+                /(['"])\.\/assets\//g,
+                `$1${assetsBaseUri.toString()}/`
             )
             
             // 添加 VSCode API 注入
@@ -372,11 +515,14 @@ export class SQLitePanel {
                 </script>
             `
             
-            // 替换资源路径并添加 VSCode API
+            // 添加 VSCode API 到 head
+            htmlContent = htmlContent.replace('</head>', `${vscodeScript}</head>`)
+            
+            console.log('[SQLitePanel] Generated HTML with URIs:', {
+                baseUri: assetsBaseUri.toString(),
+            })
+            
             return htmlContent
-                .replace('./assets/index.js', scriptUri.toString())
-                .replace('./assets/index.css', styleUri.toString())
-                .replace('</head>', `${vscodeScript}</head>`)
         } catch (error) {
             console.error('Failed to read HTML file, using fallback:', error)
             

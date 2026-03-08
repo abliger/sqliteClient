@@ -138,6 +138,8 @@ export default {
         addToSnippet: 'Add to Snippet',
         hideSidebar: 'Hide Sidebar',
         showSidebar: 'Show Sidebar',
+        hideBottomPanel: 'Hide Editor',
+        showBottomPanel: 'Show Editor',
     },
 
     // Results

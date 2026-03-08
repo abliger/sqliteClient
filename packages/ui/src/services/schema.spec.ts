@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { schemaService } from './schema'
+import { schemaService, TauriNotAvailableError } from './schema'
 
-// Mock the tauri invoke
-vi.mock('@tauri-apps/api/core', () => ({
-    invoke: vi.fn(),
+// Mock the tauri utils
+vi.mock('@utils/tauri', () => ({
+    isTauri: vi.fn(),
+    isVSCode: vi.fn(),
+    safeInvoke: vi.fn(),
+}))
+
+// Mock vscode-bridge
+vi.mock('./vscode-bridge', () => ({
+    postVSCodeMessage: vi.fn(),
 }))
 
 describe('Schema Service', () => {
@@ -11,72 +18,177 @@ describe('Schema Service', () => {
         vi.clearAllMocks()
     })
 
-    it('should list tables', async () => {
-        const { invoke } = await import('@tauri-apps/api/core')
-        const mockTables = [{ name: 'users' }, { name: 'orders' }]
-        vi.mocked(invoke).mockResolvedValue(mockTables)
-
-        const result = await schemaService.listTables('conn-123')
-
-        expect(invoke).toHaveBeenCalledWith('list_tables', { connectionId: 'conn-123' })
-        expect(result).toEqual(mockTables)
-    })
-
-    it('should get table schema', async () => {
-        const { invoke } = await import('@tauri-apps/api/core')
-        const mockSchema = { name: 'users', columns: [] }
-        vi.mocked(invoke).mockResolvedValue(mockSchema)
-
-        const result = await schemaService.getTableSchema('conn-123', 'users')
-
-        expect(invoke).toHaveBeenCalledWith('get_table_schema', {
-            connectionId: 'conn-123',
-            tableName: 'users',
+    describe('Tauri environment', () => {
+        beforeEach(async () => {
+            const { isTauri, isVSCode } = await import('@utils/tauri')
+            vi.mocked(isTauri).mockReturnValue(true)
+            vi.mocked(isVSCode).mockReturnValue(false)
         })
-        expect(result).toEqual(mockSchema)
+
+        it('should list tables', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockTables = [{ name: 'users' }, { name: 'orders' }]
+            vi.mocked(safeInvoke).mockResolvedValue(mockTables)
+
+            const result = await schemaService.listTables('conn-123')
+
+            expect(safeInvoke).toHaveBeenCalledWith('list_tables', { connectionId: 'conn-123' })
+            expect(result).toEqual(mockTables)
+        })
+
+        it('should get table schema', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockSchema = { name: 'users', columns: [] }
+            vi.mocked(safeInvoke).mockResolvedValue(mockSchema)
+
+            const result = await schemaService.getTableSchema('conn-123', 'users')
+
+            expect(safeInvoke).toHaveBeenCalledWith('get_table_schema', {
+                connectionId: 'conn-123',
+                tableName: 'users',
+            })
+            expect(result).toEqual(mockSchema)
+        })
+
+        it('should get database schema', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockSchema = { tables: [], indexes: [], triggers: [] }
+            vi.mocked(safeInvoke).mockResolvedValue(mockSchema)
+
+            const result = await schemaService.getDatabaseSchema('conn-123')
+
+            expect(safeInvoke).toHaveBeenCalledWith('get_database_schema', { connectionId: 'conn-123' })
+            expect(result).toEqual(mockSchema)
+        })
+
+        it('should get ER diagram data', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockDiagram = { tables: [], relations: [] }
+            vi.mocked(safeInvoke).mockResolvedValue(mockDiagram)
+
+            const result = await schemaService.getERDiagramData('conn-123')
+
+            expect(safeInvoke).toHaveBeenCalledWith('get_er_diagram_data', { connectionId: 'conn-123' })
+            expect(result).toEqual(mockDiagram)
+        })
+
+        it('should list indexes', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockIndexes = [{ name: 'idx_users' }]
+            vi.mocked(safeInvoke).mockResolvedValue(mockIndexes)
+
+            const result = await schemaService.listIndexes('conn-123')
+
+            expect(safeInvoke).toHaveBeenCalledWith('list_indexes', { connectionId: 'conn-123' })
+            expect(result).toEqual(mockIndexes)
+        })
+
+        it('should list triggers', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockTriggers = [{ name: 'trg_insert' }]
+            vi.mocked(safeInvoke).mockResolvedValue(mockTriggers)
+
+            const result = await schemaService.listTriggers('conn-123')
+
+            expect(safeInvoke).toHaveBeenCalledWith('list_triggers', { connectionId: 'conn-123' })
+            expect(result).toEqual(mockTriggers)
+        })
     })
 
-    it('should get database schema', async () => {
-        const { invoke } = await import('@tauri-apps/api/core')
-        const mockSchema = { tables: [], indexes: [], triggers: [] }
-        vi.mocked(invoke).mockResolvedValue(mockSchema)
+    describe('VS Code environment', () => {
+        beforeEach(async () => {
+            const { isTauri, isVSCode } = await import('@utils/tauri')
+            vi.mocked(isTauri).mockReturnValue(false)
+            vi.mocked(isVSCode).mockReturnValue(true)
+        })
 
-        const result = await schemaService.getDatabaseSchema('conn-123')
+        it('should list tables via VS Code bridge', async () => {
+            const { postVSCodeMessage } = await import('./vscode-bridge')
+            const mockTables = [{ name: 'users' }]
+            vi.mocked(postVSCodeMessage).mockResolvedValue(mockTables)
 
-        expect(invoke).toHaveBeenCalledWith('get_database_schema', { connectionId: 'conn-123' })
-        expect(result).toEqual(mockSchema)
+            const result = await schemaService.listTables('conn-123')
+
+            expect(postVSCodeMessage).toHaveBeenCalledWith('list_tables', { connectionId: 'conn-123' })
+            expect(result).toEqual(mockTables)
+        })
     })
 
-    it('should get ER diagram data', async () => {
-        const { invoke } = await import('@tauri-apps/api/core')
-        const mockDiagram = { tables: [], relations: [] }
-        vi.mocked(invoke).mockResolvedValue(mockDiagram)
+    describe('Browser environment (no Tauri/VSCode)', () => {
+        beforeEach(async () => {
+            const { isTauri, isVSCode } = await import('@utils/tauri')
+            vi.mocked(isTauri).mockReturnValue(false)
+            vi.mocked(isVSCode).mockReturnValue(false)
+        })
 
-        const result = await schemaService.getERDiagramData('conn-123')
+        it('should return empty array for listTables', async () => {
+            const result = await schemaService.listTables('conn-123')
+            expect(result).toEqual([])
+        })
 
-        expect(invoke).toHaveBeenCalledWith('get_er_diagram_data', { connectionId: 'conn-123' })
-        expect(result).toEqual(mockDiagram)
+        it('should return empty array for listIndexes', async () => {
+            const result = await schemaService.listIndexes('conn-123')
+            expect(result).toEqual([])
+        })
+
+        it('should return empty array for listTriggers', async () => {
+            const result = await schemaService.listTriggers('conn-123')
+            expect(result).toEqual([])
+        })
+
+        it('should throw TauriNotAvailableError for getTableSchema', async () => {
+            await expect(schemaService.getTableSchema('conn-123', 'users'))
+                .rejects.toThrow(TauriNotAvailableError)
+        })
+
+        it('should throw TauriNotAvailableError for getERDiagramData', async () => {
+            await expect(schemaService.getERDiagramData('conn-123'))
+                .rejects.toThrow(TauriNotAvailableError)
+        })
+
+        it('should return default data types', async () => {
+            const result = await schemaService.getDataTypes()
+            expect(result).toContain('INTEGER')
+            expect(result).toContain('TEXT')
+            expect(result).toContain('BLOB')
+        })
+
+        it('should return default foreign key actions', async () => {
+            const result = await schemaService.getForeignKeyActions()
+            expect(result).toContain('NO ACTION')
+            expect(result).toContain('CASCADE')
+        })
     })
 
-    it('should list indexes', async () => {
-        const { invoke } = await import('@tauri-apps/api/core')
-        const mockIndexes = [{ name: 'idx_users' }]
-        vi.mocked(invoke).mockResolvedValue(mockIndexes)
+    describe('DDL operations', () => {
+        beforeEach(async () => {
+            const { isTauri, isVSCode } = await import('@utils/tauri')
+            vi.mocked(isTauri).mockReturnValue(true)
+            vi.mocked(isVSCode).mockReturnValue(false)
+        })
 
-        const result = await schemaService.listIndexes('conn-123')
+        it('should preview create table', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockResult = { sql: 'CREATE TABLE...', warnings: [] }
+            vi.mocked(safeInvoke).mockResolvedValue(mockResult)
 
-        expect(invoke).toHaveBeenCalledWith('list_indexes', { connectionId: 'conn-123' })
-        expect(result).toEqual(mockIndexes)
-    })
+            const table = { name: 'test', columns: [] }
+            const result = await schemaService.previewCreateTable(table as any)
 
-    it('should list triggers', async () => {
-        const { invoke } = await import('@tauri-apps/api/core')
-        const mockTriggers = [{ name: 'trg_insert' }]
-        vi.mocked(invoke).mockResolvedValue(mockTriggers)
+            expect(safeInvoke).toHaveBeenCalledWith('preview_create_table', { table })
+            expect(result).toEqual(mockResult)
+        })
 
-        const result = await schemaService.listTriggers('conn-123')
+        it('should create table', async () => {
+            const { safeInvoke } = await import('@utils/tauri')
+            const mockResult = { success: true, sql: 'CREATE TABLE...' }
+            vi.mocked(safeInvoke).mockResolvedValue(mockResult)
 
-        expect(invoke).toHaveBeenCalledWith('list_triggers', { connectionId: 'conn-123' })
-        expect(result).toEqual(mockTriggers)
+            const table = { name: 'test', columns: [] }
+            const result = await schemaService.createTable('conn-123', table as any)
+
+            expect(safeInvoke).toHaveBeenCalledWith('create_table', { connectionId: 'conn-123', table })
+            expect(result).toEqual(mockResult)
+        })
     })
 })
