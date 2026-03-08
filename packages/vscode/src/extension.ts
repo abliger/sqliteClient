@@ -2,26 +2,36 @@ import * as vscode from 'vscode'
 import { SQLitePanel } from './webview-panel'
 import { DatabaseManager } from './database'
 
+let databaseManager: DatabaseManager | null = null
+
+function getDatabaseManager(): DatabaseManager {
+    if (!databaseManager) {
+        databaseManager = new DatabaseManager({
+            maxHistorySize: 1000,
+            maxQueryResults: 10000,
+        })
+    }
+    return databaseManager
+}
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('SQLite Client extension is now active')
-
-    const databaseManager = new DatabaseManager({
-        maxHistorySize: 1000,
-        maxQueryResults: 10000,
-    })
 
     // Register commands
     context.subscriptions.push(
         vscode.commands.registerCommand('sqliteClient.open', () => {
             try {
-                SQLitePanel.createOrShow(context.extensionUri, databaseManager)
+                const manager = getDatabaseManager()
+                SQLitePanel.createOrShow(context.extensionUri, manager)
             } catch (error) {
                 vscode.window.showErrorMessage(`Failed to open SQLite Client: ${error}`)
+                console.error('Failed to open SQLite Client:', error)
             }
         }),
 
         vscode.commands.registerCommand('sqliteClient.openDatabase', async (uri?: vscode.Uri) => {
             try {
+                const manager = getDatabaseManager()
                 let dbPath: string | undefined
 
                 if (uri?.fsPath) {
@@ -42,17 +52,16 @@ export function activate(context: vscode.ExtensionContext) {
                 }
 
                 if (dbPath) {
-                    const panel = SQLitePanel.createOrShow(context.extensionUri, databaseManager)
+                    const panel = SQLitePanel.createOrShow(context.extensionUri, manager)
                     panel.openDatabase(dbPath)
                 }
             } catch (error) {
                 vscode.window.showErrorMessage(`Failed to open database: ${error}`)
+                console.error('Failed to open database:', error)
             }
         }),
 
         vscode.commands.registerCommand('sqliteClient.closeConnection', async () => {
-            // Close connection logic will be handled by the panel
-            // This command can be invoked from the UI or command palette
             const panel = SQLitePanel.currentPanel
             if (panel) {
                 // Panel will handle the close logic
@@ -64,7 +73,8 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push({
         dispose: () => {
             try {
-                databaseManager.dispose()
+                databaseManager?.dispose()
+                databaseManager = null
             } catch (error) {
                 console.error('Error disposing database manager:', error)
             }
@@ -74,4 +84,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
     console.log('SQLite Client extension is now deactivated')
+    try {
+        databaseManager?.dispose()
+        databaseManager = null
+    } catch (error) {
+        console.error('Error during deactivation:', error)
+    }
 }

@@ -86,6 +86,20 @@ const handleCreateDatabase = () => {
     window.dispatchEvent(new CustomEvent('app:create-database'))
 }
 
+// 打开指定的数据库文件（从 VS Code 或双击文件）
+const openDatabaseFile = async (filePath: string) => {
+    try {
+        console.log('[App] Opening database file:', filePath)
+        const fileName = filePath.split(/[/\\]/).pop() || 'Untitled'
+        const name = fileName.replace(/\.[^/.]+$/, '')
+        await connectionStore.createConnection(name, filePath)
+        toastStore.success(t('connection.openSuccess'), fileName)
+    } catch (err) {
+        console.error('Failed to open database file:', err)
+        toastStore.error('打开数据库失败', String(err))
+    }
+}
+
 onMounted(async () => {
     // 添加页面关闭事件监听器
     window.addEventListener('beforeunload', handleBeforeUnload)
@@ -133,6 +147,16 @@ onMounted(async () => {
         settingsStore.openSettingsPanel()
     })
     unlisteners.push(unlistenSettings)
+
+    // 监听文件打开事件（从 VS Code 或双击文件）
+    const unlistenOpenFile = await listen<string>('open-database-file', (event) => {
+        console.log('[App] Received open-database-file event:', event.payload)
+        const filePath = event.payload
+        if (filePath) {
+            openDatabaseFile(filePath)
+        }
+    })
+    unlisteners.push(unlistenOpenFile)
 
     isInitializing.value = false
 })

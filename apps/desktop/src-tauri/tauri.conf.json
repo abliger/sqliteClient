@@ -33,7 +33,7 @@
     },
     "bundle": {
         "active": true,
-        "targets": ["dmg", "app"],
+        "targets": ["dmg", "app", "msi", "nsis"],
         "icon": [
             "icons/32x32.png",
             "icons/128x128.png",
@@ -47,6 +47,40 @@
             "minimumSystemVersion": "10.13",
             "signingIdentity": null,
             "entitlements": null
-        }
+        },
+        "windows": {
+            "wix": {
+                "language": ["zh-CN", "en-US"]
+            },
+            "nsis": {
+                "languages": ["SimpChinese", "English"]
+            }
+        },
+        "fileAssociations": [
+            {
+                "ext": ["db"],
+                "name": "SQLite Database",
+                "description": "SQLite database file",
+                "role": "Editor"
+            },
+            {
+                "ext": ["sqlite"],
+                "name": "SQLite Database",
+                "description": "SQLite database file",
+                "role": "Editor"
+            },
+            {
+                "ext": ["sqlite3"],
+                "name": "SQLite3 Database",
+                "description": "SQLite3 database file",
+                "role": "Editor"
+            },
+            {
+                "ext": ["db3"],
+                "name": "SQLite3 Database",
+                "description": "SQLite3 database file",
+                "role": "Editor"
+            }
+        ]
     }
 }

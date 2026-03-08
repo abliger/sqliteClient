@@ -18,6 +18,7 @@
         "client"
     ],
     "activationEvents": [
+        "onStartupFinished",
         "onCommand:sqliteClient.open",
         "onCommand:sqliteClient.openDatabase"
     ],

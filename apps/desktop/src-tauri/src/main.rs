@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{Emitter, Manager};
@@ -16,6 +17,11 @@ use core::connection_manager::ConnectionManager;
 use core::connection_store::ConnectionStore;
 use core::crud_log_store::CrudLogStore;
 use core::history_store::HistoryStore;
+
+/// 存储待打开的文件路径
+struct PendingOpenFile {
+    path: Mutex<Option<String>>,
+}
 
 /// 菜单文本定义
 struct MenuLabels {
@@ -87,8 +93,15 @@ fn update_menu_locale(app_handle: tauri::AppHandle, locale: String) -> Result<()
 }
 
 fn main() {
+    // 收集命令行参数中的文件路径
+    let args: Vec<String> = std::env::args().collect();
+    let file_to_open = args.get(1).cloned();
+    
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .manage(PendingOpenFile {
+            path: Mutex::new(file_to_open),
+        })
         .setup(|app| {
             // 初始化应用状态
             let app_handle = app.handle();
@@ -136,22 +149,32 @@ fn main() {
             app.manage(crud_log_store);
             app.manage(settings_store);
 
+            // 检查是否有待打开的文件（来自命令行参数）
+            if let Ok(pending) = app.state::<PendingOpenFile>().path.lock() {
+                if let Some(path) = pending.as_ref() {
+                    println!("[Main] Pending file to open from CLI: {}", path);
+                    let _ = app_handle.emit("open-database-file", path.clone());
+                }
+            }
+
             Ok(())
         })
-        .on_menu_event(|app, event| match event.id().as_ref() {
-            "open_db" => {
-                let _ = app.emit("menu-open-db", ());
+        .on_menu_event(|app, event| {
+            match event.id().as_ref() {
+                "open_db" => {
+                    let _ = app.emit("menu-open-db", ());
+                }
+                "create_db" => {
+                    let _ = app.emit("menu-create-db", ());
+                }
+                "settings" => {
+                    let _ = app.emit("menu-settings", ());
+                }
+                "quit" => {
+                    std::process::exit(0);
+                }
+                _ => {}
             }
-            "create_db" => {
-                let _ = app.emit("menu-create-db", ());
-            }
-            "settings" => {
-                let _ = app.emit("menu-settings", ());
-            }
-            "quit" => {
-                app.exit(0);
-            }
-            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             // 连接管理
