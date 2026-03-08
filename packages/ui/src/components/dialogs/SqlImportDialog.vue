@@ -62,6 +62,8 @@ const emit = defineEmits<{
 }>()
 
 const filePath = ref('')
+const fileContent = ref('')  // Web 环境下存储文件内容
+const fileInputRef = ref<HTMLInputElement | null>(null)  // 隐藏的 file input
 const isExecuting = ref(false)
 const progress = ref<SqlFileExecutionProgress | null>(null)
 const result = ref<SqlFileExecutionResult | null>(null)
@@ -75,7 +77,9 @@ const progressPercentage = computed(() => {
 })
 
 const canStart = computed(() => {
-  return filePath.value && !isExecuting.value
+  // Web 环境需要文件内容，桌面环境需要文件路径
+  const hasFile = isDialogSupported() ? filePath.value : fileContent.value
+  return hasFile && !isExecuting.value
 })
 
 const isCompleted = computed(() => {
@@ -100,15 +104,49 @@ onUnmounted(() => {
   }
 })
 
+// Web 环境：处理文件选择
+function handleFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  
+  if (!file) return
+  
+  // 检查文件类型
+  if (!file.name.endsWith('.sql')) {
+    toastStore.error(t('sqlImport.invalidFileType'), 'Please select a .sql file')
+    return
+  }
+  
+  // 读取文件内容
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    fileContent.value = e.target?.result as string
+    filePath.value = file.name  // 仅用于显示
+    error.value = ''
+    toastStore.success(t('sqlImport.fileLoaded'), file.name)
+  }
+  reader.onerror = () => {
+    toastStore.error(t('sqlImport.readFileError'))
+  }
+  reader.readAsText(file)
+  
+  // 重置 input 以便可以重复选择同一文件
+  input.value = ''
+}
+
 async function selectFile() {
   // 等待 dialog 加载完成
   await loadDialogIfNeeded()
   
+  // Web 环境：使用隐藏的 input[type=file]
   if (!isDialogSupported() || !openDialog) {
-    toastStore.error('Not available', 'File dialog is only available in the desktop app or VSCode')
+    if (fileInputRef.value) {
+      fileInputRef.value.click()
+    }
     return
   }
   
+  // 桌面/VSCode 环境：使用原生对话框
   try {
     const selected = await openDialog({
       multiple: false,
@@ -127,6 +165,7 @@ async function selectFile() {
 
     if (selected) {
       filePath.value = selected as string
+      fileContent.value = ''  // 清空之前的内容
       error.value = ''
     }
   } catch (err) {
@@ -136,7 +175,18 @@ async function selectFile() {
 }
 
 async function startImport() {
-  if (!filePath.value || !props.connectionId) return
+  if (!props.connectionId) return
+  
+  // 检查是否有文件（桌面环境用路径，Web 环境用内容）
+  const isWeb = !isDialogSupported()
+  if (isWeb && !fileContent.value) {
+    toastStore.error(t('sqlImport.noFileSelected'))
+    return
+  }
+  if (!isWeb && !filePath.value) {
+    toastStore.error(t('sqlImport.noFileSelected'))
+    return
+  }
 
   isExecuting.value = true
   progress.value = null
@@ -144,10 +194,19 @@ async function startImport() {
   error.value = ''
 
   try {
-    const executionResult = await queryService.executeSqlFile(
-      props.connectionId,
-      filePath.value
-    )
+    let executionResult: SqlFileExecutionResult
+    
+    if (isWeb) {
+      // Web 环境：直接执行文件内容
+      executionResult = await executeSqlContent(fileContent.value)
+    } else {
+      // 桌面/VSCode 环境：通过服务执行文件
+      executionResult = await queryService.executeSqlFile(
+        props.connectionId,
+        filePath.value
+      )
+    }
+    
     result.value = executionResult
     toastStore.success(t('sqlImport.success'))
     emit('completed', executionResult)
@@ -160,12 +219,70 @@ async function startImport() {
   }
 }
 
+// Web 环境：直接执行 SQL 内容
+async function executeSqlContent(content: string): Promise<SqlFileExecutionResult> {
+  const statements = content
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && !s.startsWith('--'))
+  
+  const results: SqlFileExecutionResult['statements'] = []
+  let successCount = 0
+  let errorCount = 0
+  const startTime = Date.now()
+  
+  for (let i = 0; i < statements.length; i++) {
+    const sql = statements[i]
+    const stmtStart = Date.now()
+    
+    // 更新进度
+    progress.value = {
+      total_statements: statements.length,
+      current_statement: i + 1,
+      current_sql: sql.slice(0, 100),
+      success_count: successCount,
+      error_count: errorCount,
+      is_complete: false
+    }
+    
+    try {
+      await queryService.executeQuery({ connectionId: props.connectionId, sql })
+      successCount++
+      results.push({
+        index: i,
+        sql: sql.slice(0, 200),
+        success: true,
+        duration_ms: Date.now() - stmtStart
+      })
+    } catch (err) {
+      errorCount++
+      results.push({
+        index: i,
+        sql: sql.slice(0, 200),
+        success: false,
+        error_message: String(err),
+        duration_ms: Date.now() - stmtStart
+      })
+    }
+  }
+  
+  return {
+    file_path: filePath.value || 'web-upload.sql',
+    total_statements: statements.length,
+    success_count: successCount,
+    error_count: errorCount,
+    statements: results,
+    total_duration_ms: Date.now() - startTime
+  }
+}
+
 function close() {
   if (isExecuting.value) return
   emit('update:modelValue', false)
   // 重置状态
   setTimeout(() => {
     filePath.value = ''
+    fileContent.value = ''
     progress.value = null
     result.value = null
     error.value = ''
@@ -181,6 +298,15 @@ function formatDuration(ms: number): string {
 </script>
 
 <template>
+  <!-- 隐藏的 file input，用于 Web 环境文件选择 -->
+  <input
+    ref="fileInputRef"
+    type="file"
+    accept=".sql"
+    class="hidden"
+    @change="handleFileChange"
+  />
+  
   <Teleport to="body">
     <Transition name="fade">
       <div
