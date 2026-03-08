@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { safeInvoke, isTauri } from '@utils/tauri'
 import type { QueryResult, QueryRow, SqlFileExecutionResult } from '@types'
 
 export interface ExecuteQueryOptions {
@@ -15,13 +15,21 @@ export interface StreamStatus {
     columns: string[]
 }
 
+export class TauriNotAvailableError extends Error {
+    constructor(operation: string) {
+        super(`${operation} is only available in the desktop app`)
+        this.name = 'TauriNotAvailableError'
+    }
+}
+
 export const queryService = {
     async executeQuery(options: ExecuteQueryOptions): Promise<QueryResult> {
-        return invoke('execute_query', {
+        if (!isTauri()) throw new TauriNotAvailableError('executeQuery')
+        return safeInvoke('execute_query', {
             connectionId: options.connectionId,
             sql: options.sql,
             limit: options.limit,
-        })
+        }) as Promise<QueryResult>
     },
 
     async executeQueryStream(
@@ -29,21 +37,25 @@ export const queryService = {
         sql: string,
         batchSize: number = 1000,
     ): Promise<StreamStatus> {
-        return invoke('execute_query_stream', { connectionId, sql, batchSize })
+        if (!isTauri()) throw new TauriNotAvailableError('executeQueryStream')
+        return safeInvoke('execute_query_stream', { connectionId, sql, batchSize }) as Promise<StreamStatus>
     },
 
     async fetchStreamBatch(streamId: string, batchSize: number): Promise<QueryRow[]> {
-        return invoke('fetch_stream_batch', { streamId, batchSize })
+        if (!isTauri()) throw new TauriNotAvailableError('fetchStreamBatch')
+        return safeInvoke('fetch_stream_batch', { streamId, batchSize }) as Promise<QueryRow[]>
     },
 
     async cancelQuery(queryId: string): Promise<void> {
-        return invoke('cancel_query', { queryId })
+        if (!isTauri()) throw new TauriNotAvailableError('cancelQuery')
+        return safeInvoke('cancel_query', { queryId }) as Promise<void>
     },
 
     async executeSqlFile(connectionId: string, filePath: string): Promise<SqlFileExecutionResult> {
-        return invoke('execute_sql_file', {
+        if (!isTauri()) throw new TauriNotAvailableError('executeSqlFile')
+        return safeInvoke('execute_sql_file', {
             connectionId,
             filePath,
-        })
+        }) as Promise<SqlFileExecutionResult>
     },
 }

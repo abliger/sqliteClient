@@ -3,7 +3,8 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useImportStore } from '@stores/import'
 import { useConnectionStore } from '@stores/connection'
-import { open } from '@tauri-apps/plugin-dialog'
+import { useToastStore } from '@stores/toast'
+import { isTauri } from '@utils/tauri'
 import { importService, SQLITE_DATA_TYPES } from '@services/import'
 import { 
   DocumentArrowUpIcon,
@@ -19,6 +20,15 @@ import {
 const { t } = useI18n()
 const importStore = useImportStore()
 const connectionStore = useConnectionStore()
+const toastStore = useToastStore()
+
+// 动态导入 Tauri dialog
+let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
+if (isTauri()) {
+    import('@tauri-apps/plugin-dialog').then(m => {
+        openDialog = m.open
+    })
+}
 
 const isTableNameValid = ref(true)
 const isCheckingTableName = ref(false)
@@ -31,7 +41,12 @@ const supportedFormats = [
 
 // 选择文件
 const handleSelectFile = async () => {
-  const selected = await open({
+  if (!isTauri() || !openDialog) {
+    toastStore.error('Not available', 'File dialog is only available in the desktop app')
+    return
+  }
+  
+  const selected = await openDialog({
     multiple: false,
     filters: [
       { name: 'CSV', extensions: ['csv'] },

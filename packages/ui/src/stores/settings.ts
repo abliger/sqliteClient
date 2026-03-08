@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { invoke } from '@tauri-apps/api/core'
+import { isTauri, safeInvoke } from '@utils/tauri'
 import type { LocaleType } from '@i18n/index'
 
 interface AppSettings {
@@ -25,8 +25,14 @@ export const useSettingsStore = defineStore('settings', () => {
 
     // Actions
     async function loadSettings() {
+        // 非 Tauri 环境使用默认设置
+        if (!isTauri()) {
+            console.log('[Settings] Not in Tauri environment, using default settings')
+            return settings.value
+        }
+        
         try {
-            const savedSettings = await invoke<AppSettings | null>('get_app_settings')
+            const savedSettings = await safeInvoke<AppSettings | null>('get_app_settings')
             if (savedSettings) {
                 settings.value = {
                     ...defaultSettings,
@@ -47,7 +53,14 @@ export const useSettingsStore = defineStore('settings', () => {
                 ...settings.value,
                 ...newSettings,
             }
-            await invoke('save_app_settings', { settings: settings.value })
+            
+            // 非 Tauri 环境只更新内存中的设置
+            if (!isTauri()) {
+                console.log('[Settings] Not in Tauri environment, settings not persisted')
+                return true
+            }
+            
+            await safeInvoke('save_app_settings', { settings: settings.value })
             return true
         } catch (err) {
             console.error('Failed to save settings:', err)
@@ -59,11 +72,13 @@ export const useSettingsStore = defineStore('settings', () => {
 
     async function setLocale(newLocale: LocaleType) {
         await saveSettings({ locale: newLocale })
-        // 同步更新菜单语言
-        try {
-            await invoke('update_menu_locale', { locale: newLocale })
-        } catch {
-            // 菜单语言更新失败不显示错误，仅记录
+        // 同步更新菜单语言（仅 Tauri 环境）
+        if (isTauri()) {
+            try {
+                await safeInvoke('update_menu_locale', { locale: newLocale })
+            } catch {
+                // 菜单语言更新失败不显示错误，仅记录
+            }
         }
     }
 

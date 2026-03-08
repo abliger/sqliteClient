@@ -11,7 +11,7 @@ import { crudService } from '@services/crud'
 import * as crudLogService from '@services/crudLog'
 import { useCrudLogStore } from '@stores/crudLog'
 import { extractPrimaryTableName, isEditableQuery } from '@utils/sqlParser'
-import { save } from '@tauri-apps/plugin-dialog'
+import { isTauri } from '@utils/tauri'
 import ResultGrid from './ResultGrid.vue'
 import ResultStatus from './ResultStatus.vue'
 import CrudLogPanel from './CrudLogPanel.vue'
@@ -28,6 +28,14 @@ const connectionStore = useConnectionStore()
 const schemaStore = useSchemaStore()
 const toastStore = useToastStore()
 const crudLogStore = useCrudLogStore()
+
+// 动态导入 Tauri dialog
+let saveDialog: typeof import('@tauri-apps/plugin-dialog').save | null = null
+if (isTauri()) {
+    import('@tauri-apps/plugin-dialog').then(m => {
+        saveDialog = m.save
+    })
+}
 const activeTab = ref<'results' | 'messages' | 'logs' | 'history' | 'compare' | 'er'>('results')
 const isExporting = ref(false)
 const isEditDialogOpen = ref(false)
@@ -307,10 +315,15 @@ const handleDeleteRow = async () => {
 }
 
 const handleExportCSV = async () => {
+    if (!isTauri() || !saveDialog) {
+        toastStore.error('Not available', 'Export is only available in the desktop app')
+        return
+    }
+    
     if (!currentResult.value || currentResult.value.type !== 'rows') return
     if (!connectionStore.activeConnectionId) return
 
-    const filePath = await save({
+    const filePath = await saveDialog({
         filters: [{ name: 'CSV', extensions: ['csv'] }]
     })
 
@@ -333,10 +346,15 @@ const handleExportCSV = async () => {
 }
 
 const handleExportJSON = async () => {
+    if (!isTauri() || !saveDialog) {
+        toastStore.error('Not available', 'Export is only available in the desktop app')
+        return
+    }
+    
     if (!currentResult.value || currentResult.value.type !== 'rows') return
     if (!connectionStore.activeConnectionId) return
 
-    const filePath = await save({
+    const filePath = await saveDialog({
         filters: [{ name: 'JSON', extensions: ['json'] }]
     })
 

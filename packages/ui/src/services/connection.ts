@@ -1,46 +1,62 @@
-import { invoke } from '@tauri-apps/api/core'
+import { safeInvoke, isTauri } from '@utils/tauri'
 import type { ConnectionConfig, ConnectionInfo } from '@types'
+
+export class TauriNotAvailableError extends Error {
+    constructor(operation: string) {
+        super(`${operation} is only available in the desktop app`)
+        this.name = 'TauriNotAvailableError'
+    }
+}
 
 export const connectionService = {
     async createConnection(name: string, dbPath: string): Promise<ConnectionInfo> {
-        return invoke('create_connection', { name, dbPath })
+        if (!isTauri()) throw new TauriNotAvailableError('createConnection')
+        return safeInvoke('create_connection', { name, dbPath }) as Promise<ConnectionInfo>
     },
 
     async createNewDatabase(name: string, dbPath: string): Promise<ConnectionInfo> {
-        return invoke('create_new_database', { name, dbPath })
+        if (!isTauri()) throw new TauriNotAvailableError('createNewDatabase')
+        return safeInvoke('create_new_database', { name, dbPath }) as Promise<ConnectionInfo>
     },
 
     async closeConnection(connectionId: string): Promise<void> {
-        return invoke('close_connection', { connectionId })
+        if (!isTauri()) throw new TauriNotAvailableError('closeConnection')
+        return safeInvoke('close_connection', { connectionId }) as Promise<void>
     },
 
     async listConnections(): Promise<ConnectionInfo[]> {
-        return invoke('list_connections')
+        if (!isTauri()) return []
+        return safeInvoke('list_connections') as Promise<ConnectionInfo[]>
     },
 
     async getConnectionInfo(connectionId: string): Promise<ConnectionInfo> {
-        return invoke('get_connection_info', { connectionId })
+        if (!isTauri()) throw new TauriNotAvailableError('getConnectionInfo')
+        return safeInvoke('get_connection_info', { connectionId }) as Promise<ConnectionInfo>
     },
 
     async testConnection(dbPath: string): Promise<void> {
-        return invoke('test_connection', { dbPath })
+        if (!isTauri()) throw new TauriNotAvailableError('testConnection')
+        return safeInvoke('test_connection', { dbPath }) as Promise<void>
     },
 
     async refreshMetadata(connectionId: string): Promise<ConnectionInfo['metadata']> {
-        return invoke('refresh_connection_metadata', { connectionId })
+        if (!isTauri()) throw new TauriNotAvailableError('refreshMetadata')
+        return safeInvoke('refresh_connection_metadata', { connectionId }) as Promise<ConnectionInfo['metadata']>
     },
 
     /**
      * 恢复所有保存的连接（应用启动时调用）
      */
     async restoreSavedConnections(): Promise<ConnectionInfo[]> {
-        return invoke('restore_saved_connections')
+        if (!isTauri()) return []
+        return safeInvoke('restore_saved_connections') as Promise<ConnectionInfo[]>
     },
 
     /**
      * 加载保存的连接配置（不自动连接）
      */
     async loadSavedConnectionConfigs(): Promise<ConnectionConfig[]> {
-        return invoke('load_saved_connection_configs')
+        if (!isTauri()) return []
+        return safeInvoke('load_saved_connection_configs') as Promise<ConnectionConfig[]>
     },
 }

@@ -1,11 +1,24 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { open } from '@tauri-apps/plugin-dialog'
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { isTauri } from '@utils/tauri'
 import { queryService } from '@services/query'
 import { useToastStore } from '@stores/toast'
 import type { SqlFileExecutionResult, SqlFileExecutionProgress } from '@types'
+
+// 动态导入 Tauri API
+let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
+let listenEvent: typeof import('@tauri-apps/api/event').listen | null = null
+
+if (isTauri()) {
+    Promise.all([
+        import('@tauri-apps/plugin-dialog'),
+        import('@tauri-apps/api/event')
+    ]).then(([dialog, event]) => {
+        openDialog = dialog.open
+        listenEvent = event.listen
+    })
+}
 
 const { t } = useI18n()
 const toastStore = useToastStore()
@@ -43,8 +56,10 @@ const isCompleted = computed(() => {
 })
 
 onMounted(async () => {
+  if (!isTauri() || !listenEvent) return
+  
   // 监听执行进度事件
-  unlistenProgress = await listen<SqlFileExecutionProgress>(
+  unlistenProgress = await listenEvent<SqlFileExecutionProgress>(
     'sql-file-execution-progress',
     (event) => {
       progress.value = event.payload
@@ -59,8 +74,13 @@ onUnmounted(() => {
 })
 
 async function selectFile() {
+  if (!isTauri() || !openDialog) {
+    toastStore.error('Not available', 'File dialog is only available in the desktop app')
+    return
+  }
+  
   try {
-    const selected = await open({
+    const selected = await openDialog({
       multiple: false,
       directory: false,
       filters: [

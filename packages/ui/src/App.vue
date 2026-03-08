@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { useConnectionStore } from '@stores/connection'
 import { useSettingsStore } from '@stores/settings'
@@ -9,7 +8,7 @@ import { useQueryStore } from '@stores/query'
 import { useSchemaStore } from '@stores/schema'
 import { useToastStore } from '@stores/toast'
 import { setI18nLanguage } from '@i18n/index'
-import { open } from '@tauri-apps/plugin-dialog'
+import { isTauri, safeInvoke } from '@utils/tauri'
 import MainLayout from '@components/layout/MainLayout.vue'
 import SettingsPanel from '@components/settings/SettingsPanel.vue'
 import Toast from '@components/ui/Toast.vue'
@@ -25,6 +24,9 @@ const isInitializing = ref(true)
 
 // 取消监听器
 let unlisteners: UnlistenFn[] = []
+
+// 动态导入 Tauri API（仅在 Tauri 环境中使用）
+let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
 
 // 页面关闭前保存所有数据
 const handleBeforeUnload = () => {
@@ -62,8 +64,14 @@ const handleMediaChange = () => {
 
 // 处理打开数据库菜单
 const handleOpenDatabase = async () => {
+    if (!isTauri() || !openDialog) {
+        console.warn('[App] File dialog not available in browser environment')
+        toastStore.error('File dialog not available', 'Please use the desktop app to open databases.')
+        return
+    }
+    
     try {
-        const selected = await open({
+        const selected = await openDialog({
             multiple: false,
             filters: [
                 { name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3', 'db3'] },
@@ -107,7 +115,7 @@ onMounted(async () => {
     window.addEventListener('beforeunload', handleBeforeUnload)
     mediaQuery.addEventListener('change', handleMediaChange)
 
-    // 初始化时恢复保存的连接和设置
+    // 初始化时恢复保存的连接和设置（仅 Tauri 环境）
     await connectionStore.restoreSavedConnections()
 
     // 如果有活动连接，加载表结构并恢复对应的 query tabs
@@ -121,16 +129,29 @@ onMounted(async () => {
     // 应用保存的语言设置
     if (settingsStore.locale) {
         setI18nLanguage(settingsStore.locale)
-        // 同步更新菜单语言
-        try {
-            await invoke('update_menu_locale', { locale: settingsStore.locale })
-        } catch (err) {
-            console.error('Failed to update menu locale:', err)
+        // 同步更新菜单语言（仅 Tauri 环境）
+        if (isTauri()) {
+            try {
+                await safeInvoke('update_menu_locale', { locale: settingsStore.locale })
+            } catch (err) {
+                console.error('Failed to update menu locale:', err)
+            }
         }
     }
 
     // 应用主题
     updateTheme()
+
+    // 非 Tauri 环境跳过 Tauri 特定初始化
+    if (!isTauri()) {
+        console.log('[App] Not in Tauri environment, skipping Tauri-specific initialization')
+        isInitializing.value = false
+        return
+    }
+
+    // 动态导入 Tauri 插件
+    const dialog = await import('@tauri-apps/plugin-dialog')
+    openDialog = dialog.open
 
     // 监听 Tauri 菜单事件
     const unlistenOpenDb = await listen('menu-open-db', () => {

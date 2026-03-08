@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { safeInvoke, isTauri } from '@utils/tauri'
 
 export interface ImportFileInfo {
     extension: string
@@ -41,19 +41,52 @@ export interface ImportResult {
     duration_ms: number
 }
 
+export class TauriNotAvailableError extends Error {
+    constructor(operation: string) {
+        super(`${operation} is only available in the desktop app`)
+        this.name = 'TauriNotAvailableError'
+    }
+}
+
 export const importService = {
     async getSupportedFormats(): Promise<ImportFileInfo[]> {
-        return invoke('get_supported_import_formats')
+        if (!isTauri()) {
+            return [
+                { extension: 'csv', name: 'CSV', description: 'Comma Separated Values' },
+                { extension: 'xlsx', name: 'Excel', description: 'Microsoft Excel 2007+' },
+                { extension: 'xls', name: 'Excel 97-2003', description: 'Microsoft Excel 97-2003' },
+            ]
+        }
+        return safeInvoke('get_supported_import_formats') as Promise<ImportFileInfo[]>
     },
 
     async parseImportFile(filePath: string, fileType: string): Promise<ImportPreview> {
-        return invoke('parse_import_file', { filePath, fileType })
+        if (!isTauri()) throw new TauriNotAvailableError('parseImportFile')
+        return safeInvoke('parse_import_file', { filePath, fileType }) as Promise<ImportPreview>
     },
 
     async detectColumnTypes(
         previewData: Record<string, string>[],
     ): Promise<Record<string, string>> {
-        return invoke('detect_column_types', { previewData })
+        if (!isTauri()) {
+            // 简单的类型检测逻辑
+            const types: Record<string, string> = {}
+            if (previewData.length > 0) {
+                const firstRow = previewData[0]
+                Object.keys(firstRow).forEach(col => {
+                    const value = firstRow[col]
+                    if (/^\d+$/.test(value)) {
+                        types[col] = 'INTEGER'
+                    } else if (/^\d+\.\d+$/.test(value)) {
+                        types[col] = 'REAL'
+                    } else {
+                        types[col] = 'TEXT'
+                    }
+                })
+            }
+            return types
+        }
+        return safeInvoke('detect_column_types', { previewData }) as Promise<Record<string, string>>
     },
 
     async executeImport(
@@ -61,11 +94,13 @@ export const importService = {
         config: ImportConfig,
         previewData: Record<string, string>[],
     ): Promise<ImportResult> {
-        return invoke('execute_import', { connectionId, config, previewData })
+        if (!isTauri()) throw new TauriNotAvailableError('executeImport')
+        return safeInvoke('execute_import', { connectionId, config, previewData }) as Promise<ImportResult>
     },
 
     async validateTableName(connectionId: string, tableName: string): Promise<boolean> {
-        return invoke('validate_table_name', { connectionId, tableName })
+        if (!isTauri()) throw new TauriNotAvailableError('validateTableName')
+        return safeInvoke('validate_table_name', { connectionId, tableName }) as Promise<boolean>
     },
 }
 

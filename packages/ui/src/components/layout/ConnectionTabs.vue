@@ -11,9 +11,17 @@ import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
 import { useSettingsStore } from '@stores/settings'
 import { useToastStore } from '@stores/toast'
-import { open } from '@tauri-apps/plugin-dialog'
+import { isTauri } from '@utils/tauri'
 import Tooltip from '@components/ui/Tooltip.vue'
 import CreateDatabaseDialog from '@components/dialogs/CreateDatabaseDialog.vue'
+
+// 动态导入 Tauri dialog
+let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
+if (isTauri()) {
+    import('@tauri-apps/plugin-dialog').then(m => {
+        openDialog = m.open
+    })
+}
 
 const { t } = useI18n()
 const connectionStore = useConnectionStore()
@@ -36,8 +44,13 @@ const contextMenu = ref({
 const contextMenuRef = useTemplateRef<HTMLElement>('contextMenuRef')
 
 const handleOpenDatabase = async () => {
+    if (!isTauri() || !openDialog) {
+        toastStore.error('Not available', 'File dialog is only available in the desktop app')
+        return
+    }
+    
     try {
-        const selected = await open({
+        const selected = await openDialog({
             multiple: false,
             filters: [
                 { name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3', 'db3'] },
@@ -61,9 +74,14 @@ const handleOpenDatabase = async () => {
 }
 
 const handleCreateDatabase = async () => {
+    if (!isTauri() || !openDialog) {
+        toastStore.error('Not available', 'Folder dialog is only available in the desktop app')
+        return
+    }
+    
     try {
         // Open folder picker to select save location
-        const selected = await open({
+        const selected = await openDialog({
             directory: true,
             multiple: false
         })

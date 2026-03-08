@@ -358,10 +358,10 @@ export class SQLitePanel {
 
     private getHtmlForWebview(webview: vscode.Webview): string {
         const scriptUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'main.js')
+            vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.js')
         )
         const styleUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'style.css')
+            vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.css')
         )
 
         const nonce = this.getNonce()

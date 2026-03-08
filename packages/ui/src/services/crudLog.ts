@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { safeInvoke, isTauri } from '@utils/tauri'
 import type { CrudOperationLog, CrudLogFilter, CrudOperationType } from '@types'
 
 export interface CrudLogStats {
@@ -14,7 +14,8 @@ export interface CrudLogStats {
  * 添加 CRUD 操作日志
  */
 export async function addCrudLog(log: CrudOperationLog): Promise<void> {
-    return invoke('add_crud_log', { log })
+    if (!isTauri()) return
+    return safeInvoke('add_crud_log', { log }) as Promise<void>
 }
 
 /**
@@ -24,35 +25,42 @@ export async function queryCrudLogs(
     filter: CrudLogFilter,
     limit: number = 100,
 ): Promise<CrudOperationLog[]> {
-    return invoke('query_crud_logs', { filter, limit })
+    if (!isTauri()) return []
+    return safeInvoke('query_crud_logs', { filter, limit }) as Promise<CrudOperationLog[]>
 }
 
 /**
  * 获取指定 Tab 的日志数量
  */
 export async function countCrudLogsByTab(tabId: string): Promise<number> {
-    return invoke('count_crud_logs_by_tab', { tabId })
+    if (!isTauri()) return 0
+    return safeInvoke('count_crud_logs_by_tab', { tabId }) as Promise<number>
 }
 
 /**
  * 删除指定 Tab 的日志
  */
 export async function deleteCrudLogsByTab(tabId: string): Promise<number> {
-    return invoke('delete_crud_logs_by_tab', { tabId })
+    if (!isTauri()) return 0
+    return safeInvoke('delete_crud_logs_by_tab', { tabId }) as Promise<number>
 }
 
 /**
  * 获取所有表名（用于筛选）
  */
 export async function getCrudLogTableNames(): Promise<string[]> {
-    return invoke('get_crud_log_table_names')
+    if (!isTauri()) return []
+    return safeInvoke('get_crud_log_table_names') as Promise<string[]>
 }
 
 /**
  * 获取 CRUD 日志统计
  */
 export async function getCrudLogStats(connectionId?: string): Promise<CrudLogStats> {
-    return invoke('get_crud_log_stats', { connectionId })
+    if (!isTauri()) {
+        return { total: 0, success: 0, failed: 0, inserts: 0, updates: 0, deletes: 0 }
+    }
+    return safeInvoke('get_crud_log_stats', { connectionId }) as Promise<CrudLogStats>
 }
 
 /**

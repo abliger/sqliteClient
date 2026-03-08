@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { safeInvoke, isTauri } from '@utils/tauri'
 import type { CellValue, QueryResult } from '@types'
 
 export interface GetTableDataOptions {
@@ -29,40 +29,51 @@ export interface DeleteRowOptions {
     conditions: Record<string, CellValue>
 }
 
+export class TauriNotAvailableError extends Error {
+    constructor(operation: string) {
+        super(`${operation} is only available in the desktop app`)
+        this.name = 'TauriNotAvailableError'
+    }
+}
+
 export const crudService = {
     async getTableData(options: GetTableDataOptions): Promise<QueryResult> {
-        return invoke('get_table_data', {
+        if (!isTauri()) throw new TauriNotAvailableError('getTableData')
+        return safeInvoke('get_table_data', {
             connectionId: options.connectionId,
             tableName: options.tableName,
             limit: options.limit,
             offset: options.offset,
             orderBy: options.orderBy,
             orderDir: options.orderDir,
-        })
+        }) as Promise<QueryResult>
     },
 
     async insertRow(options: InsertRowOptions): Promise<QueryResult> {
-        return invoke('insert_row', {
+        if (!isTauri()) throw new TauriNotAvailableError('insertRow')
+        return safeInvoke('insert_row', {
             connectionId: options.connectionId,
             tableName: options.tableName,
             data: options.data,
-        })
+        }) as Promise<QueryResult>
     },
 
     async updateRow(options: UpdateRowOptions): Promise<QueryResult> {
-        return invoke('update_row', {
+        if (!isTauri()) throw new TauriNotAvailableError('updateRow')
+        return safeInvoke('update_row', {
             connectionId: options.connectionId,
             tableName: options.tableName,
             data: options.data,
             conditions: options.conditions,
-        })
+        }) as Promise<QueryResult>
     },
 
     async deleteRow(options: DeleteRowOptions): Promise<QueryResult> {
-        return invoke('delete_row', {
+        if (!isTauri()) throw new TauriNotAvailableError('deleteRow')
+        return safeInvoke('delete_row', {
             connectionId: options.connectionId,
             tableName: options.tableName,
             conditions: options.conditions,
-        })
+        }) as Promise<QueryResult>
     },
 }

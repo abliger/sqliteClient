@@ -1,20 +1,24 @@
-import { invoke } from '@tauri-apps/api/core'
+import { safeInvoke, isTauri } from '@utils/tauri'
 import type { QueryHistoryItem } from '@types'
 
 export const historyService = {
     async getQueryHistory(limit?: number, offset?: number): Promise<QueryHistoryItem[]> {
-        return invoke('get_query_history', { limit, offset })
+        if (!isTauri()) return []
+        return safeInvoke('get_query_history', { limit, offset }) as Promise<QueryHistoryItem[]>
     },
 
     async searchHistory(query: string, limit?: number): Promise<QueryHistoryItem[]> {
-        return invoke('search_history', { query, limit })
+        if (!isTauri()) return []
+        return safeInvoke('search_history', { query, limit }) as Promise<QueryHistoryItem[]>
     },
 
     async deleteHistoryItem(id: string): Promise<void> {
-        return invoke('delete_history_item', { id })
+        if (!isTauri()) return
+        return safeInvoke('delete_history_item', { id }) as Promise<void>
     },
 
     async clearHistory(connectionId?: string): Promise<number> {
-        return invoke('clear_history', { connectionId })
+        if (!isTauri()) return 0
+        return safeInvoke('clear_history', { connectionId }) as Promise<number>
     },
 }

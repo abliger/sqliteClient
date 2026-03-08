@@ -353,7 +353,7 @@ defineExpose({
             <span class="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">
               {{ snippet.name }}
             </span>
-            <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
               <button
                 class="p-1 text-surface-400 hover:text-primary-500 rounded"
                 title="编辑"
@@ -402,7 +402,7 @@ defineExpose({
                 内置
               </span>
             </div>
-            <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
               <button
                 v-if="snippet.type === 'custom'"
                 class="p-1 text-surface-400 hover:text-primary-500 rounded"
