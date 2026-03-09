@@ -15,9 +15,11 @@ import {
     PlusIcon,
     PencilIcon,
     DocumentArrowUpIcon,
+    DocumentTextIcon,
 } from '@heroicons/vue/24/outline'
 import type { TableInfo } from '@types'
 import TableDesignerDialog from '@components/designer/TableDesignerDialog.vue'
+import DocExportDialog from '@components/dialogs/DocExportDialog.vue'
 
 const { t } = useI18n()
 const connectionStore = useConnectionStore()
@@ -29,6 +31,13 @@ const importStore = useImportStore()
 const showDesigner = ref(false)
 const editingTable = ref<TableInfo | undefined>(undefined)
 const designerConnectionId = computed(() => connectionStore.activeConnectionId || '')
+
+// 文档导出对话框
+const showDocExport = ref(false)
+
+const handleExportDoc = () => {
+    showDocExport.value = true
+}
 
 // 打开新建表设计器
 const openCreateTable = () => {
@@ -272,6 +281,13 @@ const handleOpenImport = () => {
             :connection-id="designerConnectionId"
             :existing-table="editingTable"
             @success="onDesignerSuccess"
+        />
+
+        <!-- 文档导出对话框 -->
+        <DocExportDialog
+            v-model="showDocExport"
+            :database-name="connectionStore.activeConnection?.config.name || ''"
+            :tables="schemaStore.tables"
         />
     </div>
 </template>

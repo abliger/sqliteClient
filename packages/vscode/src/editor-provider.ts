@@ -112,6 +112,9 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
         const htmlPath = vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'index.html')
 
         try {
+            // 先生成 nonce，后面会用到
+            const nonce = this.getNonce()
+
             let htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf-8')
 
             // 基础资源路径
@@ -136,7 +139,6 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
             )
 
             // 添加 CSP 和 VSCode API
-            const nonce = this.getNonce()
             const csp = [
                 "default-src 'none'",
                 `script-src 'nonce-${nonce}' 'unsafe-eval' ${webview.cspSource}`,

@@ -15,6 +15,9 @@ export default {
         empty: '暂无数据',
         refresh: '刷新',
         deleting: '删除中...',
+        copy: '复制',
+        copying: '复制中...',
+        hide: '隐藏',
     },
 
     // Connection
@@ -64,6 +67,7 @@ export default {
         primaryKey: '主键',
         foreignKey: '外键',
         importData: '导入数据',
+        exportDoc: '导出文档',
         createTable: '新建表',
         editTable: '编辑表结构',
         deleteTable: '删除表',
@@ -338,6 +342,26 @@ export default {
         importedRows: '成功导入',
         failedRows: '失败',
         back: '上一步',
+    },
+
+    // Doc Export
+    docExport: {
+        title: '导出数据库文档',
+        database: '数据库',
+        tables: '个表',
+        format: '文档格式',
+        options: '包含内容',
+        includeIndexes: '索引信息',
+        includeForeignKeys: '外键关系',
+        showPreview: '显示预览',
+        hidePreview: '隐藏预览',
+        preview: '预览',
+        export: '导出文档',
+        exporting: '导出中...',
+        success: '文档导出成功',
+        error: '导出失败',
+        copied: '已复制到剪贴板',
+        copyError: '复制失败',
     },
 
     // Errors

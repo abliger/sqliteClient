@@ -15,6 +15,9 @@ export default {
         empty: 'No data',
         refresh: 'Refresh',
         deleting: 'Deleting...',
+        copy: 'Copy',
+        copying: 'Copying...',
+        hide: 'Hide',
     },
 
     // Connection
@@ -64,6 +67,7 @@ export default {
         primaryKey: 'Primary Key',
         foreignKey: 'Foreign Key',
         importData: 'Import Data',
+        exportDoc: 'Export Doc',
         createTable: 'Create Table',
         editTable: 'Edit Table Structure',
         deleteTable: 'Delete Table',
@@ -340,6 +344,26 @@ export default {
         importedRows: 'Imported',
         failedRows: 'Failed',
         back: 'Back',
+    },
+
+    // Doc Export
+    docExport: {
+        title: 'Export Database Documentation',
+        database: 'Database',
+        tables: 'tables',
+        format: 'Document Format',
+        options: 'Include Content',
+        includeIndexes: 'Index Information',
+        includeForeignKeys: 'Foreign Key Relationships',
+        showPreview: 'Show Preview',
+        hidePreview: 'Hide Preview',
+        preview: 'Preview',
+        export: 'Export Document',
+        exporting: 'Exporting...',
+        success: 'Document exported successfully',
+        error: 'Export failed',
+        copied: 'Copied to clipboard',
+        copyError: 'Copy failed',
     },
 
     // Errors
