@@ -14,7 +14,13 @@
         "tauri": "tauri",
         "desktop:dev": "turbo run dev --filter=@sqlite-client/desktop",
         "desktop:build": "turbo run build --filter=@sqlite-client/desktop",
-        "prepare": "husky"
+        "prepare": "husky",
+        "vscode:build": "pnpm --filter=./packages/vscode build",
+        "vscode:package": "pnpm --filter=./packages/vscode package",
+        "vscode:rebuild": "pnpm --filter=./packages/vscode rebuild:native",
+        "vscode:dev": "pnpm --filter=./packages/vscode dev",
+        "vscode:diagnose": "node packages/vscode/scripts/diagnose.js",
+        "vscode:rebuild:auto": "node packages/vscode/scripts/rebuild-for-vscode.js"
     },
     "lint-staged": {
         "*.{ts,tsx,js,jsx}": [
