@@ -220,6 +220,7 @@ export default {
         reExecuteError: '执行失败',
         deleteSuccess: '记录已删除',
         deleteError: '删除失败',
+        confirmDelete: '确定要删除这条记录吗？此操作不可撤销。',
         clearAll: '清空历史',
         confirmClear: '确定要清空所有查询历史吗？此操作不可恢复。',
         clearSuccess: '历史记录已清空',

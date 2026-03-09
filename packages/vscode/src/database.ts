@@ -4,44 +4,100 @@ import * as fs from 'fs'
 import * as os from 'os'
 
 // Dynamic import for better-sqlite3 to handle VS Code extension path
-let Database: typeof import('better-sqlite3').default
+let Database: typeof import('better-sqlite3').default | null = null
+let loadError: Error | null = null
 
-function loadBetterSQLite3(context: vscode.ExtensionContext): typeof import('better-sqlite3').default {
-    if (Database) return Database
-    
-    try {
-        // Try loading from extension's bundled node_modules first
-        const bundledPath = path.join(context.extensionPath, 'dist', 'node_modules')
-        if (fs.existsSync(bundledPath)) {
-            // Set module paths for dependencies
-            const module = require('module')
-            const originalPaths = module.globalPaths.slice()
-            
-            // Add bundled node_modules to search paths
-            module.globalPaths.unshift(bundledPath)
-            
-            try {
-                const betterSqlite3Path = path.join(bundledPath, 'better-sqlite3')
-                const mod = require(betterSqlite3Path)
-                Database = mod.default || mod
-                console.log('[DatabaseManager] Loaded better-sqlite3 from bundled path:', betterSqlite3Path)
-                return Database
-            } finally {
-                // Restore original paths
-                module.globalPaths.length = 0
-                module.globalPaths.push(...originalPaths)
+function findBetterSQLite3Binary(context: vscode.ExtensionContext): string | null {
+    const possiblePaths = [
+        // 1. Bundled node_modules (primary)
+        path.join(context.extensionPath, 'dist', 'node_modules', 'better-sqlite3'),
+        // 2. Direct in dist
+        path.join(context.extensionPath, 'dist', 'better-sqlite3'),
+        // 3. Parent node_modules (development)
+        path.join(context.extensionPath, '..', '..', 'node_modules', 'better-sqlite3'),
+        // 4. Extension root node_modules
+        path.join(context.extensionPath, 'node_modules', 'better-sqlite3'),
+    ]
+
+    for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+            const packageJsonPath = path.join(p, 'package.json')
+            const buildReleasePath = path.join(p, 'build', 'Release')
+
+            // 检查是否有编译好的二进制文件
+            if (fs.existsSync(buildReleasePath)) {
+                const files = fs.readdirSync(buildReleasePath)
+                const hasBinary = files.some(f => f.endsWith('.node'))
+                if (hasBinary) {
+                    return p
+                }
+            }
+
+            // 如果目录存在但没有二进制文件，记录下来
+            if (fs.existsSync(packageJsonPath)) {
+                console.log(`[DatabaseManager] Found better-sqlite3 at ${p} but no compiled binary`)
             }
         }
-    } catch (err) {
-        console.warn('[DatabaseManager] Failed to load bundled better-sqlite3:', err)
     }
-    
-    // Fallback to regular require (for development)
-    const mod = require('better-sqlite3')
-    Database = mod.default || mod
-    console.log('[DatabaseManager] Loaded better-sqlite3 from node_modules')
-    return Database
+
+    return null
 }
+
+function loadBetterSQLite3(
+    context: vscode.ExtensionContext,
+): typeof import('better-sqlite3').default {
+    if (Database) return Database
+
+    // 获取 VSCode 的 Electron 版本信息用于调试
+    const vscodeVersion = vscode.version
+    const nodeVersion = process.version
+    const platform = os.platform()
+    const arch = os.arch()
+
+    console.log('[DatabaseManager] Environment info:', {
+        vscodeVersion,
+        nodeVersion,
+        platform,
+        arch,
+        extensionPath: context.extensionPath,
+    })
+
+    const binaryPath = findBetterSQLite3Binary(context)
+
+    if (!binaryPath) {
+        throw new Error(
+            `better-sqlite3 binary not found. Please ensure the extension is properly installed. ` +
+                `Platform: ${platform} ${arch}, VSCode: ${vscodeVersion}`,
+        )
+    }
+
+    try {
+        // 尝试直接加载
+        const mod = require(binaryPath)
+        Database = mod.default || mod
+        console.log('[DatabaseManager] Loaded better-sqlite3 from:', binaryPath)
+        return Database
+    } catch (err) {
+        console.error('[DatabaseManager] Failed to load better-sqlite3:', err)
+        loadError = err as Error
+
+        // 提供更详细的错误信息
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        if (errorMsg.includes('ERR_DLOPEN_FAILED')) {
+            throw new Error(
+                `Failed to load SQLite native module. This may be due to:\n` +
+                    `1. Architecture mismatch (Extension: ${arch}, System: need to match)\n` +
+                    `2. VSCode Electron version update\n` +
+                    `3. Missing native binary\n\n` +
+                    `Try reinstalling the extension or running: npm run rebuild:native\n` +
+                    `Original error: ${errorMsg}`,
+            )
+        }
+
+        throw new Error(`Failed to load better-sqlite3: ${errorMsg}`)
+    }
+}
+
 import {
     ConnectionConfig,
     ConnectionInfo,
@@ -81,7 +137,7 @@ import { generateId, generateUUID } from './utils/id'
 
 interface Connection {
     config: ConnectionConfig
-    db: Database.Database
+    db: any // better-sqlite3 Database instance
     status: ConnectionStatus
     metadata: DatabaseMetadata
 }
@@ -100,23 +156,20 @@ export class DatabaseManager {
 
     constructor(
         private context: vscode.ExtensionContext,
-        options: DatabaseManagerOptions = {}
+        options: DatabaseManagerOptions = {},
     ) {
-        // Load better-sqlite3 native module
-        loadBetterSQLite3(context)
-        
         this.maxHistorySize = options.maxHistorySize || 1000
         this.maxQueryResults = options.maxQueryResults || 10000
-        
+
         // Store history in VSCode's global storage (not workspace)
         // This ensures history persists across workspaces and isn't committed
         const globalStoragePath = this.context.globalStorageUri.fsPath
-        
+
         // Ensure storage directory exists
         if (!fs.existsSync(globalStoragePath)) {
             fs.mkdirSync(globalStoragePath, { recursive: true })
         }
-        
+
         this.historyPath = path.join(globalStoragePath, 'query-history.json')
         console.log('[DatabaseManager] History stored at:', this.historyPath)
         this.loadHistory()
@@ -142,13 +195,21 @@ export class DatabaseManager {
         }
     }
 
-    private getMetadata(db: Database.Database): DatabaseMetadata {
+    private getMetadata(db: any): DatabaseMetadata {
         const pageSize = db.pragma('page_size', { simple: true }) as number
         const pageCount = db.pragma('page_count', { simple: true }) as number
-        const tableCount = db.prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table'").get() as { 'COUNT(*)': number }
-        const indexCount = db.prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='index'").get() as { 'COUNT(*)': number }
-        const triggerCount = db.prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='trigger'").get() as { 'COUNT(*)': number }
-        const versionResult = db.prepare('SELECT sqlite_version() as version').get() as { version: string }
+        const tableCount = db
+            .prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
+            .get() as { 'COUNT(*)': number }
+        const indexCount = db
+            .prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='index'")
+            .get() as { 'COUNT(*)': number }
+        const triggerCount = db
+            .prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='trigger'")
+            .get() as { 'COUNT(*)': number }
+        const versionResult = db.prepare('SELECT sqlite_version() as version').get() as {
+            version: string
+        }
 
         return {
             version: versionResult.version,
@@ -161,7 +222,7 @@ export class DatabaseManager {
         }
     }
 
-    private getConnection(connectionId: string): Connection {
+    getConnection(connectionId: string): Connection {
         const conn = this.connections.get(connectionId)
         if (!conn) {
             throw new NotFoundError(`Connection not found: ${connectionId}`)
@@ -170,7 +231,14 @@ export class DatabaseManager {
     }
 
     async createConnection(name: string, dbPath: string): Promise<ConnectionInfo> {
-        let db: Database.Database | undefined
+        // Ensure better-sqlite3 is loaded
+        loadBetterSQLite3(this.context)
+
+        if (!Database) {
+            throw new ConnectionError('SQLite database module not loaded')
+        }
+
+        let db: any | undefined
         try {
             db = new Database(dbPath)
             db.pragma('journal_mode = WAL')
@@ -200,7 +268,7 @@ export class DatabaseManager {
                 metadata,
             }
         } catch (error) {
-            // 确保在失败时关闭连接
+            // Ensure connection is closed on failure
             if (db) {
                 try {
                     db.close()
@@ -213,7 +281,7 @@ export class DatabaseManager {
     }
 
     async createNewDatabase(name: string, dbPath: string): Promise<ConnectionInfo> {
-        let db: Database.Database | undefined
+        let db: any | undefined
         try {
             // Ensure directory exists
             const dir = path.dirname(dbPath)
@@ -253,7 +321,7 @@ export class DatabaseManager {
     }
 
     async listConnections(): Promise<ConnectionInfo[]> {
-        return Array.from(this.connections.values()).map((conn) => ({
+        return Array.from(this.connections.values()).map(conn => ({
             config: conn.config,
             status: conn.status,
             metadata: conn.metadata,
@@ -270,7 +338,7 @@ export class DatabaseManager {
     }
 
     async testConnection(dbPath: string): Promise<void> {
-        let db: Database.Database | undefined
+        let db: any | undefined
         try {
             db = new Database(dbPath, { readonly: true })
             db.prepare('SELECT 1').get()
@@ -287,11 +355,7 @@ export class DatabaseManager {
         }
     }
 
-    async executeQuery(
-        connectionId: string,
-        sql: string,
-        limit?: number
-    ): Promise<QueryResult> {
+    async executeQuery(connectionId: string, sql: string, limit?: number): Promise<QueryResult> {
         const conn = this.getConnection(connectionId)
 
         const startTime = Date.now()
@@ -302,7 +366,7 @@ export class DatabaseManager {
                 const stmt = conn.db.prepare(sql)
                 const allRows = stmt.all()
                 const rows = allRows.slice(0, effectiveLimit)
-                const columns = stmt.columns().map((col) => col.name)
+                const columns = stmt.columns().map((col: any) => col.name)
 
                 const executionInfo: QueryExecutionInfo = {
                     execution_time_ms: Date.now() - startTime,
@@ -313,14 +377,21 @@ export class DatabaseManager {
                     suggestions: [],
                 }
 
-                this.addToHistory(sql, connectionId, conn.config.name, executionInfo.execution_time_ms, true, rows.length)
+                this.addToHistory(
+                    sql,
+                    connectionId,
+                    conn.config.name,
+                    executionInfo.execution_time_ms,
+                    true,
+                    rows.length,
+                )
 
                 return {
                     type: 'rows',
                     columns,
                     rows: rows.map((row: any) => ({
                         values: Object.fromEntries(
-                            Object.entries(row).map(([key, value]) => [key, this.wrapValue(value)])
+                            Object.entries(row).map(([key, value]) => [key, this.wrapValue(value)]),
                         ),
                     })),
                     has_more: allRows.length > effectiveLimit,
@@ -340,7 +411,13 @@ export class DatabaseManager {
                     suggestions: [],
                 }
 
-                this.addToHistory(sql, connectionId, conn.config.name, executionInfo.execution_time_ms, true)
+                this.addToHistory(
+                    sql,
+                    connectionId,
+                    conn.config.name,
+                    executionInfo.execution_time_ms,
+                    true,
+                )
 
                 return {
                     type: 'execution',
@@ -350,7 +427,15 @@ export class DatabaseManager {
                 }
             }
         } catch (error) {
-            this.addToHistory(sql, connectionId, conn.config.name, Date.now() - startTime, false, undefined, String(error))
+            this.addToHistory(
+                sql,
+                connectionId,
+                conn.config.name,
+                Date.now() - startTime,
+                false,
+                undefined,
+                String(error),
+            )
             throw new QueryError(`Query execution failed: ${error}`, error as Error)
         }
     }
@@ -376,11 +461,11 @@ export class DatabaseManager {
         durationMs: number,
         isSuccess: boolean,
         rowCount?: number,
-        errorMessage?: string
+        errorMessage?: string,
     ): void {
         const item: QueryHistoryItem = {
             id: generateUUID(),
-            sql: sql.substring(0, 10000), // 限制 SQL 长度
+            sql: sql.substring(0, 10000), // Limit SQL length
             connection_id: connectionId,
             connection_name: connectionName,
             executed_at: new Date().toISOString(),
@@ -401,11 +486,11 @@ export class DatabaseManager {
 
         const tables = conn.db
             .prepare(
-                "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+                "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
             )
             .all() as { name: string; sql?: string }[]
 
-        return tables.map((t) => ({
+        return tables.map(t => ({
             name: t.name,
             sql: t.sql,
             column_count: 0,
@@ -416,14 +501,16 @@ export class DatabaseManager {
     async getTableSchema(connectionId: string, tableName: string): Promise<TableInfo> {
         const conn = this.getConnection(connectionId)
 
-        // 验证表名防止 SQL 注入
+        // Validate table name to prevent SQL injection
         const safeTableName = quoteTableName(tableName)
 
         const tableInfo = conn.db.prepare(`PRAGMA table_info(${safeTableName})`).all() as any[]
-        const foreignKeys = conn.db.prepare(`PRAGMA foreign_key_list(${safeTableName})`).all() as any[]
+        const foreignKeys = conn.db
+            .prepare(`PRAGMA foreign_key_list(${safeTableName})`)
+            .all() as any[]
 
         const fkMap = new Map<string, ForeignKeyInfo>()
-        foreignKeys.forEach((fk) => {
+        foreignKeys.forEach(fk => {
             fkMap.set(fk.from, {
                 from_column: fk.from,
                 to_table: fk.table,
@@ -433,7 +520,7 @@ export class DatabaseManager {
             })
         })
 
-        const columns: ColumnInfo[] = tableInfo.map((col) => {
+        const columns: ColumnInfo[] = tableInfo.map(col => {
             const fk = fkMap.get(col.name)
             return {
                 name: col.name,
@@ -447,7 +534,9 @@ export class DatabaseManager {
         })
 
         // Get row count
-        const countResult = conn.db.prepare(`SELECT COUNT(*) FROM ${safeTableName}`).get() as { 'COUNT(*)': number }
+        const countResult = conn.db.prepare(`SELECT COUNT(*) FROM ${safeTableName}`).get() as {
+            'COUNT(*)': number
+        }
 
         return {
             name: tableName,
@@ -463,7 +552,7 @@ export class DatabaseManager {
     async getDatabaseSchema(connectionId: string): Promise<DatabaseSchema> {
         const tables = await this.listTables(connectionId)
         const tablesWithSchema = await Promise.all(
-            tables.map((t) => this.getTableSchema(connectionId, t.name))
+            tables.map(t => this.getTableSchema(connectionId, t.name)),
         )
 
         const indexes = await this.listIndexes(connectionId)
@@ -483,7 +572,7 @@ export class DatabaseManager {
             .prepare("SELECT name, tbl_name, sql FROM sqlite_master WHERE type='index'")
             .all() as { name: string; tbl_name: string; sql?: string }[]
 
-        return indexes.map((idx) => ({
+        return indexes.map(idx => ({
             name: idx.name,
             table_name: idx.tbl_name,
             unique: idx.sql?.toUpperCase().includes('UNIQUE') || false,
@@ -506,7 +595,7 @@ export class DatabaseManager {
         const relations: RelationEdge[] = []
 
         schema.tables.forEach((table, index) => {
-            const columns: ColumnNode[] = table.columns.map((col) => ({
+            const columns: ColumnNode[] = table.columns.map(col => ({
                 name: col.name,
                 data_type: col.data_type,
                 is_primary_key: col.is_primary_key,
@@ -524,7 +613,7 @@ export class DatabaseManager {
                 columns,
             })
 
-            table.columns.forEach((col) => {
+            table.columns.forEach(col => {
                 if (col.foreign_key) {
                     relations.push({
                         id: `${table.name}.${col.name}->${col.foreign_key.to_table}.${col.foreign_key.to_column}`,
@@ -547,21 +636,21 @@ export class DatabaseManager {
         limit: number = 100,
         offset: number = 0,
         orderBy?: string,
-        orderDir: 'ASC' | 'DESC' = 'ASC'
+        orderDir: 'ASC' | 'DESC' = 'ASC',
     ): Promise<QueryResult> {
-        // 验证参数
+        // Validate parameters
         const safeLimit = validateLimit(limit)
         const safeOffset = validateOffset(offset)
         const safeOrderDir = validateOrderDirection(orderDir)
         const safeTableName = quoteTableName(tableName)
 
         let sql = `SELECT * FROM ${safeTableName}`
-        
+
         if (orderBy) {
             const safeOrderBy = quoteTableName(orderBy)
             sql += ` ORDER BY ${safeOrderBy} ${safeOrderDir}`
         }
-        
+
         sql += ` LIMIT ${safeLimit} OFFSET ${safeOffset}`
         return this.executeQuery(connectionId, sql)
     }
@@ -569,18 +658,18 @@ export class DatabaseManager {
     async insertRow(
         connectionId: string,
         tableName: string,
-        data: Record<string, any>
+        data: Record<string, any>,
     ): Promise<QueryResult> {
         const conn = this.getConnection(connectionId)
         const safeTableName = quoteTableName(tableName)
 
-        // 开始事务
+        // Start transaction
         const transaction = conn.db.transaction(() => {
             const columns = Object.keys(data)
             const placeholders = columns.map(() => '?').join(', ')
             const columnNames = columns.map(c => quoteTableName(c)).join(', ')
             const sql = `INSERT INTO ${safeTableName} (${columnNames}) VALUES (${placeholders})`
-            
+
             const stmt = conn.db.prepare(sql)
             const values = Object.values(data)
             return stmt.run(...values)
@@ -610,20 +699,20 @@ export class DatabaseManager {
         connectionId: string,
         tableName: string,
         data: Record<string, any>,
-        conditions: Record<string, any>
+        conditions: Record<string, any>,
     ): Promise<QueryResult> {
         const conn = this.getConnection(connectionId)
         const safeTableName = quoteTableName(tableName)
 
         const transaction = conn.db.transaction(() => {
             const setClause = Object.keys(data)
-                .map((k) => `${quoteTableName(k)} = ?`)
+                .map(k => `${quoteTableName(k)} = ?`)
                 .join(', ')
             const whereClause = Object.keys(conditions)
-                .map((k) => `${quoteTableName(k)} = ?`)
+                .map(k => `${quoteTableName(k)} = ?`)
                 .join(' AND ')
             const sql = `UPDATE ${safeTableName} SET ${setClause} WHERE ${whereClause}`
-            
+
             const stmt = conn.db.prepare(sql)
             const values = [...Object.values(data), ...Object.values(conditions)]
             return stmt.run(...values)
@@ -652,17 +741,17 @@ export class DatabaseManager {
     async deleteRow(
         connectionId: string,
         tableName: string,
-        conditions: Record<string, any>
+        conditions: Record<string, any>,
     ): Promise<QueryResult> {
         const conn = this.getConnection(connectionId)
         const safeTableName = quoteTableName(tableName)
 
         const transaction = conn.db.transaction(() => {
             const whereClause = Object.keys(conditions)
-                .map((k) => `${quoteTableName(k)} = ?`)
+                .map(k => `${quoteTableName(k)} = ?`)
                 .join(' AND ')
             const sql = `DELETE FROM ${safeTableName} WHERE ${whereClause}`
-            
+
             const stmt = conn.db.prepare(sql)
             return stmt.run(...Object.values(conditions))
         })
@@ -703,11 +792,11 @@ export class DatabaseManager {
             return []
         }
         const normalizedQuery = query.toLowerCase()
-        const results = this.queryHistory.filter((item) =>
-            item.sql.toLowerCase().includes(normalizedQuery)
+        const results = this.queryHistory.filter(item =>
+            item.sql.toLowerCase().includes(normalizedQuery),
         )
-        return limit !== undefined && limit >= 0 
-            ? results.slice(0, Math.min(limit, this.maxHistorySize)) 
+        return limit !== undefined && limit >= 0
+            ? results.slice(0, Math.min(limit, this.maxHistorySize))
             : results
     }
 
@@ -715,14 +804,16 @@ export class DatabaseManager {
         if (!id || typeof id !== 'string') {
             throw new ValidationError('Invalid history item ID')
         }
-        this.queryHistory = this.queryHistory.filter((item) => item.id !== id)
+        this.queryHistory = this.queryHistory.filter(item => item.id !== id)
         this.saveHistory()
     }
 
     async clearHistory(connectionId?: string): Promise<number> {
         const initialCount = this.queryHistory.length
         if (connectionId && typeof connectionId === 'string') {
-            this.queryHistory = this.queryHistory.filter((item) => item.connection_id !== connectionId)
+            this.queryHistory = this.queryHistory.filter(
+                item => item.connection_id !== connectionId,
+            )
         } else {
             this.queryHistory = []
         }
@@ -731,10 +822,10 @@ export class DatabaseManager {
     }
 
     async previewCreateTable(table: DesignerTable): Promise<PreviewDDLResult> {
-        // 验证表名
+        // Validate table name
         const safeTableName = quoteTableName(table.name)
 
-        const columns: string[] = table.columns.map((col) => {
+        const columns: string[] = table.columns.map(col => {
             let def = `${quoteTableName(col.name)} ${col.data_type}`
             if (col.is_primary_key) def += ' PRIMARY KEY'
             if (col.is_auto_increment) def += ' AUTOINCREMENT'
@@ -754,7 +845,7 @@ export class DatabaseManager {
     async previewAlterTable(
         connectionId: string,
         tableName: string,
-        changes: TableChange[]
+        changes: TableChange[],
     ): Promise<PreviewDDLResult> {
         const safeTableName = quoteTableName(tableName)
         const statements: string[] = []
@@ -763,16 +854,24 @@ export class DatabaseManager {
         for (const change of changes) {
             switch (change.type) {
                 case 'add_column':
-                    statements.push(`ALTER TABLE ${safeTableName} ADD COLUMN ${quoteTableName(change.column.name)} ${change.column.data_type}`)
+                    statements.push(
+                        `ALTER TABLE ${safeTableName} ADD COLUMN ${quoteTableName(change.column.name)} ${change.column.data_type}`,
+                    )
                     break
                 case 'drop_column':
-                    warnings.push('SQLite does not support DROP COLUMN directly; table recreation needed')
+                    warnings.push(
+                        'SQLite does not support DROP COLUMN directly; table recreation needed',
+                    )
                     break
                 case 'rename_column':
-                    statements.push(`ALTER TABLE ${safeTableName} RENAME COLUMN ${quoteTableName(change.old_name)} TO ${quoteTableName(change.new_name)}`)
+                    statements.push(
+                        `ALTER TABLE ${safeTableName} RENAME COLUMN ${quoteTableName(change.old_name)} TO ${quoteTableName(change.new_name)}`,
+                    )
                     break
                 case 'alter_column':
-                    warnings.push('SQLite has limited ALTER COLUMN support; table recreation may be needed')
+                    warnings.push(
+                        'SQLite has limited ALTER COLUMN support; table recreation may be needed',
+                    )
                     break
             }
         }
@@ -781,9 +880,9 @@ export class DatabaseManager {
 
     async previewDropTable(tableName: string): Promise<PreviewDDLResult> {
         const safeTableName = quoteTableName(tableName)
-        return { 
-            sql: `DROP TABLE ${safeTableName}`, 
-            warnings: ['This will permanently delete the table and all its data'] 
+        return {
+            sql: `DROP TABLE ${safeTableName}`,
+            warnings: ['This will permanently delete the table and all its data'],
         }
     }
 
@@ -791,17 +890,17 @@ export class DatabaseManager {
         const preview = await this.previewCreateTable(table)
         const startTime = Date.now()
         await this.executeQuery(connectionId, preview.sql)
-        return { 
-            success: true, 
-            sql: preview.sql, 
-            execution_time_ms: Date.now() - startTime 
+        return {
+            success: true,
+            sql: preview.sql,
+            execution_time_ms: Date.now() - startTime,
         }
     }
 
     async alterTable(
         connectionId: string,
         tableName: string,
-        changes: TableChange[]
+        changes: TableChange[],
     ): Promise<DDLExecutionResult> {
         const preview = await this.previewAlterTable(connectionId, tableName, changes)
         const startTime = Date.now()
@@ -810,10 +909,10 @@ export class DatabaseManager {
                 await this.executeQuery(connectionId, sql)
             }
         }
-        return { 
-            success: true, 
-            sql: preview.sql, 
-            execution_time_ms: Date.now() - startTime 
+        return {
+            success: true,
+            sql: preview.sql,
+            execution_time_ms: Date.now() - startTime,
         }
     }
 
@@ -821,10 +920,10 @@ export class DatabaseManager {
         const preview = await this.previewDropTable(tableName)
         const startTime = Date.now()
         await this.executeQuery(connectionId, preview.sql)
-        return { 
-            success: true, 
-            sql: preview.sql, 
-            execution_time_ms: Date.now() - startTime 
+        return {
+            success: true,
+            sql: preview.sql,
+            execution_time_ms: Date.now() - startTime,
         }
     }
 
@@ -834,7 +933,7 @@ export class DatabaseManager {
         }
 
         const content = fs.readFileSync(filePath, 'utf-8')
-        // 简单的 SQL 分割，可能需要更复杂的解析器来处理多行字符串等
+        // Simple SQL split, may need more complex parser for multi-line strings etc.
         const statements = content
             .split(';')
             .map(s => s.trim())

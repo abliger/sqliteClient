@@ -8,7 +8,6 @@
 import { onMounted, onUnmounted } from 'vue'
 import MainLayout from '@components/layout/MainLayout.vue'
 import { useConnectionStore } from '@stores/connection'
-import { window } from 'vscode'
 
 // 为 TypeScript 声明 vscode 全局对象
 declare global {

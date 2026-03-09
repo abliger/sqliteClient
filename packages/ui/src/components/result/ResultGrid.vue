@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { QueryRow, CellValue } from '@types'
+import { usePlatform } from '@services/platform'
 import { 
   ChevronLeftIcon, 
   ChevronRightIcon,
@@ -92,12 +93,15 @@ const handleEdit = (row: QueryRow, rowIndex: number, event: Event) => {
     emit('edit-row', row, getOriginalRowIndex(rowIndex))
 }
 
+const platform = usePlatform()
+
 const handleDelete = async (row: QueryRow, rowIndex: number, event: Event) => {
     event.stopPropagation()
     const originalIndex = getOriginalRowIndex(rowIndex)
     
-    // 确认删除
-    if (!confirm('确定要删除这条记录吗？此操作不可撤销。')) {
+    // 确认删除 - 使用 platform 层的 dialog API
+    const confirmed = await platform.dialog.showConfirm('确定要删除这条记录吗？此操作不可撤销。')
+    if (!confirmed) {
         return
     }
     

@@ -2,6 +2,7 @@ import * as vscode from 'vscode'
 import { SQLitePanel } from './webview-panel'
 import { DatabaseManager } from './database'
 import { SQLiteEditorProvider } from './editor-provider'
+import { WebViewLogger, logInfo, logError } from './logger'
 
 let databaseManager: DatabaseManager | null = null
 let editorProvider: SQLiteEditorProvider | null = null
@@ -20,14 +21,14 @@ function getEditorProvider(context: vscode.ExtensionContext): SQLiteEditorProvid
     if (!editorProvider) {
         editorProvider = SQLiteEditorProvider.getInstance(
             context.extensionUri,
-            getDatabaseManager(context)
+            getDatabaseManager(context),
         )
     }
     return editorProvider
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('SQLite Client extension is now active')
+    logInfo('SQLite Client extension is now active')
 
     // Register commands
     context.subscriptions.push(
@@ -37,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
                 SQLitePanel.createOrShow(context.extensionUri, manager)
             } catch (error) {
                 vscode.window.showErrorMessage(`Failed to open SQLite Client: ${error}`)
-                console.error('Failed to open SQLite Client:', error)
+                logError('Failed to open SQLite Client', error)
             }
         }),
 
@@ -69,7 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             } catch (error) {
                 vscode.window.showErrorMessage(`Failed to open database: ${error}`)
-                console.error('Failed to open database:', error)
+                logError('Failed to open database', error)
             }
         }),
 
@@ -78,7 +79,7 @@ export function activate(context: vscode.ExtensionContext) {
             if (panel) {
                 // Panel will handle the close logic
             }
-        })
+        }),
     )
 
     // Register custom editor provider (双击打开功能)
@@ -91,8 +92,8 @@ export function activate(context: vscode.ExtensionContext) {
                     retainContextWhenHidden: true,
                 },
                 supportsMultipleEditorsPerDocument: false,
-            }
-        )
+            },
+        ),
     )
 
     // Clean up on deactivation
@@ -103,18 +104,19 @@ export function activate(context: vscode.ExtensionContext) {
                 databaseManager = null
                 editorProvider = null
             } catch (error) {
-                console.error('Error disposing database manager:', error)
+                logError('Error disposing database manager', error)
             }
         },
     })
 }
 
 export function deactivate() {
-    console.log('SQLite Client extension is now deactivated')
+    logInfo('SQLite Client extension is now deactivated')
     try {
         databaseManager?.dispose()
         databaseManager = null
+        WebViewLogger.dispose()
     } catch (error) {
-        console.error('Error during deactivation:', error)
+        logError('Error during deactivation', error)
     }
 }

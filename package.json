@@ -5,7 +5,7 @@
     "description": "Cross-platform SQLite client built with Tauri and Vue3",
     "type": "module",
     "scripts": {
-        "dev": "turbo run dev",
+        "dev": "turbo run dev --filter=@sqlite-client/desktop",
         "build": "turbo run build",
         "lint": "eslint . && pnpm -r lint",
         "lint:fix": "eslint . --fix && pnpm -r lint:fix",

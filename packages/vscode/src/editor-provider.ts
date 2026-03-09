@@ -2,6 +2,7 @@ import * as vscode from 'vscode'
 import * as fs from 'fs'
 import { DatabaseManager } from './database'
 import { SQLitePanel } from './webview-panel'
+import { WebViewLogger, logInfo, logError } from './logger'
 
 /**
  * 自定义编辑器提供者
@@ -9,10 +10,10 @@ import { SQLitePanel } from './webview-panel'
  */
 export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.CustomDocument> {
     private static instance: SQLiteEditorProvider | undefined
-    
+
     constructor(
         private extensionUri: vscode.Uri,
-        private databaseManager: DatabaseManager
+        private databaseManager: DatabaseManager,
     ) {}
 
     /**
@@ -20,7 +21,7 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
      */
     public static getInstance(
         extensionUri: vscode.Uri,
-        databaseManager: DatabaseManager
+        databaseManager: DatabaseManager,
     ): SQLiteEditorProvider {
         if (!SQLiteEditorProvider.instance) {
             SQLiteEditorProvider.instance = new SQLiteEditorProvider(extensionUri, databaseManager)
@@ -31,7 +32,9 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
     /**
      * 自定义编辑器事件
      */
-    private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<vscode.CustomDocument>>()
+    private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<
+        vscode.CustomDocumentEditEvent<vscode.CustomDocument>
+    >()
     public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event
 
     /**
@@ -41,15 +44,15 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
     async openCustomDocument(
         uri: vscode.Uri,
         _openContext: vscode.CustomDocumentOpenContext,
-        _token: vscode.CancellationToken
+        _token: vscode.CancellationToken,
     ): Promise<vscode.CustomDocument> {
-        console.log('[SQLiteEditorProvider] Opening document:', uri.fsPath)
-        
+        logInfo('Opening document', { path: uri.fsPath })
+
         // 返回一个简单的文档对象
         return {
             uri,
             dispose: () => {
-                console.log('[SQLiteEditorProvider] Disposing document:', uri.fsPath)
+                logInfo('Disposing document', { path: uri.fsPath })
             },
         }
     }
@@ -61,10 +64,10 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
     async resolveCustomEditor(
         document: vscode.CustomDocument,
         webviewPanel: vscode.WebviewPanel,
-        _token: vscode.CancellationToken
+        _token: vscode.CancellationToken,
     ): Promise<void> {
         const dbPath = document.uri.fsPath
-        console.log('[SQLiteEditorProvider] Resolving custom editor for:', dbPath)
+        logInfo('Resolving custom editor', { path: dbPath })
 
         try {
             // 配置 webview 选项（必须在设置 HTML 之前）
@@ -75,27 +78,30 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
                     vscode.Uri.joinPath(this.extensionUri, 'media'),
                 ],
             }
-            
+
             // 设置标题
             webviewPanel.title = 'SQLite Client'
-            
+
+            // 设置日志处理器
+            WebViewLogger.setWebviewPanel(webviewPanel)
+
             // 生成 HTML 并设置
             const html = this.getHtmlForWebview(webviewPanel.webview)
-            console.log('[SQLiteEditorProvider] Setting HTML, length:', html.length)
+            logInfo('Setting HTML', { length: html.length })
             webviewPanel.webview.html = html
-            
+
             // 创建面板控制器
             const panel = SQLitePanel.bindToWebviewPanel(
                 webviewPanel,
                 this.extensionUri,
-                this.databaseManager
+                this.databaseManager,
             )
-            
+
             // 打开数据库文件
             panel.openDatabase(dbPath)
-            console.log('[SQLiteEditorProvider] Database open request sent')
+            logInfo('Database open request sent')
         } catch (error) {
-            console.error('[SQLiteEditorProvider] Failed to open database:', error)
+            logError('Failed to open database', error)
             vscode.window.showErrorMessage(`无法打开数据库: ${error}`)
             throw error
         }
@@ -104,22 +110,22 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
     private getHtmlForWebview(webview: vscode.Webview): string {
         // 使用构建后的静态 HTML 文件
         const htmlPath = vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'index.html')
-        
+
         try {
             let htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf-8')
-            
+
             // 基础资源路径
             const assetsBaseUri = webview.asWebviewUri(
-                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets')
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets'),
             )
-            
+
             // 替换所有资源路径 - 使用正则替换所有匹配
             // 替换 ./assets/ 开头的路径为 webview 可访问的完整路径
             htmlContent = htmlContent.replace(
                 /(['"])\.\/assets\//g,
-                `$1${assetsBaseUri.toString()}/`
+                `$1${assetsBaseUri.toString()}/`,
             )
-            
+
             // 添加 CSP 和 VSCode API
             const nonce = this.getNonce()
             const csp = [
@@ -131,29 +137,30 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
                 `connect-src ${webview.cspSource}`,
                 "frame-src 'none'",
             ].join('; ')
-            
+
             const vscodeScript = `
                 <meta http-equiv="Content-Security-Policy" content="${csp}">
                 <script nonce="${nonce}">
                     window.vscode = acquireVsCodeApi();
                 </script>
+                ${WebViewLogger.getInjectScript()}
             `
-            
+
             // 添加 CSP 和 VSCode API
             return htmlContent.replace('</head>', `${vscodeScript}</head>`)
         } catch (error) {
-            console.error('Failed to read HTML file, using fallback:', error)
-            
+            logError('Failed to read HTML file, using fallback', error)
+
             // 回退到动态生成的 HTML
             const scriptUri = webview.asWebviewUri(
-                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.js')
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.js'),
             )
             const styleUri = webview.asWebviewUri(
-                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.css')
+                vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview', 'assets', 'index.css'),
             )
 
             const nonce = this.getNonce()
-            
+
             // CSP 配置
             const csp = [
                 "default-src 'none'",
@@ -175,6 +182,7 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
     <script nonce="${nonce}">
         window.vscode = acquireVsCodeApi();
     </script>
+    ${WebViewLogger.getInjectScript()}
     <link rel="stylesheet" href="${styleUri}">
 </head>
 <body>
@@ -199,10 +207,10 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
      */
     async saveCustomDocument(
         _document: vscode.CustomDocument,
-        _cancellation: vscode.CancellationToken
+        _cancellation: vscode.CancellationToken,
     ): Promise<void> {
         // SQLite 数据库是实时保存的，不需要额外操作
-        console.log('[SQLiteEditorProvider] Save document (no-op for SQLite)')
+        logInfo('Save document (no-op for SQLite)')
     }
 
     /**
@@ -211,7 +219,7 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
     async saveCustomDocumentAs(
         _document: vscode.CustomDocument,
         _destination: vscode.Uri,
-        _cancellation: vscode.CancellationToken
+        _cancellation: vscode.CancellationToken,
     ): Promise<void> {
         // 不支持另存为操作
         throw new Error('不支持另存为 SQLite 数据库')
@@ -222,10 +230,10 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
      */
     async revertCustomDocument(
         _document: vscode.CustomDocument,
-        _cancellation: vscode.CancellationToken
+        _cancellation: vscode.CancellationToken,
     ): Promise<void> {
         // 不需要恢复操作
-        console.log('[SQLiteEditorProvider] Revert document (no-op)')
+        logInfo('Revert document (no-op)')
     }
 
     /**
@@ -234,12 +242,12 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
     async backupCustomDocument(
         _document: vscode.CustomDocument,
         context: vscode.CustomDocumentBackupContext,
-        _cancellation: vscode.CancellationToken
+        _cancellation: vscode.CancellationToken,
     ): Promise<vscode.CustomDocumentBackup> {
         return {
             id: context.destination.toString(),
             delete: () => {
-                console.log('[SQLiteEditorProvider] Backup deleted')
+                logInfo('Backup deleted')
             },
         }
     }

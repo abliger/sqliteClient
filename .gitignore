@@ -44,3 +44,4 @@ src-tauri/gen/
 # Turborepo
 .turbo/
 pixiv.db
+release-vscode

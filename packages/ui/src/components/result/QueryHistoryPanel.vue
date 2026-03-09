@@ -91,6 +91,8 @@ const handleReExecute = async (sql: string) => {
 
 // 删除历史记录项
 const handleDelete = async (id: string) => {
+  if (!confirm(t('history.confirmDelete'))) return
+
   try {
     await historyStore.deleteHistoryItem(id)
     toastStore.success(t('history.deleteSuccess'))

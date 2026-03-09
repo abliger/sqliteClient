@@ -196,7 +196,8 @@ export default {
         selectTwo: 'Please select two snapshots',
         selectHint: 'Click snapshot cards to select (max 2)',
         deleteConfirmTitle: 'Delete Snapshot',
-        deleteConfirm: 'Are you sure you want to delete this snapshot? This action cannot be undone.',
+        deleteConfirm:
+            'Are you sure you want to delete this snapshot? This action cannot be undone.',
     },
 
     // Query History
@@ -220,6 +221,7 @@ export default {
         reExecuteError: 'Execution failed',
         deleteSuccess: 'Record deleted',
         deleteError: 'Failed to delete',
+        confirmDelete: 'Are you sure you want to delete this record? This action cannot be undone.',
         clearAll: 'Clear History',
         confirmClear:
             'Are you sure you want to clear all query history? This action cannot be undone.',

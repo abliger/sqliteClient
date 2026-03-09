@@ -1,9 +1,34 @@
+# Source files
 src/
+scripts/
+*.map
+
+# Build tools
 node_modules/
-dist/webview/**/*.map
-*.md
+!dist/node_modules/
+
+# Development files
 .vscode/
-.gitignore
-vite.config.ts
+.vscode-test/
+
+# Test files
+**/*.spec.ts
+**/*.test.ts
+coverage/
+
+# Configuration files
+.eslintrc.js
+.prettierrc
+vitest.config.ts
 tsconfig.json
-pnpm-lock.yaml
+
+# Documentation (keep README.md)
+CHANGELOG.md
+
+# Source maps in dist (keep for debugging, remove for production)
+# dist/**/*.map
+
+# Misc
+.gitignore
+*.log
+.DS_Store
