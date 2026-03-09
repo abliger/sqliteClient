@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
-import { usePlatform } from '@services/platform'
+import { usePlatformAsync } from '@services/platform'
 import type { QueryRow, CellValue, TableInfo } from '@types'
 
 const props = defineProps<{
@@ -121,10 +121,16 @@ const handleSave = () => {
     emit('save', data)
 }
 
-const platform = usePlatform()
+const { platform } = usePlatformAsync()
 
 const handleDelete = async () => {
-    const confirmed = await platform.dialog.showConfirm(t('results.confirmDelete'))
+    let confirmed = false
+    if (!platform.value) {
+        // 平台未初始化，使用原生 confirm
+        confirmed = confirm(t('results.confirmDelete'))
+    } else {
+        confirmed = await platform.value.dialog.showConfirm(t('results.confirmDelete'))
+    }
     if (confirmed) {
         emit('delete')
     }

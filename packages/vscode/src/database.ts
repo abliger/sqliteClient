@@ -7,7 +7,7 @@ import * as os from 'os'
 let Database: typeof import('better-sqlite3').default | null = null
 let loadError: Error | null = null
 
-function findBetterSQLite3Binary(context: vscode.ExtensionContext): string | null {
+function findBetterSQLite3(context: vscode.ExtensionContext): string | null {
     const possiblePaths = [
         // 1. Bundled node_modules (primary)
         path.join(context.extensionPath, 'dist', 'node_modules', 'better-sqlite3'),
@@ -48,7 +48,7 @@ function loadBetterSQLite3(
 ): typeof import('better-sqlite3').default {
     if (Database) return Database
 
-    // 获取 VSCode 的 Electron 版本信息用于调试
+    // 获取环境信息用于调试
     const vscodeVersion = vscode.version
     const nodeVersion = process.version
     const platform = os.platform()
@@ -62,12 +62,11 @@ function loadBetterSQLite3(
         extensionPath: context.extensionPath,
     })
 
-    const binaryPath = findBetterSQLite3Binary(context)
+    const binaryPath = findBetterSQLite3(context)
 
     if (!binaryPath) {
         throw new Error(
-            `better-sqlite3 binary not found. Please ensure the extension is properly installed. ` +
-                `Platform: ${platform} ${arch}, VSCode: ${vscodeVersion}`,
+            `better-sqlite3 binary not found. Please ensure the extension is properly installed.`,
         )
     }
 
@@ -83,13 +82,24 @@ function loadBetterSQLite3(
 
         // 提供更详细的错误信息
         const errorMsg = err instanceof Error ? err.message : String(err)
+
         if (errorMsg.includes('ERR_DLOPEN_FAILED')) {
+            // 检测 VSCode 的 Electron 版本
+            const vscodeElectronVersion = getVSCodeElectronVersion()
+
             throw new Error(
-                `Failed to load SQLite native module. This may be due to:\n` +
-                    `1. Architecture mismatch (Extension: ${arch}, System: need to match)\n` +
-                    `2. VSCode Electron version update\n` +
-                    `3. Missing native binary\n\n` +
-                    `Try reinstalling the extension or running: npm run rebuild:native\n` +
+                `SQLite native module loading failed (ERR_DLOPEN_FAILED).\n\n` +
+                    `This is usually caused by Electron version mismatch between the\n` +
+                    `extension build environment and your VSCode version.\n\n` +
+                    `Environment info:\n` +
+                    `- VSCode version: ${vscodeVersion}\n` +
+                    `- VSCode Electron: ${vscodeElectronVersion || 'unknown'}\n` +
+                    `- Extension built for: Electron 30.x\n` +
+                    `- Platform: ${platform} ${arch}\n\n` +
+                    `Solutions:\n` +
+                    `1. Update VSCode to the latest version\n` +
+                    `2. Or rebuild the extension for your VSCode version:\n` +
+                    `   cd packages/vscode && npm run rebuild:native\n\n` +
                     `Original error: ${errorMsg}`,
             )
         }
@@ -98,6 +108,25 @@ function loadBetterSQLite3(
     }
 }
 
+function getVSCodeElectronVersion(): string | null {
+    try {
+        // 尝试从 VSCode 的 package.json 读取 Electron 版本
+        const vscodePath = process.execPath
+        const appPath = path.dirname(path.dirname(vscodePath))
+        const packageJsonPath = path.join(appPath, 'Resources', 'app', 'package.json')
+
+        if (fs.existsSync(packageJsonPath)) {
+            const content = fs.readFileSync(packageJsonPath, 'utf-8')
+            const json = JSON.parse(content)
+            return json.devDependencies?.electron || 'unknown'
+        }
+    } catch {
+        // 忽略错误
+    }
+    return null
+}
+
+// ... rest of the imports and code ...
 import {
     ConnectionConfig,
     ConnectionInfo,
@@ -162,7 +191,6 @@ export class DatabaseManager {
         this.maxQueryResults = options.maxQueryResults || 10000
 
         // Store history in VSCode's global storage (not workspace)
-        // This ensures history persists across workspaces and isn't committed
         const globalStoragePath = this.context.globalStorageUri.fsPath
 
         // Ensure storage directory exists
