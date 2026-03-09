@@ -1,0 +1,36 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "lib": ["ES2020", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "skipLibCheck": true,
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "jsx": "preserve",
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "baseUrl": ".",
+        "paths": {
+            "@tauri-apps/api/core": ["./mocks/tauri-apps-api-core.ts"],
+            "@tauri-apps/api/primitives": ["./mocks/tauri.ts"],
+            "@tauri-apps/plugin-dialog": ["./mocks/tauri-apps-plugin-dialog.ts"],
+            "@tauri-apps/plugin-fs": ["./mocks/tauri-apps-plugin-fs.ts"],
+            "@/*": ["../../../ui/src/*"],
+            "@components/*": ["../../../ui/src/components/*"],
+            "@stores/*": ["../../../ui/src/stores/*"],
+            "@services/*": ["../../../ui/src/services/*"],
+            "@types": ["../../../ui/src/types/index.ts"],
+            "@composables/*": ["../../../ui/src/composables/*"],
+            "@i18n/*": ["../../../ui/src/i18n/*"],
+            "@directives/*": ["../../../ui/src/directives/*"],
+            "@utils/*": ["../../../ui/src/utils/*"]
+        }
+    },
+    "include": ["./**/*", "../../../ui/src/**/*"],
+    "exclude": ["node_modules"]
+}

@@ -88,7 +88,7 @@
         "dev": "vite build --watch",
         "package": "pnpm build && npx vsce package --no-dependencies",
         "lint": "eslint src --fix",
-        "typecheck": "tsc --noEmit",
+        "typecheck": "tsc --noEmit && tsc --noEmit -p src/webview-ui/tsconfig.json",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
