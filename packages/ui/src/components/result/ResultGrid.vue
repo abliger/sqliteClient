@@ -37,25 +37,9 @@ const deletingRow = ref<number | null>(null)
 const MIN_COLUMN_WIDTH = 50
 const DEFAULT_COLUMN_WIDTH = 150
 const columnWidths = ref<Record<string, number>>({})
-// 存储基础列宽比例（用于窗口缩放时保持相对比例）
-const baseColumnRatios = ref<Record<string, number>>({})
-const lastContainerWidth = ref(0)
 
 // 容器引用
 const tableContainerRef = ref<HTMLElement | null>(null)
-const headerRef = ref<HTMLElement | null>(null)
-
-// 计算总宽度
-const getTotalColumnsWidth = () => {
-    let total = 50 // 序号列宽度
-    props.columns.forEach(col => {
-        total += columnWidths.value[col] || DEFAULT_COLUMN_WIDTH
-    })
-    if (props.allowEdit) {
-        total += 90 // 操作列宽度
-    }
-    return total
-}
 
 // 计算固定列宽度（序号列 + 操作列）
 const getFixedColumnsWidth = () => {
@@ -66,11 +50,25 @@ const getFixedColumnsWidth = () => {
     return fixed
 }
 
-// 自动填充列宽 - 根据容器宽度智能调整
+// 计算数据列总宽度
+const getDataColumnsWidth = () => {
+    let total = 0
+    props.columns.forEach(col => {
+        total += columnWidths.value[col] || DEFAULT_COLUMN_WIDTH
+    })
+    return total
+}
+
+// 计算总宽度
+const getTotalWidth = () => {
+    return getFixedColumnsWidth() + getDataColumnsWidth()
+}
+
+// 自动填充列宽
 const autoFillColumns = () => {
-    if (!headerRef.value || props.columns.length === 0) return
+    if (!tableContainerRef.value || props.columns.length === 0) return
     
-    const containerWidth = headerRef.value.clientWidth
+    const containerWidth = tableContainerRef.value.clientWidth
     const fixedWidth = getFixedColumnsWidth()
     const availableWidth = Math.max(0, containerWidth - fixedWidth)
     const columnCount = props.columns.length
@@ -102,14 +100,18 @@ const autoFillColumns = () => {
         })
         columnWidths.value = newWidths
     }
-    
-    // 保存当前容器宽度
-    lastContainerWidth.value = containerWidth
 }
 
 // 初始化列宽
 const initColumnWidths = () => {
-    // 首次加载或列变化时，自动填充
+    const newWidths: Record<string, number> = {}
+    props.columns.forEach(col => {
+        // 保持已调整的宽度，否则使用默认值
+        newWidths[col] = columnWidths.value[col] || DEFAULT_COLUMN_WIDTH
+    })
+    columnWidths.value = newWidths
+    
+    // 下一帧自动填充
     nextTick(() => {
         autoFillColumns()
     })
@@ -120,7 +122,6 @@ watch(() => props.columns, initColumnWidths, { immediate: true })
 
 // 监听窗口大小变化
 const handleResize = () => {
-    // 窗口大小变化时重新计算列宽
     autoFillColumns()
 }
 
@@ -159,7 +160,6 @@ const handleMouseMove = (event: MouseEvent) => {
     const newWidth = Math.max(MIN_COLUMN_WIDTH, resizeStartWidth.value + delta)
     
     columnWidths.value[resizingColumn.value] = newWidth
-    isAutoFilling.value = false // 用户手动调整后，不再自动填充
 }
 
 // 结束调整
@@ -210,25 +210,6 @@ const formatCellValue = (value: CellValue): string => {
             return value.value
         default:
             return ''
-    }
-}
-
-const getCellClass = (value: CellValue): string => {
-    const baseClass =
-        'px-3 py-2 text-sm border-b border-r border-surface-200 dark:border-surface-700 overflow-hidden text-ellipsis whitespace-nowrap'
-    if (!value || !value.type) {
-        return `${baseClass} text-surface-700 dark:text-surface-300`
-    }
-    switch (value.type) {
-        case 'Null':
-            return `${baseClass} text-surface-400 dark:text-surface-500 italic`
-        case 'Integer':
-        case 'Real':
-            return `${baseClass} text-right font-mono text-surface-700 dark:text-surface-300`
-        case 'Boolean':
-            return `${baseClass} text-center`
-        default:
-            return `${baseClass} text-surface-700 dark:text-surface-300`
     }
 }
 
@@ -289,119 +270,120 @@ const getColumnStyle = (col: string) => {
     const width = columnWidths.value[col] || DEFAULT_COLUMN_WIDTH
     return {
         width: `${width}px`,
-        minWidth: `${width}px`,
-        maxWidth: `${width}px`,
+        flexShrink: 0,
         boxSizing: 'border-box' as const
     }
 }
 </script>
 
 <template>
-    <div ref="tableContainerRef" class="h-full flex flex-col">
-        <!-- 表头容器 -->
-        <div ref="headerRef" class="overflow-hidden bg-surface-100 dark:bg-surface-800 border-b border-surface-200 dark:border-surface-700 shrink-0">
-            <div class="flex">
-                <!-- 序号列头 -->
-                <div
-                    class="flex-shrink-0 px-2 py-2 text-left text-xs font-semibold text-surface-600 dark:text-surface-400 border-r border-surface-200 dark:border-surface-700 select-none flex items-center"
-                    :style="{ width: '50px', minWidth: '50px' }"
-                >
-                    #
-                </div>
-                <!-- 数据列头 -->
-                <div
-                    v-for="col in columns"
-                    :key="col"
-                    class="relative flex-shrink-0 px-3 py-2 text-left text-xs font-semibold text-surface-600 dark:text-surface-400 border-r border-surface-200 dark:border-surface-700 select-none overflow-hidden group"
-                    :style="getColumnStyle(col)"
-                    :title="col"
-                >
-                    <div class="flex items-center h-full overflow-hidden">
-                        <span class="truncate flex-1">{{ col }}</span>
+    <div class="h-full flex flex-col">
+        <!-- 统一的表格滚动容器 - 包含表头和内容 -->
+        <div ref="tableContainerRef" class="flex-1 overflow-auto scrollbar-thin">
+            <div 
+                class="inline-block min-w-full"
+                :style="{ width: `${Math.max(getTotalWidth(), tableContainerRef?.clientWidth || 0)}px` }"
+            >
+                <!-- 表头 -->
+                <div class="sticky top-0 z-10 bg-surface-100 dark:bg-surface-800 border-b border-surface-200 dark:border-surface-700">
+                    <div class="flex">
+                        <!-- 序号列头 -->
+                        <div
+                            class="flex-shrink-0 px-2 py-2 text-left text-xs font-semibold text-surface-600 dark:text-surface-400 border-r border-surface-200 dark:border-surface-700 select-none flex items-center"
+                            :style="{ width: '50px', flexShrink: 0, boxSizing: 'border-box' }"
+                        >
+                            #
+                        </div>
+                        <!-- 数据列头 -->
+                        <div
+                            v-for="col in columns"
+                            :key="col"
+                            class="relative flex-shrink-0 px-3 py-2 text-left text-xs font-semibold text-surface-600 dark:text-surface-400 border-r border-surface-200 dark:border-surface-700 select-none overflow-hidden group"
+                            :style="getColumnStyle(col)"
+                            :title="col"
+                        >
+                            <div class="flex items-center h-full overflow-hidden">
+                                <span class="truncate flex-1">{{ col }}</span>
+                            </div>
+                            <!-- 列宽调整手柄 -->
+                            <div
+                                class="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize z-50 flex items-center justify-center"
+                                @mousedown="startResize(col, $event)"
+                            >
+                                <div class="w-0.5 h-5 bg-surface-400 dark:bg-surface-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"></div>
+                            </div>
+                        </div>
+                        <!-- 操作列头 -->
+                        <div
+                            v-if="allowEdit"
+                            class="flex-shrink-0 px-3 py-2 text-center text-xs font-semibold text-surface-600 dark:text-surface-400 border-r border-surface-200 dark:border-surface-700 select-none flex items-center justify-center"
+                            :style="{ width: '90px', flexShrink: 0, boxSizing: 'border-box' }"
+                        >
+                            操作
+                        </div>
                     </div>
-                    <!-- 列宽调整手柄 -->
-                    <div
-                        class="resize-handle absolute right-0 top-0 bottom-0 w-3 cursor-col-resize z-50 flex items-center justify-center"
-                        @mousedown="startResize(col, $event)"
-                    >
-                        <div class="w-0.5 h-5 bg-surface-400 dark:bg-surface-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"></div>
-                    </div>
                 </div>
-                <!-- 操作列头 -->
-                <div
-                    v-if="allowEdit"
-                    class="flex-shrink-0 px-3 py-2 text-center text-xs font-semibold text-surface-600 dark:text-surface-400 border-r border-surface-200 dark:border-surface-700 sticky right-0 bg-surface-100 dark:bg-surface-800 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] select-none flex items-center justify-center"
-                    :style="{ width: '90px', minWidth: '90px' }"
-                >
-                    操作
-                </div>
-            </div>
-        </div>
 
-        <!-- 表格内容 - 可滚动区域 -->
-        <div class="flex-1 overflow-auto scrollbar-thin">
-            <div class="flex flex-col">
-                <div
-                    v-for="(row, rowIndex) in paginatedRows"
-                    :key="rowIndex"
-                    class="flex hover:bg-surface-50 dark:hover:bg-surface-800/50 cursor-pointer group"
-                    :class="{ 'opacity-50': deletingRow === rowIndex }"
-                    @dblclick="handleRowDoubleClick(row, rowIndex)"
-                >
-                    <!-- 序号单元格 -->
+                <!-- 表格内容 -->
+                <div class="flex flex-col">
                     <div
-                        class="flex-shrink-0 px-2 py-2 text-xs text-surface-400 dark:text-surface-500 border-b border-r border-surface-200 dark:border-surface-700 text-center select-none flex items-center justify-center"
-                        :style="{ width: '50px', minWidth: '50px' }"
+                        v-for="(row, rowIndex) in paginatedRows"
+                        :key="rowIndex"
+                        class="flex hover:bg-surface-50 dark:hover:bg-surface-800/50 cursor-pointer group"
+                        :class="{ 'opacity-50': deletingRow === rowIndex }"
+                        @dblclick="handleRowDoubleClick(row, rowIndex)"
                     >
-                        {{ (currentPage - 1) * pageSize + rowIndex + 1 }}
-                    </div>
-                    <!-- 数据单元格 -->
-                    <div
-                        v-for="col in columns"
-                        :key="col"
-                        :class="getCellClass(row.values[col] ?? { type: 'Null' })"
-                        :style="getColumnStyle(col)"
-                        :title="formatCellValue(row.values[col] ?? { type: 'Null' })"
-                    >
-                        {{ formatCellValue(row.values[col] ?? { type: 'Null' }) }}
-                    </div>
-                    <!-- 操作按钮列 -->
-                    <div
-                        v-if="allowEdit"
-                        class="flex-shrink-0 px-2 py-2 text-center border-b border-r border-surface-200 dark:border-surface-700 sticky right-0 bg-surface-50 dark:bg-surface-800 group-hover:bg-surface-100 dark:group-hover:bg-surface-700 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] transition-colors flex items-center justify-center"
-                        :style="{ width: '90px', minWidth: '90px' }"
-                    >
-                        <div class="flex items-center justify-center space-x-1">
-                            <button
-                                type="button"
-                                class="p-1.5 rounded-md transition-colors duration-150"
-                                :class="[
-                                    'text-surface-500 dark:text-surface-400',
-                                    'hover:text-primary-600 dark:hover:text-primary-400',
-                                    'hover:bg-primary-50 dark:hover:bg-primary-900/30'
-                                ]"
-                                title="编辑"
-                                @click="handleEdit(row, rowIndex, $event)"
-                            >
-                                <PencilIcon class="w-4 h-4" />
-                            </button>
-                            <button
-                                type="button"
-                                class="p-1.5 rounded-md transition-colors duration-150"
-                                :class="[
-                                    'text-surface-500 dark:text-surface-400',
-                                    'hover:text-red-600 dark:hover:text-red-400',
-                                    'hover:bg-red-50 dark:hover:bg-red-900/30'
-                                ]"
-                                :disabled="deletingRow === rowIndex"
-                                title="删除"
-                                @click="handleDelete(row, rowIndex, $event)"
-                            >
-                                <TrashIcon 
-                                    class="w-4 h-4" 
-                                    :class="{ 'animate-pulse': deletingRow === rowIndex }" 
-                                />
-                            </button>
+                        <!-- 序号单元格 -->
+                        <div
+                            class="flex-shrink-0 px-2 py-2 text-xs text-surface-400 dark:text-surface-500 border-b border-r border-surface-200 dark:border-surface-700 text-center select-none flex items-center justify-center"
+                            :style="{ width: '50px', flexShrink: 0, boxSizing: 'border-box' }"
+                        >
+                            {{ (currentPage - 1) * pageSize + rowIndex + 1 }}
+                        </div>
+                        <!-- 数据单元格 -->
+                        <div
+                            v-for="col in columns"
+                            :key="col"
+                            class="flex-shrink-0 px-3 py-2 text-sm border-b border-r border-surface-200 dark:border-surface-700 overflow-hidden text-ellipsis whitespace-nowrap flex items-center"
+                            :class="{
+                                'text-surface-400 dark:text-surface-500 italic': (row.values[col]?.type) === 'Null',
+                                'text-right font-mono text-surface-700 dark:text-surface-300': (row.values[col]?.type) === 'Integer' || (row.values[col]?.type) === 'Real',
+                                'text-center text-surface-700 dark:text-surface-300': (row.values[col]?.type) === 'Boolean',
+                                'text-surface-700 dark:text-surface-300': (row.values[col]?.type) !== 'Null' && (row.values[col]?.type) !== 'Integer' && (row.values[col]?.type) !== 'Real' && (row.values[col]?.type) !== 'Boolean'
+                            }"
+                            :style="getColumnStyle(col)"
+                            :title="formatCellValue(row.values[col] ?? { type: 'Null' })"
+                        >
+                            {{ formatCellValue(row.values[col] ?? { type: 'Null' }) }}
+                        </div>
+                        <!-- 操作按钮列 -->
+                        <div
+                            v-if="allowEdit"
+                            class="flex-shrink-0 px-2 py-2 text-center border-b border-r border-surface-200 dark:border-surface-700 flex items-center justify-center"
+                            :style="{ width: '90px', flexShrink: 0, boxSizing: 'border-box' }"
+                        >
+                            <div class="flex items-center justify-center space-x-1">
+                                <button
+                                    type="button"
+                                    class="p-1.5 rounded-md transition-colors duration-150 text-surface-500 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30"
+                                    title="编辑"
+                                    @click="handleEdit(row, rowIndex, $event)"
+                                >
+                                    <PencilIcon class="w-4 h-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    class="p-1.5 rounded-md transition-colors duration-150 text-surface-500 dark:text-surface-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                    :disabled="deletingRow === rowIndex"
+                                    title="删除"
+                                    @click="handleDelete(row, rowIndex, $event)"
+                                >
+                                    <TrashIcon 
+                                        class="w-4 h-4" 
+                                        :class="{ 'animate-pulse': deletingRow === rowIndex }" 
+                                    />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -451,6 +433,7 @@ const getColumnStyle = (col: string) => {
 </template>
 
 <style scoped>
+/* 自定义滚动条样式 */
 .scrollbar-thin::-webkit-scrollbar {
     width: 8px;
     height: 8px;
