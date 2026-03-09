@@ -1,6 +1,6 @@
 /**
  * Platform Provider Architecture
- * 
+ *
  * 支持多平台运行的统一抽象层
  */
 
@@ -9,19 +9,19 @@ export type PlatformName = 'tauri' | 'vscode' | 'web' | 'mock'
 export interface PlatformCapabilities {
     /** 数据库连接支持 */
     database: 'native' | 'websocket' | 'http' | 'none'
-    
+
     /** 文件系统访问级别 */
     fileSystem: 'full' | 'sandboxed' | 'readonly' | 'none'
-    
+
     /** 原生对话框支持 */
     dialog: 'native' | 'custom' | 'none'
-    
+
     /** 持久化存储支持 */
     storage: 'persistent' | 'session' | 'memory'
-    
+
     /** 系统剪贴板 */
     clipboard: 'full' | 'read-only' | 'none'
-    
+
     /** 通知系统 */
     notification: 'native' | 'custom' | 'none'
 }
@@ -61,23 +61,22 @@ export interface DialogProvider {
 export interface PlatformProvider {
     readonly name: PlatformName
     readonly capabilities: PlatformCapabilities
-    
+
     connection: ConnectionProvider
     query: QueryProvider
     fs: FileSystemProvider
     storage: StorageProvider
     dialog: DialogProvider
-    
+
     /** 平台特定的初始化 */
     initialize?(): Promise<void>
-    
+
     /** 清理资源 */
     dispose?(): Promise<void>
 }
 
 // 重新导出类型供使用
-import type { ConnectionInfo } from '@types'
-import type { QueryResult, SqlFileExecutionResult } from '@services/query'
+import type { ConnectionInfo, QueryResult, SqlFileExecutionResult } from '@types'
 
 interface ExecuteQueryOptions {
     connectionId: string
@@ -85,13 +84,13 @@ interface ExecuteQueryOptions {
     limit?: number
 }
 
-interface OpenDialogOptions {
+export interface OpenDialogOptions {
     title?: string
     filters?: Record<string, string[]>
     multiple?: boolean
 }
 
-interface SaveDialogOptions {
+export interface SaveDialogOptions {
     title?: string
     defaultPath?: string
     filters?: Record<string, string[]>

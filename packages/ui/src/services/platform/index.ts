@@ -1,14 +1,14 @@
 /**
  * Platform Service - 统一的平台适配器入口
- * 
+ *
  * 使用方式:
  * ```ts
  * // 自动检测平台
  * const platform = usePlatform()
- * 
+ *
  * // 执行查询
  * const result = await platform.query.executeQuery({...})
- * 
+ *
  * // 检查能力
  * if (platform.capabilities.fileSystem !== 'none') {
  *   // 显示导出按钮
@@ -17,17 +17,14 @@
  */
 
 import { ref, shallowRef, readonly, type InjectionKey, type DeepReadonly } from 'vue'
-import type { PlatformProvider, PlatformName, PlatformCapabilities } from './types'
+import type { PlatformProvider, PlatformName } from './types'
 
 export * from './types'
 
 // Provider 注册表
 const providers = new Map<PlatformName, () => Promise<PlatformProvider>>()
 
-export function registerPlatform(
-    name: PlatformName, 
-    loader: () => Promise<PlatformProvider>
-) {
+export function registerPlatform(name: PlatformName, loader: () => Promise<PlatformProvider>) {
     providers.set(name, loader)
 }
 
@@ -42,10 +39,10 @@ const initError = ref<Error | null>(null)
 export interface PlatformOptions {
     /** 指定平台，不指定则自动检测 */
     provider?: PlatformName
-    
+
     /** 自动检测时的优先级 */
     autoDetectOrder?: PlatformName[]
-    
+
     /** 初始化超时时间 */
     timeout?: number
 }
@@ -58,12 +55,12 @@ function detectPlatform(): PlatformName | null {
     if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
         return 'tauri'
     }
-    
+
     // 检测 VS Code
     if (typeof window !== 'undefined' && window.vscode) {
         return 'vscode'
     }
-    
+
     // 普通 Web 环境
     return 'web'
 }
@@ -75,7 +72,7 @@ export async function initializePlatform(options: PlatformOptions = {}): Promise
     if (currentProvider.value) {
         return currentProvider.value
     }
-    
+
     if (isInitializing.value) {
         // 等待初始化完成
         return new Promise((resolve, reject) => {
@@ -91,28 +88,28 @@ export async function initializePlatform(options: PlatformOptions = {}): Promise
             check()
         })
     }
-    
+
     isInitializing.value = true
     initError.value = null
-    
+
     try {
         const providerName = options.provider ?? detectPlatform()
-        
+
         if (!providerName) {
             throw new Error('Unable to detect platform and no provider specified')
         }
-        
+
         const loader = providers.get(providerName)
         if (!loader) {
             throw new Error(`Platform provider "${providerName}" not registered`)
         }
-        
+
         const provider = await loader()
-        
+
         if (provider.initialize) {
             await provider.initialize()
         }
-        
+
         currentProvider.value = provider
         return provider
     } catch (error) {
