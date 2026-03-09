@@ -1,54 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { isTauri, isDialogSupported } from '@utils/tauri'
+import { usePlatformAsync } from '@services/platform'
 import { queryService } from '@services/query'
 import { useToastStore } from '@stores/toast'
 import type { SqlFileExecutionResult, SqlFileExecutionProgress } from '@types'
+import { isTauri } from '@utils/tauri'
 
-// 动态导入 Tauri API
-let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
-let listenEvent: typeof import('@tauri-apps/api/event').listen | null = null
+// Tauri 事件监听相关类型
 type UnlistenFn = () => void
-
-// 延迟加载 dialog
-let dialogLoadingPromise: Promise<void> | null = null
-async function loadDialogIfNeeded(): Promise<void> {
-    // 如果已经加载完成，直接返回
-    if (openDialog) return
-    
-    // 如果正在加载中，等待加载完成
-    if (dialogLoadingPromise) {
-        return dialogLoadingPromise
-    }
-    
-    // 开始加载
-    if (isTauri()) {
-        dialogLoadingPromise = Promise.all([
-            import('@tauri-apps/plugin-dialog'),
-            import('@tauri-apps/api/event')
-        ]).then(([dialog, event]) => {
-            openDialog = dialog.open
-            listenEvent = event.listen
-        }).catch(err => {
-            console.error('Failed to load dialog:', err)
-            dialogLoadingPromise = null
-        })
-    } else if (isDialogSupported()) {
-        dialogLoadingPromise = import('@tauri-apps/plugin-dialog').then(m => {
-            openDialog = m.open
-        }).catch(err => {
-            console.error('Failed to load dialog:', err)
-            dialogLoadingPromise = null
-        })
-    }
-    if (dialogLoadingPromise) {
-        await dialogLoadingPromise
-    }
-}
+let listenEvent: typeof import('@tauri-apps/api/event').listen | null = null
+let unlistenProgress: UnlistenFn | null = null
 
 const { t } = useI18n()
 const toastStore = useToastStore()
+const { platform, isLoading: platformLoading } = usePlatformAsync()
 
 interface Props {
   modelValue: boolean
@@ -69,8 +35,6 @@ const progress = ref<SqlFileExecutionProgress | null>(null)
 const result = ref<SqlFileExecutionResult | null>(null)
 const error = ref('')
 
-let unlistenProgress: UnlistenFn | null = null
-
 const progressPercentage = computed(() => {
   if (!progress.value || progress.value.total_statements === 0) return 0
   return Math.round((progress.value.current_statement / progress.value.total_statements) * 100)
@@ -78,7 +42,7 @@ const progressPercentage = computed(() => {
 
 const canStart = computed(() => {
   // Web 环境需要文件内容，桌面环境需要文件路径
-  const hasFile = isDialogSupported() ? filePath.value : fileContent.value
+  const hasFile = platform.value?.capabilities.fileSystem !== 'none' ? filePath.value : fileContent.value
   return hasFile && !isExecuting.value
 })
 
@@ -86,16 +50,25 @@ const isCompleted = computed(() => {
   return result.value !== null
 })
 
+// 计算属性：是否支持文件系统对话框
+const hasFileSystemSupport = computed(() => {
+  return platform.value?.capabilities.fileSystem !== 'none'
+})
+
 onMounted(async () => {
-  if (!isTauri() || !listenEvent) return
-  
-  // 监听执行进度事件
-  unlistenProgress = await listenEvent<SqlFileExecutionProgress>(
-    'sql-file-execution-progress',
-    (event) => {
-      progress.value = event.payload
-    }
-  )
+  // Tauri 特定的事件监听（这是 Tauri 特有的功能）
+  if (isTauri()) {
+    const event = await import('@tauri-apps/api/event')
+    listenEvent = event.listen
+    
+    // 监听执行进度事件
+    unlistenProgress = await listenEvent<SqlFileExecutionProgress>(
+      'sql-file-execution-progress',
+      (event) => {
+        progress.value = event.payload
+      }
+    )
+  }
 })
 
 onUnmounted(() => {
@@ -135,11 +108,22 @@ function handleFileChange(event: Event) {
 }
 
 async function selectFile() {
-  // 等待 dialog 加载完成
-  await loadDialogIfNeeded()
+  // 等待平台初始化完成
+  if (platformLoading.value) {
+    await new Promise(resolve => {
+      const check = () => {
+        if (!platformLoading.value) {
+          resolve(undefined)
+        } else {
+          setTimeout(check, 50)
+        }
+      }
+      check()
+    })
+  }
   
   // Web 环境：使用隐藏的 input[type=file]
-  if (!isDialogSupported() || !openDialog) {
+  if (!hasFileSystemSupport.value || !platform.value?.fs?.showOpenDialog) {
     if (fileInputRef.value) {
       fileInputRef.value.click()
     }
@@ -148,7 +132,7 @@ async function selectFile() {
   
   // 桌面/VSCode 环境：使用原生对话框
   try {
-    const selected = await openDialog({
+    const selected = await platform.value.fs.showOpenDialog({
       multiple: false,
       directory: false,
       filters: [
@@ -164,7 +148,7 @@ async function selectFile() {
     })
 
     if (selected) {
-      filePath.value = selected as string
+      filePath.value = selected
       fileContent.value = ''  // 清空之前的内容
       error.value = ''
     }
@@ -178,7 +162,7 @@ async function startImport() {
   if (!props.connectionId) return
   
   // 检查是否有文件（桌面环境用路径，Web 环境用内容）
-  const isWeb = !isDialogSupported()
+  const isWeb = !hasFileSystemSupport.value
   if (isWeb && !fileContent.value) {
     toastStore.error(t('sqlImport.noFileSelected'))
     return

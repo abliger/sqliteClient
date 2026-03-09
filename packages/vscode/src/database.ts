@@ -5,7 +5,17 @@ import * as os from 'os'
 
 // Dynamic import for better-sqlite3 to handle VS Code extension path
 let Database: typeof import('better-sqlite3').default | null = null
+let SQL: typeof import('sql.js').initSqlJs | null = null
 let loadError: Error | null = null
+let useSqlJs = false
+
+async function initSqlJs(): Promise<typeof import('sql.js').initSqlJs> {
+    if (!SQL) {
+        const sqlJsMod = await import('sql.js')
+        SQL = sqlJsMod.default
+    }
+    return SQL
+}
 
 function findBetterSQLite3(context: vscode.ExtensionContext): string | null {
     const possiblePaths = [
@@ -45,7 +55,8 @@ function findBetterSQLite3(context: vscode.ExtensionContext): string | null {
 
 function loadBetterSQLite3(
     context: vscode.ExtensionContext,
-): typeof import('better-sqlite3').default {
+): typeof import('better-sqlite3').default | null {
+    if (useSqlJs) return null
     if (Database) return Database
 
     // 获取环境信息用于调试
@@ -83,25 +94,11 @@ function loadBetterSQLite3(
         // 提供更详细的错误信息
         const errorMsg = err instanceof Error ? err.message : String(err)
 
-        if (errorMsg.includes('ERR_DLOPEN_FAILED')) {
-            // 检测 VSCode 的 Electron 版本
-            const vscodeElectronVersion = getVSCodeElectronVersion()
-
-            throw new Error(
-                `SQLite native module loading failed (ERR_DLOPEN_FAILED).\n\n` +
-                    `This is usually caused by Electron version mismatch between the\n` +
-                    `extension build environment and your VSCode version.\n\n` +
-                    `Environment info:\n` +
-                    `- VSCode version: ${vscodeVersion}\n` +
-                    `- VSCode Electron: ${vscodeElectronVersion || 'unknown'}\n` +
-                    `- Extension built for: Electron 30.x\n` +
-                    `- Platform: ${platform} ${arch}\n\n` +
-                    `Solutions:\n` +
-                    `1. Update VSCode to the latest version\n` +
-                    `2. Or rebuild the extension for your VSCode version:\n` +
-                    `   cd packages/vscode && npm run rebuild:native\n\n` +
-                    `Original error: ${errorMsg}`,
-            )
+        if (errorMsg.includes('ERR_DLOPEN_FAILED') || errorMsg.includes('NODE_MODULE_VERSION')) {
+            // Electron 版本不匹配，自动降级到 sql.js
+            console.warn('[DatabaseManager] better-sqlite3 ABI mismatch, falling back to sql.js')
+            useSqlJs = true
+            return null
         }
 
         throw new Error(`Failed to load better-sqlite3: ${errorMsg}`)
@@ -166,7 +163,8 @@ import { generateId, generateUUID } from './utils/id'
 
 interface Connection {
     config: ConnectionConfig
-    db: any // better-sqlite3 Database instance
+    db: any // better-sqlite3 or sql.js Database instance
+    type: 'better-sqlite3' | 'sql.js'
     status: ConnectionStatus
     metadata: DatabaseMetadata
 }
@@ -250,6 +248,23 @@ export class DatabaseManager {
         }
     }
 
+    private getSqlJsMetadata(db: any): DatabaseMetadata {
+        // sql.js 使用 exec 而不是 prepare/get
+        const tableResult = db.exec("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
+        const indexResult = db.exec("SELECT COUNT(*) FROM sqlite_master WHERE type='index'")
+        const triggerResult = db.exec("SELECT COUNT(*) FROM sqlite_master WHERE type='trigger'")
+
+        return {
+            version: '3.x', // sql.js 内置版本
+            page_size: 4096,
+            page_count: 0,
+            table_count: tableResult[0]?.values[0]?.[0] || 0,
+            index_count: indexResult[0]?.values[0]?.[0] || 0,
+            trigger_count: triggerResult[0]?.values[0]?.[0] || 0,
+            size_bytes: 0,
+        }
+    }
+
     getConnection(connectionId: string): Connection {
         const conn = this.connections.get(connectionId)
         if (!conn) {
@@ -259,16 +274,25 @@ export class DatabaseManager {
     }
 
     async createConnection(name: string, dbPath: string): Promise<ConnectionInfo> {
-        // Ensure better-sqlite3 is loaded
-        loadBetterSQLite3(this.context)
+        // Try better-sqlite3 first
+        const BetterSQLite3 = loadBetterSQLite3(this.context)
 
-        if (!Database) {
-            throw new ConnectionError('SQLite database module not loaded')
+        if (BetterSQLite3) {
+            return this.createBetterSQLite3Connection(name, dbPath, BetterSQLite3)
         }
 
+        // Fall back to sql.js
+        return this.createSqlJsConnection(name, dbPath)
+    }
+
+    private async createBetterSQLite3Connection(
+        name: string,
+        dbPath: string,
+        BetterSQLite3: typeof import('better-sqlite3').default,
+    ): Promise<ConnectionInfo> {
         let db: any | undefined
         try {
-            db = new Database(dbPath)
+            db = new BetterSQLite3(dbPath)
             db.pragma('journal_mode = WAL')
 
             const id = generateId()
@@ -284,6 +308,7 @@ export class DatabaseManager {
             const connection: Connection = {
                 config,
                 db,
+                type: 'better-sqlite3',
                 status: 'connected',
                 metadata,
             }
@@ -296,7 +321,6 @@ export class DatabaseManager {
                 metadata,
             }
         } catch (error) {
-            // Ensure connection is closed on failure
             if (db) {
                 try {
                     db.close()
@@ -305,6 +329,44 @@ export class DatabaseManager {
                 }
             }
             throw new ConnectionError(`Failed to connect to database: ${error}`, error as Error)
+        }
+    }
+
+    private async createSqlJsConnection(name: string, dbPath: string): Promise<ConnectionInfo> {
+        const initSqlJsFn = await initSqlJs()
+        const SQL = await initSqlJsFn()
+
+        let fileBuffer: Buffer | undefined
+        if (fs.existsSync(dbPath)) {
+            fileBuffer = fs.readFileSync(dbPath)
+        }
+
+        const db = new SQL.Database(fileBuffer)
+
+        const id = generateId()
+        const config: ConnectionConfig = {
+            id,
+            name,
+            db_path: dbPath,
+            created_at: new Date().toISOString(),
+            last_connected: new Date().toISOString(),
+        }
+
+        const metadata = this.getSqlJsMetadata(db)
+        const connection: Connection = {
+            config,
+            db,
+            type: 'sql.js',
+            status: 'connected',
+            metadata,
+        }
+
+        this.connections.set(id, connection)
+
+        return {
+            config,
+            status: 'connected',
+            metadata,
         }
     }
 
@@ -339,6 +401,9 @@ export class DatabaseManager {
         const conn = this.connections.get(connectionId)
         if (conn) {
             try {
+                if (conn.type === 'sql.js') {
+                    this.saveSqlJsDatabase(conn)
+                }
                 conn.db.close()
             } catch (error) {
                 console.error('Error closing connection:', error)
@@ -390,6 +455,11 @@ export class DatabaseManager {
         const effectiveLimit = Math.min(limit ?? this.maxQueryResults, this.maxQueryResults)
 
         try {
+            if (conn.type === 'sql.js') {
+                return this.executeSqlJsQuery(conn, sql, effectiveLimit, startTime)
+            }
+
+            // better-sqlite3 path
             if (isSelectQuery(sql)) {
                 const stmt = conn.db.prepare(sql)
                 const allRows = stmt.all()
@@ -468,6 +538,123 @@ export class DatabaseManager {
         }
     }
 
+    private executeSqlJsQuery(
+        conn: Connection,
+        sql: string,
+        limit: number,
+        startTime: number,
+    ): QueryResult {
+        const db = conn.db
+
+        try {
+            // sql.js 的 exec 返回数组，每个元素是一个结果集
+            const results = db.exec(sql)
+
+            // 取第一个结果集
+            const result = results[0]
+
+            if (!result || result.columns.length === 0) {
+                // 非 SELECT 查询（INSERT/UPDATE/DELETE）
+                // sql.js 不返回 affected rows，需要手动查询
+                this.saveSqlJsDatabase(conn)
+
+                const executionInfo: QueryExecutionInfo = {
+                    execution_time_ms: Date.now() - startTime,
+                    rows_returned: 0,
+                    indexes_used: [],
+                    query_plan: [],
+                    warnings: [],
+                    suggestions: [],
+                }
+
+                this.addToHistory(
+                    sql,
+                    conn.config.id,
+                    conn.config.name,
+                    executionInfo.execution_time_ms,
+                    true,
+                )
+
+                return {
+                    type: 'execution',
+                    rows_affected: 1, // sql.js 不返回实际影响行数
+                    last_insert_id: undefined,
+                    execution_info: executionInfo,
+                }
+            }
+
+            // SELECT 查询
+            const rows = result.values.slice(0, limit)
+
+            const executionInfo: QueryExecutionInfo = {
+                execution_time_ms: Date.now() - startTime,
+                rows_returned: rows.length,
+                indexes_used: [],
+                query_plan: [],
+                warnings: [],
+                suggestions: [],
+            }
+
+            this.addToHistory(
+                sql,
+                conn.config.id,
+                conn.config.name,
+                executionInfo.execution_time_ms,
+                true,
+                rows.length,
+            )
+
+            return {
+                type: 'rows',
+                columns: result.columns,
+                rows: rows.map((row: any[]) => ({
+                    values: Object.fromEntries(
+                        result.columns.map((col: string, i: number) => [
+                            col,
+                            this.wrapSqlJsValue(row[i]),
+                        ]),
+                    ),
+                })),
+                has_more: result.values.length > limit,
+                execution_info: executionInfo,
+            }
+        } catch (error) {
+            this.addToHistory(
+                sql,
+                conn.config.id,
+                conn.config.name,
+                Date.now() - startTime,
+                false,
+                undefined,
+                String(error),
+            )
+            throw new QueryError(`Query execution failed: ${error}`, error as Error)
+        }
+    }
+
+    private wrapSqlJsValue(value: any): any {
+        if (value === null) return { type: 'Null' }
+        if (typeof value === 'number') {
+            if (Number.isInteger(value)) return { type: 'Integer', value }
+            return { type: 'Real', value }
+        }
+        if (typeof value === 'string') return { type: 'Text', value }
+        if (value instanceof Uint8Array) {
+            return { type: 'Blob', value: Buffer.from(value).toString('base64') }
+        }
+        return { type: 'Blob', value: String(value) }
+    }
+
+    private saveSqlJsDatabase(conn: Connection): void {
+        if (conn.type !== 'sql.js') return
+        try {
+            const data = conn.db.export()
+            fs.writeFileSync(conn.config.db_path, Buffer.from(data))
+        } catch (e) {
+            console.error('Failed to save database:', e)
+        }
+    }
+
     private wrapValue(value: any): any {
         if (value === null) return { type: 'Null' }
         if (typeof value === 'number') {
@@ -512,6 +699,21 @@ export class DatabaseManager {
     async listTables(connectionId: string): Promise<TableInfo[]> {
         const conn = this.getConnection(connectionId)
 
+        if (conn.type === 'sql.js') {
+            const results = conn.db.exec(
+                "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+            )
+            if (!results || results.length === 0) return []
+
+            const result = results[0]
+            return result.values.map((row: any[]) => ({
+                name: row[0] as string,
+                sql: row[1] as string | undefined,
+                column_count: 0,
+                columns: [],
+            }))
+        }
+
         const tables = conn.db
             .prepare(
                 "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -528,9 +730,68 @@ export class DatabaseManager {
 
     async getTableSchema(connectionId: string, tableName: string): Promise<TableInfo> {
         const conn = this.getConnection(connectionId)
-
-        // Validate table name to prevent SQL injection
         const safeTableName = quoteTableName(tableName)
+
+        if (conn.type === 'sql.js') {
+            const tableInfoResult = conn.db.exec(`PRAGMA table_info(${safeTableName})`)
+            const fkResult = conn.db.exec(`PRAGMA foreign_key_list(${safeTableName})`)
+            const sqlResult = conn.db.exec(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+                [tableName],
+            )
+            const countResult = conn.db.exec(`SELECT COUNT(*) FROM ${safeTableName}`)
+
+            const tableInfo =
+                tableInfoResult[0]?.values.map((row: any[]) => ({
+                    cid: row[0],
+                    name: row[1],
+                    type: row[2],
+                    notnull: row[3],
+                    dflt_value: row[4],
+                    pk: row[5],
+                })) || []
+
+            const foreignKeys =
+                fkResult[0]?.values.map((row: any[]) => ({
+                    from: row[3],
+                    table: row[2],
+                    to: row[4],
+                    on_update: row[5],
+                    on_delete: row[6],
+                })) || []
+
+            const fkMap = new Map<string, ForeignKeyInfo>()
+            foreignKeys.forEach(fk => {
+                fkMap.set(fk.from, {
+                    from_column: fk.from,
+                    to_table: fk.table,
+                    to_column: fk.to,
+                    on_update: fk.on_update,
+                    on_delete: fk.on_delete,
+                })
+            })
+
+            const columns: ColumnInfo[] = tableInfo.map(col => {
+                const fk = fkMap.get(col.name)
+                return {
+                    name: col.name,
+                    data_type: col.type,
+                    nullable: !col.notnull,
+                    default_value: col.dflt_value,
+                    is_primary_key: col.pk === 1,
+                    is_foreign_key: !!fk,
+                    foreign_key: fk,
+                }
+            })
+
+            return {
+                name: tableName,
+                sql: sqlResult[0]?.values[0]?.[0] as string | undefined,
+                column_count: columns.length,
+                row_count: (countResult[0]?.values[0]?.[0] as number) || 0,
+                columns,
+            }
+        }
 
         const tableInfo = conn.db.prepare(`PRAGMA table_info(${safeTableName})`).all() as any[]
         const foreignKeys = conn.db

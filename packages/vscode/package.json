@@ -82,18 +82,18 @@
         ]
     },
     "scripts": {
-        "build": "pnpm rebuild:native && pnpm build:extension && pnpm build:webview && pnpm copy:native",
-        "build:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --external:better-sqlite3 --format=cjs --platform=node",
+        "build": "pnpm build:extension && pnpm build:webview",
+        "build:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
         "build:webview": "vite build",
-        "rebuild:native": "electron-rebuild -f -w better-sqlite3",
-        "copy:native": "node scripts/copy-native.js",
         "dev": "vite build --watch",
         "package": "pnpm build && npx vsce package --no-dependencies",
         "lint": "eslint src --fix",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
         "test:watch": "vitest",
-        "test:coverage": "vitest run --coverage"
+        "test:coverage": "vitest run --coverage",
+        "_rebuild:native": "electron-rebuild -f -w better-sqlite3",
+        "_copy:native": "node scripts/copy-native.js"
     },
     "dependencies": {
         "@headlessui/vue": "^1.7.16",
@@ -107,6 +107,7 @@
         "monaco-editor": "^0.45.0",
         "pinia": "^2.1.7",
         "sql-formatter": "^15.7.2",
+        "sql.js": "^1.10.2",
         "uuid": "^9.0.1",
         "vue": "^3.4.0",
         "vue-i18n": "9"
@@ -118,7 +119,7 @@
         "@vitejs/plugin-vue": "^4.5.0",
         "@vitejs/plugin-vue-jsx": "^3.1.0",
         "@vitest/coverage-v8": "^1.0.0",
-        "electron": "^30.5.1",
+        "electron": "39.3.0",
         "electron-rebuild": "^3.2.9",
         "esbuild": "^0.19.0",
         "typescript": "^5.3.0",

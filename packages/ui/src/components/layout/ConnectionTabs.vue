@@ -15,41 +15,16 @@ import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
 import { useSettingsStore } from '@stores/settings'
 import { useToastStore } from '@stores/toast'
-import { isTauri, isDialogSupported } from '@utils/tauri'
+import { usePlatformAsync } from '@services/platform'
 import Tooltip from '@components/ui/Tooltip.vue'
 import CreateDatabaseDialog from '@components/dialogs/CreateDatabaseDialog.vue'
-
-// 动态导入 Tauri dialog（桌面应用）或 VSCode mock（VSCode 扩展）
-let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
-let dialogLoadingPromise: Promise<void> | null = null
-
-// 延迟加载 dialog，确保环境已初始化
-async function loadDialogIfNeeded(): Promise<void> {
-    // 如果已经加载完成，直接返回
-    if (openDialog) return
-    
-    // 如果正在加载中，等待加载完成
-    if (dialogLoadingPromise) {
-        return dialogLoadingPromise
-    }
-    
-    // 开始加载
-    if (isTauri() || isDialogSupported()) {
-        dialogLoadingPromise = import('@tauri-apps/plugin-dialog').then(m => {
-            openDialog = m.open
-        }).catch(err => {
-            console.error('Failed to load dialog:', err)
-            dialogLoadingPromise = null
-        })
-        return dialogLoadingPromise
-    }
-}
 
 const { t } = useI18n()
 const connectionStore = useConnectionStore()
 const queryStore = useQueryStore()
 const settingsStore = useSettingsStore()
 const toastStore = useToastStore()
+const { platform, isLoading: isPlatformLoading } = usePlatformAsync()
 
 // Props for sidebar and bottom panel toggle
 defineProps<{
@@ -77,16 +52,27 @@ const contextMenu = ref({
 const contextMenuRef = useTemplateRef<HTMLElement>('contextMenuRef')
 
 const handleOpenDatabase = async () => {
-    // 等待 dialog 加载完成
-    await loadDialogIfNeeded()
+    // 等待平台初始化完成
+    if (isPlatformLoading.value) {
+        await new Promise(resolve => {
+            const check = () => {
+                if (!isPlatformLoading.value) {
+                    resolve(undefined)
+                } else {
+                    setTimeout(check, 50)
+                }
+            }
+            check()
+        })
+    }
     
-    if (!isDialogSupported() || !openDialog) {
+    if (!platform.value?.fs || platform.value.capabilities.fileSystem === 'none') {
         toastStore.error('Not available', 'File dialog is only available in the desktop app or VSCode')
         return
     }
     
     try {
-        const selected = await openDialog({
+        const selected = await platform.value.fs.showOpenDialog({
             multiple: false,
             filters: [
                 { name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3', 'db3'] },
@@ -94,7 +80,7 @@ const handleOpenDatabase = async () => {
             ]
         })
 
-        if (selected && typeof selected === 'string') {
+        if (selected) {
             const fileName = selected.split(/[/\\]/).pop() || 'Untitled'
             const name = fileName.replace(/\.[^/.]+$/, '')
             await connectionStore.createConnection(name, selected)
@@ -110,22 +96,34 @@ const handleOpenDatabase = async () => {
 }
 
 const handleCreateDatabase = async () => {
-    // 等待 dialog 加载完成
-    await loadDialogIfNeeded()
+    // 等待平台初始化完成
+    if (isPlatformLoading.value) {
+        await new Promise(resolve => {
+            const check = () => {
+                if (!isPlatformLoading.value) {
+                    resolve(undefined)
+                } else {
+                    setTimeout(check, 50)
+                }
+            }
+            check()
+        })
+    }
     
-    if (!isDialogSupported() || !openDialog) {
+    if (!platform.value?.fs || platform.value.capabilities.fileSystem === 'none') {
         toastStore.error('Not available', 'Folder dialog is only available in the desktop app or VSCode')
         return
     }
     
     try {
         // Open folder picker to select save location
-        const selected = await openDialog({
-            directory: true,
-            multiple: false
+        const selected = await platform.value.fs.showSaveDialog({
+            filters: [
+                { name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3', 'db3'] }
+            ]
         })
 
-        if (selected && typeof selected === 'string') {
+        if (selected) {
             selectedFolderPath.value = selected
             isCreateDialogOpen.value = true
         }

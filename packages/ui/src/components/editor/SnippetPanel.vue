@@ -175,9 +175,16 @@ const handleUpdate = () => {
 }
 
 // 删除片段
-const handleDelete = (snippet: Snippet) => {
+const { platform } = usePlatformAsync()
+
+const handleDelete = async (snippet: Snippet) => {
   if (snippet.type === 'builtin') return
-  if (confirm(`确定要删除片段 "${snippet.name}" 吗？`)) {
+  
+  const confirmed = platform.value 
+    ? await platform.value.dialog.showConfirm(`确定要删除片段 "${snippet.name}" 吗？`)
+    : confirm(`确定要删除片段 "${snippet.name}" 吗？`)
+    
+  if (confirmed) {
     templateStore.deleteSnippet(snippet.id)
   }
 }

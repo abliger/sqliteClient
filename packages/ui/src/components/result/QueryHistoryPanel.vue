@@ -5,6 +5,7 @@ import { useHistoryStore } from '@stores/history'
 import { useConnectionStore } from '@stores/connection'
 import { useQueryStore } from '@stores/query'
 import { useToastStore } from '@stores/toast'
+import { usePlatformAsync } from '@services/platform'
 import { formatDistanceToNow } from '@/utils/date'
 import {
   PlayIcon,
@@ -89,9 +90,14 @@ const handleReExecute = async (sql: string) => {
   }
 }
 
+const { platform } = usePlatformAsync()
+
 // 删除历史记录项
 const handleDelete = async (id: string) => {
-  if (!confirm(t('history.confirmDelete'))) return
+  const confirmed = platform.value 
+    ? await platform.value.dialog.showConfirm(t('history.confirmDelete'))
+    : confirm(t('history.confirmDelete'))
+  if (!confirmed) return
 
   try {
     await historyStore.deleteHistoryItem(id)
@@ -103,7 +109,10 @@ const handleDelete = async (id: string) => {
 
 // 清空历史记录
 const handleClearAll = async () => {
-  if (!confirm(t('history.confirmClear'))) return
+  const confirmed = platform.value 
+    ? await platform.value.dialog.showConfirm(t('history.confirmClear'))
+    : confirm(t('history.confirmClear'))
+  if (!confirmed) return
 
   try {
     await historyStore.clearHistory()

@@ -11,7 +11,7 @@ import { crudService } from '@services/crud'
 import * as crudLogService from '@services/crudLog'
 import { useCrudLogStore } from '@stores/crudLog'
 import { extractPrimaryTableName, isEditableQuery } from '@utils/sqlParser'
-import { isTauri, isDialogSupported } from '@utils/tauri'
+import { usePlatformAsync } from '@services/platform'
 import ResultGrid from './ResultGrid.vue'
 import ResultStatus from './ResultStatus.vue'
 import CrudLogPanel from './CrudLogPanel.vue'
@@ -28,30 +28,8 @@ const connectionStore = useConnectionStore()
 const schemaStore = useSchemaStore()
 const toastStore = useToastStore()
 const crudLogStore = useCrudLogStore()
+const { platform, isLoading } = usePlatformAsync()
 
-// 延迟加载 dialog
-let saveDialog: typeof import('@tauri-apps/plugin-dialog').save | null = null
-let dialogLoadingPromise: Promise<void> | null = null
-async function loadDialogIfNeeded(): Promise<void> {
-    // 如果已经加载完成，直接返回
-    if (saveDialog) return
-    
-    // 如果正在加载中，等待加载完成
-    if (dialogLoadingPromise) {
-        return dialogLoadingPromise
-    }
-    
-    // 开始加载
-    if (isTauri() || isDialogSupported()) {
-        dialogLoadingPromise = import('@tauri-apps/plugin-dialog').then(m => {
-            saveDialog = m.save
-        }).catch(err => {
-            console.error('Failed to load dialog:', err)
-            dialogLoadingPromise = null
-        })
-        return dialogLoadingPromise
-    }
-}
 const activeTab = ref<'results' | 'messages' | 'logs' | 'history' | 'compare' | 'er'>('results')
 const isExporting = ref(false)
 const isEditDialogOpen = ref(false)
@@ -337,10 +315,10 @@ const handleDeleteRow = async () => {
 }
 
 const handleExportCSV = async () => {
-    // 等待 dialog 加载完成
-    await loadDialogIfNeeded()
+    // 等待平台初始化完成
+    if (isLoading.value) return
     
-    if (!isDialogSupported() || !saveDialog) {
+    if (!platform.value?.fs.showSaveDialog) {
         toastStore.error('Not available', 'Export is only available in the desktop app or VSCode')
         return
     }
@@ -348,8 +326,8 @@ const handleExportCSV = async () => {
     if (!currentResult.value || currentResult.value.type !== 'rows') return
     if (!connectionStore.activeConnectionId) return
 
-    const filePath = await saveDialog({
-        filters: [{ name: 'CSV', extensions: ['csv'] }]
+    const filePath = await platform.value.fs.showSaveDialog({
+        filters: { CSV: ['csv'] }
     })
 
     if (!filePath) return
@@ -371,10 +349,10 @@ const handleExportCSV = async () => {
 }
 
 const handleExportJSON = async () => {
-    // 等待 dialog 加载完成
-    await loadDialogIfNeeded()
+    // 等待平台初始化完成
+    if (isLoading.value) return
     
-    if (!isDialogSupported() || !saveDialog) {
+    if (!platform.value?.fs.showSaveDialog) {
         toastStore.error('Not available', 'Export is only available in the desktop app or VSCode')
         return
     }
@@ -382,8 +360,8 @@ const handleExportJSON = async () => {
     if (!currentResult.value || currentResult.value.type !== 'rows') return
     if (!connectionStore.activeConnectionId) return
 
-    const filePath = await saveDialog({
-        filters: [{ name: 'JSON', extensions: ['json'] }]
+    const filePath = await platform.value.fs.showSaveDialog({
+        filters: { JSON: ['json'] }
     })
 
     if (!filePath) return

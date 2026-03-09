@@ -260,8 +260,8 @@ importers:
                 specifier: ^1.0.0
                 version: 1.6.1(vitest@1.6.1)
             electron:
-                specifier: ^30.5.1
-                version: 30.5.1
+                specifier: ^39.3.0
+                version: 39.8.0
             electron-rebuild:
                 specifier: ^3.2.9
                 version: 3.2.9
@@ -2778,6 +2778,15 @@ packages:
             undici-types: 6.21.0
         dev: true
 
+    /@types/node@22.19.15:
+        resolution:
+            {
+                integrity: sha512-F0R/h2+dsy5wJAUe3tAU6oqa2qbWY5TpNfL/RGmo1y38hiyO1w3x2jPtt76wmuaJI4DQnOBu21cNXQ2STIUUWg==,
+            }
+        dependencies:
+            undici-types: 6.21.0
+        dev: true
+
     /@types/responselike@1.0.3:
         resolution:
             {
@@ -5210,17 +5219,17 @@ packages:
             }
         dev: true
 
-    /electron@30.5.1:
+    /electron@39.8.0:
         resolution:
             {
-                integrity: sha512-AhL7+mZ8Lg14iaNfoYTkXQ2qee8mmsQyllKdqxlpv/zrKgfxz6jNVtcRRbQtLxtF8yzcImWdfTQROpYiPumdbw==,
+                integrity: sha512-K+f3YelSyh9Q4LgUXuIhLB4kq73LJrqnIbe8ih9vpWi+iSdPebj0w7FRYwILCMDoyBQMFC9LicYHuIPmZzdKlg==,
             }
         engines: { node: '>= 12.20.55' }
         hasBin: true
         requiresBuild: true
         dependencies:
             '@electron/get': 2.0.3
-            '@types/node': 20.19.35
+            '@types/node': 22.19.15
             extract-zip: 2.0.1
         transitivePeerDependencies:
             - supports-color

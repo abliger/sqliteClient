@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { usePlatformAsync } from '@services/platform'
 import { useI18n } from 'vue-i18n'
 import { useTemplateStore } from '@stores/template'
 import {
@@ -141,10 +142,15 @@ const handleUpdate = () => {
   editingSnippet.value = null
 }
 
+const { platform } = usePlatformAsync()
+
 // 删除片段
-const handleDelete = (snippet: Snippet) => {
+const handleDelete = async (snippet: Snippet) => {
   if (snippet.type === 'builtin') return
-  if (confirm(t('template.confirmDelete', { name: snippet.name }))) {
+  const confirmed = platform.value 
+    ? await platform.value.dialog.showConfirm(t('template.confirmDelete', { name: snippet.name }))
+    : confirm(t('template.confirmDelete', { name: snippet.name }))
+  if (confirmed) {
     templateStore.deleteSnippet(snippet.id)
   }
 }

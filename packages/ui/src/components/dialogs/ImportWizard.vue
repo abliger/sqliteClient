@@ -4,8 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { useImportStore } from '@stores/import'
 import { useConnectionStore } from '@stores/connection'
 import { useToastStore } from '@stores/toast'
-import { isTauri, isDialogSupported } from '@utils/tauri'
 import { importService, SQLITE_DATA_TYPES } from '@services/import'
+import { usePlatformAsync } from '@services/platform'
 import { 
   DocumentArrowUpIcon,
   TableCellsIcon,
@@ -22,29 +22,7 @@ const importStore = useImportStore()
 const connectionStore = useConnectionStore()
 const toastStore = useToastStore()
 
-// 延迟加载 dialog
-let openDialog: typeof import('@tauri-apps/plugin-dialog').open | null = null
-let dialogLoadingPromise: Promise<void> | null = null
-async function loadDialogIfNeeded(): Promise<void> {
-    // 如果已经加载完成，直接返回
-    if (openDialog) return
-    
-    // 如果正在加载中，等待加载完成
-    if (dialogLoadingPromise) {
-        return dialogLoadingPromise
-    }
-    
-    // 开始加载
-    if (isTauri() || isDialogSupported()) {
-        dialogLoadingPromise = import('@tauri-apps/plugin-dialog').then(m => {
-            openDialog = m.open
-        }).catch(err => {
-            console.error('Failed to load dialog:', err)
-            dialogLoadingPromise = null
-        })
-        return dialogLoadingPromise
-    }
-}
+
 
 const isTableNameValid = ref(true)
 const isCheckingTableName = ref(false)
@@ -56,24 +34,22 @@ const supportedFormats = [
 ]
 
 // 选择文件
+const { platform } = usePlatformAsync()
+
 const handleSelectFile = async () => {
-  // 等待 dialog 加载完成
-  await loadDialogIfNeeded()
-  
-  if (!isDialogSupported() || !openDialog) {
+  if (!platform.value || platform.value.capabilities.fileSystem === 'none') {
     toastStore.error('Not available', 'File dialog is only available in the desktop app or VSCode')
     return
   }
   
-  const selected = await openDialog({
-    multiple: false,
-    filters: [
-      { name: 'CSV', extensions: ['csv'] },
-      { name: 'Excel', extensions: ['xlsx', 'xls'] }
-    ]
+  const selected = await platform.value.fs.showOpenDialog({
+    filters: {
+      'CSV': ['csv'],
+      'Excel': ['xlsx', 'xls']
+    }
   })
   
-  if (selected && typeof selected === 'string') {
+  if (selected) {
     const path = selected
     const fileName = path.split(/[/\\]/).pop() || ''
     const extension = fileName.split('.').pop()?.toLowerCase() || ''
