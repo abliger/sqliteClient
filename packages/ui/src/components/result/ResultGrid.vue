@@ -37,7 +37,9 @@ const deletingRow = ref<number | null>(null)
 const MIN_COLUMN_WIDTH = 50
 const DEFAULT_COLUMN_WIDTH = 150
 const columnWidths = ref<Record<string, number>>({})
-const isAutoFilling = ref(false)
+// 存储基础列宽比例（用于窗口缩放时保持相对比例）
+const baseColumnRatios = ref<Record<string, number>>({})
+const lastContainerWidth = ref(0)
 
 // 容器引用
 const tableContainerRef = ref<HTMLElement | null>(null)
@@ -55,43 +57,59 @@ const getTotalColumnsWidth = () => {
     return total
 }
 
-// 自动填充列宽
+// 计算固定列宽度（序号列 + 操作列）
+const getFixedColumnsWidth = () => {
+    let fixed = 50 // 序号列
+    if (props.allowEdit) {
+        fixed += 90 // 操作列
+    }
+    return fixed
+}
+
+// 自动填充列宽 - 根据容器宽度智能调整
 const autoFillColumns = () => {
-    if (!headerRef.value) return
+    if (!headerRef.value || props.columns.length === 0) return
     
     const containerWidth = headerRef.value.clientWidth
-    const totalWidth = getTotalColumnsWidth()
+    const fixedWidth = getFixedColumnsWidth()
+    const availableWidth = Math.max(0, containerWidth - fixedWidth)
+    const columnCount = props.columns.length
     
-    // 如果总宽度小于容器宽度，按比例扩展所有数据列
-    if (totalWidth < containerWidth && props.columns.length > 0) {
-        isAutoFilling.value = true
-        const extraWidth = containerWidth - totalWidth
-        const extraPerColumn = Math.floor(extraWidth / props.columns.length)
+    // 计算每个列的目标宽度
+    const targetWidthPerColumn = Math.floor(availableWidth / columnCount)
+    
+    // 如果目标宽度大于最小宽度，平均分配
+    if (targetWidthPerColumn >= MIN_COLUMN_WIDTH) {
+        const newWidths: Record<string, number> = {}
+        let totalAssigned = 0
         
-        props.columns.forEach(col => {
-            const currentWidth = columnWidths.value[col] || DEFAULT_COLUMN_WIDTH
-            columnWidths.value[col] = currentWidth + extraPerColumn
+        props.columns.forEach((col, index) => {
+            // 最后一列占据剩余所有空间
+            if (index === columnCount - 1) {
+                newWidths[col] = availableWidth - totalAssigned
+            } else {
+                newWidths[col] = targetWidthPerColumn
+                totalAssigned += targetWidthPerColumn
+            }
         })
         
-        // 处理剩余像素（给最后一列）
-        const remaining = extraWidth - (extraPerColumn * props.columns.length)
-        if (remaining > 0 && props.columns.length > 0) {
-            const lastCol = props.columns[props.columns.length - 1]
-            columnWidths.value[lastCol] += remaining
-        }
+        columnWidths.value = newWidths
+    } else {
+        // 空间不足，使用最小宽度
+        const newWidths: Record<string, number> = {}
+        props.columns.forEach(col => {
+            newWidths[col] = MIN_COLUMN_WIDTH
+        })
+        columnWidths.value = newWidths
     }
+    
+    // 保存当前容器宽度
+    lastContainerWidth.value = containerWidth
 }
 
 // 初始化列宽
 const initColumnWidths = () => {
-    const newWidths: Record<string, number> = {}
-    props.columns.forEach(col => {
-        // 保持已调整的宽度，否则使用默认值
-        newWidths[col] = columnWidths.value[col] || DEFAULT_COLUMN_WIDTH
-    })
-    columnWidths.value = newWidths
-    
-    // 下一帧自动填充
+    // 首次加载或列变化时，自动填充
     nextTick(() => {
         autoFillColumns()
     })
@@ -102,6 +120,7 @@ watch(() => props.columns, initColumnWidths, { immediate: true })
 
 // 监听窗口大小变化
 const handleResize = () => {
+    // 窗口大小变化时重新计算列宽
     autoFillColumns()
 }
 
