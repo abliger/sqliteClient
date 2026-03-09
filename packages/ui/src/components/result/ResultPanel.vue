@@ -327,7 +327,7 @@ const handleExportCSV = async () => {
     if (!connectionStore.activeConnectionId) return
 
     const filePath = await platform.value.fs.showSaveDialog({
-        filters: { CSV: ['csv'] }
+        filters: [{ name: 'CSV', extensions: ['csv'] }]
     })
 
     if (!filePath) return
@@ -361,7 +361,7 @@ const handleExportJSON = async () => {
     if (!connectionStore.activeConnectionId) return
 
     const filePath = await platform.value.fs.showSaveDialog({
-        filters: { JSON: ['json'] }
+        filters: [{ name: 'JSON', extensions: ['json'] }]
     })
 
     if (!filePath) return

@@ -84,14 +84,19 @@ interface ExecuteQueryOptions {
     limit?: number
 }
 
+export interface DialogFilter {
+    name: string
+    extensions: string[]
+}
+
 export interface OpenDialogOptions {
     title?: string
-    filters?: Record<string, string[]>
+    filters?: DialogFilter[]
     multiple?: boolean
 }
 
 export interface SaveDialogOptions {
     title?: string
     defaultPath?: string
-    filters?: Record<string, string[]>
+    filters?: DialogFilter[]
 }

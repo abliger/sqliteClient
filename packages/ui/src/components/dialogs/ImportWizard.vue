@@ -43,10 +43,10 @@ const handleSelectFile = async () => {
   }
   
   const selected = await platform.value.fs.showOpenDialog({
-    filters: {
-      'CSV': ['csv'],
-      'Excel': ['xlsx', 'xls']
-    }
+    filters: [
+      { name: 'CSV', extensions: ['csv'] },
+      { name: 'Excel', extensions: ['xlsx', 'xls'] }
+    ]
   })
   
   if (selected) {

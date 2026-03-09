@@ -73,23 +73,17 @@ const fileSystem: FileSystemProvider = {
     },
 
     async showOpenDialog(options): Promise<string | null> {
-        const filters = options.filters
-            ? Object.entries(options.filters).map(([name, extensions]) => ({ name, extensions }))
-            : undefined
         const result = await open({
-            multiple: false,
-            filters,
+            multiple: options.multiple ?? false,
+            filters: options.filters,
         })
         return result ? String(result) : null
     },
 
     async showSaveDialog(options): Promise<string | null> {
-        const filters = options.filters
-            ? Object.entries(options.filters).map(([name, extensions]) => ({ name, extensions }))
-            : undefined
         const result = await save({
             defaultPath: options.defaultPath,
-            filters,
+            filters: options.filters,
         })
         return result ? String(result) : null
     },
