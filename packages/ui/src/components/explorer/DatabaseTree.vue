@@ -119,14 +119,23 @@ const handleOpenImport = () => {
                     {{ (connectionStore.activeConnection.metadata.size_bytes / 1024).toFixed(1) }} KB
                 </div>
             </div>
-            <!-- 导入按钮 -->
-            <button
-                class="mt-2 w-full flex items-center justify-center space-x-1 px-2 py-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
-                @click="handleOpenImport"
-            >
-                <DocumentArrowUpIcon class="w-3.5 h-3.5" />
-                <span>{{ t('databaseTree.importData') }}</span>
-            </button>
+            <!-- 导入和导出按钮 -->
+            <div class="mt-2 space-y-2">
+                <button
+                    class="w-full flex items-center justify-center space-x-1 px-2 py-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
+                    @click="handleOpenImport"
+                >
+                    <DocumentArrowUpIcon class="w-3.5 h-3.5" />
+                    <span>{{ t('databaseTree.importData') }}</span>
+                </button>
+                <button
+                    class="w-full flex items-center justify-center space-x-1 px-2 py-1.5 text-xs font-medium text-surface-600 dark:text-surface-400 bg-surface-100 dark:bg-surface-700 rounded hover:bg-surface-200 dark:hover:bg-surface-600 transition-colors"
+                    @click="handleExportDoc"
+                >
+                    <DocumentTextIcon class="w-3.5 h-3.5" />
+                    <span>{{ t('databaseTree.exportDoc') }}</span>
+                </button>
+            </div>
         </div>
 
         <!-- 表列表 -->

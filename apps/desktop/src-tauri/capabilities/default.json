@@ -4,5 +4,11 @@
     "description": "Default capabilities for the SQLite Client",
     "local": true,
     "windows": ["main"],
-    "permissions": ["core:default", "dialog:default"]
+    "permissions": [
+        "core:default",
+        "dialog:default",
+        "fs:default",
+        "fs:allow-write-text-file",
+        "fs:allow-read-text-file"
+    ]
 }

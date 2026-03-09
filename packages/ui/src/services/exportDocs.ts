@@ -42,7 +42,7 @@ export interface ForeignKeyInfo {
  * 生成 Markdown 格式文档
  */
 export function generateMarkdown(schema: DatabaseSchema, options: DocExportOptions): string {
-    const { databaseName, tables, exportedAt } = schema
+    const { databaseName, tables, indexes, exportedAt } = schema
 
     let md = `# ${databaseName} 数据库文档\n\n`
     md += `> 生成时间: ${exportedAt}\n\n`
@@ -52,11 +52,12 @@ export function generateMarkdown(schema: DatabaseSchema, options: DocExportOptio
 
     // 表清单
     md += `## 表清单\n\n`
-    md += `| 序号 | 表名 | 列数 | 说明 |\n`
-    md += `|:---:|:---|:---:|:---|\n`
+    md += `| 序号 | 表名 | 列数 | 记录数 |\n`
+    md += `|:---:|:---|:---:|:---:|
+`
     tables.forEach((table, index) => {
-        const desc = '' // 后续可支持表注释
-        md += `| ${index + 1} | \`${table.name}\` | ${table.columns.length} | ${desc} |\n`
+        const rowCount = table.row_count !== undefined ? table.row_count.toLocaleString() : '-'
+        md += `| ${index + 1} | \`${table.name}\` | ${table.columns.length} | ${rowCount} |\n`
     })
     md += '\n'
 
@@ -64,48 +65,41 @@ export function generateMarkdown(schema: DatabaseSchema, options: DocExportOptio
     tables.forEach((table, index) => {
         md += `## ${index + 1}. ${table.name}\n\n`
 
+        if (table.sql) {
+            md += `**创建语句:**\n\n\`\`\`sql\n${table.sql}\n\`\`\`\n\n`
+        }
+
         // 列信息
         md += `### 列结构\n\n`
-        md += `| 列名 | 数据类型 | 可空 | 默认值 | 主键 | 说明 |\n`
-        md += `|:---|:---|:---:|:---|:---:|:---|\n`
+        md += `| 列名 | 数据类型 | 可空 | 默认值 | 主键 |\n`
+        md += `|:---|:---|:---:|:---|:---:|
+`
 
         table.columns.forEach(col => {
             const nullable = col.is_nullable ? '✓' : ''
             const defaultVal = col.default_value || ''
             const pk = col.is_primary_key ? '✓' : ''
-            const desc = '' // 列注释
-            md += `| \`${col.name}\` | ${col.type} | ${nullable} | ${defaultVal} | ${pk} | ${desc} |\n`
+            md += `| \`${col.name}\` | ${col.type} | ${nullable} | ${defaultVal} | ${pk} |\n`
         })
         md += '\n'
 
-        // 索引信息
-        if (options.includeIndexes && table.indexes?.length) {
-            md += `### 索引\n\n`
-            md += `| 索引名 | 类型 | 列 | 唯一 |\n`
-            md += `|:---|:---|:---|:---:|\n`
-
-            table.indexes.forEach(idx => {
-                const type = idx.is_primary ? 'PRIMARY' : idx.is_unique ? 'UNIQUE' : 'INDEX'
-                const columns = idx.columns.join(', ')
-                md += `| \`${idx.name}\` | ${type} | ${columns} | ${idx.is_unique ? '✓' : ''} |\n`
-            })
-            md += '\n'
-        }
-
-        // 外键信息
-        if (options.includeForeignKeys && table.foreign_keys?.length) {
-            md += `### 外键\n\n`
-            md += `| 外键名 | 列 | 引用表 | 引用列 |\n`
-            md += `|:---|:---|:---|:---|\n`
-
-            table.foreign_keys.forEach(fk => {
-                md += `| \`${fk.name}\` | ${fk.column} | \`${fk.referenced_table}\` | ${fk.referenced_column} |\n`
-            })
-            md += '\n'
-        }
-
         md += `---\n\n`
     })
+
+    // 全局索引信息
+    if (options.includeIndexes && indexes?.length) {
+        md += `## 索引清单\n\n`
+        md += `| 索引名 | 表名 | 类型 | 列 | 唯一 |\n`
+        md += `|:---|:---|:---|:---|:---:|
+`
+
+        indexes.forEach(idx => {
+            const type = idx.is_primary ? 'PRIMARY' : idx.unique ? 'UNIQUE' : 'INDEX'
+            const columns = idx.columns.join(', ')
+            md += `| \`${idx.name}\` | \`${idx.table_name}\` | ${type} | ${columns} | ${idx.unique ? '✓' : ''} |\n`
+        })
+        md += '\n'
+    }
 
     return md
 }
@@ -124,7 +118,9 @@ export function generateHTML(schema: DatabaseSchema, options: DocExportOptions):
         .replace(/^### (.+)$/gm, '<h3>$1</h3>')
         // 引用
         .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-        // 代码
+        // 代码块
+        .replace(/```sql\n([\s\S]+?)\n```/g, '<pre class="sql"><code>$1</code></pre>')
+        // 行内代码
         .replace(/`([^`]+)`/g, '<code>$1</code>')
         // 表格（简化处理）
         .replace(/\|(.+)\|/g, match => {
@@ -168,6 +164,17 @@ export function generateHTML(schema: DatabaseSchema, options: DocExportOptions):
             border-radius: 4px;
             font-family: 'Monaco', 'Menlo', monospace;
             font-size: 0.9em;
+        }
+        pre {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
         }
         table {
             width: 100%;
@@ -226,24 +233,20 @@ export async function exportDatabaseDoc(
     // 生成内容
     let content: string
     let extension: string
-    let mimeType: string
 
     switch (options.format) {
         case 'html':
             content = generateHTML(schema, options)
             extension = 'html'
-            mimeType = 'text/html'
             break
         case 'json':
             content = generateJSON(schema)
             extension = 'json'
-            mimeType = 'application/json'
             break
         case 'markdown':
         default:
             content = generateMarkdown(schema, options)
             extension = 'md'
-            mimeType = 'text/markdown'
     }
 
     // 使用平台服务保存文件
