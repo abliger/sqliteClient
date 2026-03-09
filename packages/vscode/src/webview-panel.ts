@@ -793,6 +793,15 @@ export class SQLitePanel {
                 `$1${assetsBaseUri.toString()}/`,
             )
 
+            // 为 script 标签添加 nonce 属性（CSP 要求）
+            htmlContent = htmlContent.replace(/<script /g, `<script nonce="${nonce}" `)
+
+            // 为 link 标签添加 nonce 属性
+            htmlContent = htmlContent.replace(
+                /<link rel="stylesheet"/g,
+                `<link nonce="${nonce}" rel="stylesheet"`,
+            )
+
             // 添加 CSP 和 VSCode API
             const nonce = this.getNonce()
             const csp = [
@@ -817,6 +826,19 @@ export class SQLitePanel {
             htmlContent = htmlContent.replace('</head>', `${vscodeScript}</head>`)
 
             logInfo('Generated HTML with URIs', { baseUri: assetsBaseUri.toString() })
+
+            // Debug: 将生成的 HTML 写入临时文件以便检查
+            const debugPath = path.join(
+                this.extensionUri.fsPath,
+                'dist',
+                'webview',
+                'debug-generated.html',
+            )
+            try {
+                fs.writeFileSync(debugPath, htmlContent)
+            } catch (e) {
+                // 忽略写入错误
+            }
 
             return htmlContent
         } catch (error) {

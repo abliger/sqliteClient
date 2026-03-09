@@ -126,6 +126,15 @@ export class SQLiteEditorProvider implements vscode.CustomEditorProvider<vscode.
                 `$1${assetsBaseUri.toString()}/`,
             )
 
+            // 为 script 标签添加 nonce 属性（CSP 要求）
+            htmlContent = htmlContent.replace(/<script /g, `<script nonce="${nonce}" `)
+
+            // 为 link 标签添加 nonce 属性
+            htmlContent = htmlContent.replace(
+                /<link rel="stylesheet"/g,
+                `<link nonce="${nonce}" rel="stylesheet"`,
+            )
+
             // 添加 CSP 和 VSCode API
             const nonce = this.getNonce()
             const csp = [

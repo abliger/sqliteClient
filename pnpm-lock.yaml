@@ -260,8 +260,8 @@ importers:
                 specifier: ^1.0.0
                 version: 1.6.1(vitest@1.6.1)
             electron:
-                specifier: ^39.3.0
-                version: 39.8.0
+                specifier: 39.3.0
+                version: 39.3.0
             electron-rebuild:
                 specifier: ^3.2.9
                 version: 3.2.9
@@ -5219,10 +5219,10 @@ packages:
             }
         dev: true
 
-    /electron@39.8.0:
+    /electron@39.3.0:
         resolution:
             {
-                integrity: sha512-K+f3YelSyh9Q4LgUXuIhLB4kq73LJrqnIbe8ih9vpWi+iSdPebj0w7FRYwILCMDoyBQMFC9LicYHuIPmZzdKlg==,
+                integrity: sha512-ZA2Cmu5Vs8zeuZBr71XWZ5vgm7lRDB9N50oV6ee7YocITyxRxx/apWFKY48Sxyn0gzVlX+6YQc3CS1PtYIkGUg==,
             }
         engines: { node: '>= 12.20.55' }
         hasBin: true
